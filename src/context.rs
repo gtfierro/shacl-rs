@@ -1,7 +1,9 @@
-use oxigraph::model::{Term};
+use oxigraph::model::{Term, TermRef};
+use crate::named_nodes::{RDF, SHACL};
 use oxigraph::model::Graph;
 use std::cell::RefCell;
 use crate::types::ID;
+use std::collections::HashSet;
 
 pub struct IDLookupTable {
     id_map: std::collections::HashMap<Term, ID>,
@@ -50,6 +52,67 @@ impl ValidationContext {
             shape_graph,
             data_graph,
         }
+    }
+
+    fn get_node_shapes(&self) -> Vec<ID> {
+        // here are all the ways to get a node shape:
+        // - <shape> rdf:type sh:NodeShape
+        // - ? sh:node <shape>
+        // - ? sh:qualifiedValueShape <shape>
+        // - ? sh:not <shape>
+        // - ? sh:or (list of <shape>)
+        // - ? sh:and (list of <shape>)
+        // - ? sh:xone (list of <shape>)
+        let rdf = RDF::new();
+        let shacl = SHACL::new();
+
+        // parse these out of the shape graph and return a vector of IDs
+        let mut node_shapes = HashSet::new();
+        // <shape> rdf:type sh:NodeShape
+        while let Some(shape) = self.shape_graph.subject_for_predicate_object(rdf.type_, shacl.node_shape) {
+            node_shapes.insert(self.get_or_create_id(shape.into()));
+        }
+
+        // ? sh:node <shape>
+        for triple in self.shape_graph.triples_for_predicate(shacl.node) {
+            node_shapes.insert(self.get_or_create_id(triple.object.into()));
+        }
+
+        // ? sh:qualifiedValueShape <shape>
+        for triple in self.shape_graph.triples_for_predicate(shacl.qualified_value_shape) {
+            node_shapes.insert(self.get_or_create_id(triple.object.into()));
+        }
+
+        // ? sh:not <shape>
+        for triple in self.shape_graph.triples_for_predicate(shacl.not) {
+            node_shapes.insert(self.get_or_create_id(triple.object.into()));
+        }
+
+        // ? sh:or (list of <shape>)
+
+
+        return node_shapes.into_iter().collect();
+    }
+
+    pub fn parse(&mut self) {
+        // parses the shape graph to get all of the shapes and components defined within
+
+
+    }
+
+    pub fn parse_rdf_list(&self, list: TermRef) -> Vec<TermRef> {
+        let mut items: Vec<TermRef> = Vec::new();
+        let rdf = RDF::new();
+        let mut current: TermRef = list;
+        while let Some(first) = self.shape_graph.object_for_subject_predicate(current, rdf.first) {
+            items.push(first);
+            if let Some(rest) = self.shape_graph.object_for_subject_predicate(current, rdf.rest) {
+                current = rest.into();
+            } else {
+                break;
+            }
+        }
+        items
     }
 
     pub fn shape_graph(&self) -> &Graph {
