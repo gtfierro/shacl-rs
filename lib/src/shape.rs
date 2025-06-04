@@ -1,4 +1,4 @@
-use crate::types::{ID, ComponentID};
+use crate::types::{ID, ComponentID, PropShapeID};
 use crate::types::{Path, Target};
 // SHACL, Term, NamedNode, TermRef were unused
 
@@ -12,7 +12,7 @@ pub enum Shape {
 pub struct NodeShape {
     identifier: ID,
     targets: Vec<Target>,
-    property_shapes: Vec<ID>,
+    property_shapes: Vec<PropShapeID>,
     constraints: Vec<ComponentID>,
     // TODO severity
     // TODO message
@@ -26,6 +26,18 @@ impl NodeShape {
             property_shapes,
             constraints,
         }
+    }
+
+    pub fn identifier(&self) -> &ID {
+        &self.identifier
+    }
+
+    pub fn property_shapes(&self) -> &[PropShapeID] {
+        &self.property_shapes
+    }
+
+    pub fn constraints(&self) -> &[ComponentID] {
+        &self.constraints
     }
 }
 
@@ -41,5 +53,16 @@ pub struct PropertyShape {
 impl PropertyShape {
     pub fn new(identifier: ID, path: Path, constraints: Vec<ComponentID>) -> Self {
         PropertyShape { identifier, path, constraints }
+    }
+    pub fn identifier(&self) -> &ID {
+        &self.identifier
+    }
+    pub fn path(&self) -> String {
+        match &self.path {
+            Path::Simple(t) => format!("{}", t)
+        }
+    }
+    pub fn constraints(&self) -> &[ComponentID] {
+        &self.constraints
     }
 }

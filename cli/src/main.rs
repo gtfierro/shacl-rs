@@ -5,5 +5,5 @@ fn main() {
         "Brick.ttl",
         "air_quality_sensor_example.ttl",
     ).unwrap();
-    ctx.dump();
+    ctx.graphviz();
 }

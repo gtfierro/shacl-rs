@@ -303,6 +303,34 @@ pub enum Component {
     UniqueLangConstraint(UniqueLangConstraintComponent),
 }
 
+impl Component {
+    pub fn label(&self) -> String {
+        match self {
+            Component::NodeConstraint(_) => "NodeConstraint".to_string(),
+            Component::PropertyConstraint(_) => "PropertyConstraint".to_string(),
+            Component::QualifiedValueShape(_) => "QualifiedValueShape".to_string(),
+
+            Component::ClassConstraint(_) => "ClassConstraint".to_string(),
+            Component::DatatypeConstraint(_) => "DatatypeConstraint".to_string(),
+            Component::NodeKindConstraint(_) => "NodeKindConstraint".to_string(),
+
+            Component::MinCount(_) => "MinCount".to_string(),
+            Component::MaxCount(_) => "MaxCount".to_string(),
+
+            Component::MinExclusiveConstraint(_) => "MinExclusiveConstraint".to_string(),
+            Component::MinInclusiveConstraint(_) => "MinInclusiveConstraint".to_string(),
+            Component::MaxExclusiveConstraint(_) => "MaxExclusiveConstraint".to_string(),
+            Component::MaxInclusiveConstraint(_) => "MaxInclusiveConstraint".to_string(),
+
+            Component::MinLengthConstraint(_) => "MinLengthConstraint".to_string(),
+            Component::MaxLengthConstraint(_) => "MaxLengthConstraint".to_string(),
+            Component::PatternConstraint(_) => "PatternConstraint".to_string(),
+            Component::LanguageInConstraint(_) => "LanguageInConstraint".to_string(),
+            Component::UniqueLangConstraint(_) => "UniqueLangConstraint".to_string(),
+        }
+    }
+}
+
 // value type
 #[derive(Debug)]
 pub struct ClassConstraintComponent {

@@ -13,6 +13,12 @@ use std::path::Path;
 use std::error::Error;
 use oxigraph::io::{RdfParser, RdfFormat};
 
+fn clean(input: &str) -> String {
+    input.chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect()
+}
+
 pub struct IDLookupTable<IdType: Copy + Eq + Hash> {
     id_map: std::collections::HashMap<Term, IdType>,
     id_to_term: std::collections::HashMap<IdType, Term>,
@@ -84,6 +90,39 @@ impl ValidationContext {
         }
     }
 
+    pub fn graphviz(&self) {
+        // print all node shapes
+        println!("digraph {{");
+        for shape in self.node_shapes.values() {
+            let name = self.nodeshape_id_lookup.borrow().id_to_term.get(shape.identifier()).unwrap().clone();
+            let name = format!("{}", name);
+            let name= clean(&name);
+            println!("n{} [label=\"{}\"];", shape.identifier(), name);
+            for pshape in shape.property_shapes() {
+                println!("n{} -> p{};", shape.identifier(), pshape);
+            }
+            for comp in shape.constraints() {
+                println!("n{} -> c{};", shape.identifier(), comp);
+            }
+        }
+        for pshape in self.prop_shapes.values() {
+            let name = self.propshape_id_lookup.borrow().id_to_term.get(pshape.identifier()).unwrap().clone();
+            let name = format!("{}", name);
+            let name= clean(&name);
+
+            let path = pshape.path();
+            let path = clean(&path);
+            println!("p{} [label=\"{}\"];", pshape.identifier(), path);
+            for comp in pshape.constraints() {
+                println!("p{} -> c{};", pshape.identifier(), comp);
+            }
+        }
+        for (ident, comp) in self.components.iter() {
+            println!("c{} [label=\"{}\"];", ident, comp.label());
+        }
+        println!("}}")
+    }
+
     fn load_graph_from_path_internal(file_path: &str) -> Result<Graph, Box<dyn Error>> {
         let path = Path::new(file_path);
         let file = File::open(path)
@@ -106,10 +145,8 @@ impl ValidationContext {
     pub fn from_files(shape_graph_path: &str, data_graph_path: &str) -> Result<Self, Box<dyn Error>> {
         let shape_graph = Self::load_graph_from_path_internal(shape_graph_path)
             .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Error loading shape graph from '{}': {}", shape_graph_path, e))))?;
-        println!("read shape graph");
         let data_graph = Self::load_graph_from_path_internal(data_graph_path)
             .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Error loading data graph from '{}': {}", data_graph_path, e))))?;
-        println!("read data graph");
         let mut ctx = Self::new(shape_graph, data_graph);
         ctx.parse();
         Ok(ctx)
@@ -196,7 +233,6 @@ impl ValidationContext {
     pub fn parse(&mut self) {
         // parses the shape graph to get all of the shapes and components defined within
         let shapes = self.get_node_shapes();
-        println!("got {} shapes", shapes.len());
         for shape in shapes {
             self.parse_node_shape(shape.as_ref());
         }
@@ -236,7 +272,7 @@ impl ValidationContext {
         let node_shape = NodeShape::new(
             id,
             targets,
-            property_shapes, // Property shapes will be added later
+            property_shapes,
             component_ids,
         );
         self.node_shapes.insert(id, node_shape);
@@ -288,6 +324,20 @@ impl ValidationContext {
     pub fn data_graph(&self) -> &Graph {
         &self.data_graph
     }
+
+    /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
+    pub fn get_or_create_node_id(&self, term: Term) -> ID {
+        self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
+    }
+
+    pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
+        self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
+    }
+
+    /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
+    pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
+        self.component_id_lookup.borrow_mut().get_or_create_id(term)
+    }
 }
 
 pub struct Context {
@@ -317,21 +367,5 @@ impl Context {
         } else {
             self.value_nodes = Some(value_nodes.to_vec());
         }
-    }
-}
-
-impl ValidationContext {
-    /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
-    pub fn get_or_create_node_id(&self, term: Term) -> ID {
-        self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
-    }
-
-    pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
-        self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
-    }
-
-    /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
-    pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
-        self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
 }
