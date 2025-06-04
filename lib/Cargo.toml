@@ -1,0 +1,7 @@
+[package]
+name = "shacl"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+oxigraph.workspace = true

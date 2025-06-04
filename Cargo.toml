@@ -1,7 +1,16 @@
-[package]
-name = "shacl-rs"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "lib",
+    "cli",
+]
+resolver = "2"
 
-[dependencies]
+[workspace.package]
+version = "0.1.0"
+authors = ["Gabe Fierro <gtfierro@mines.edu>"]
+license = "BSD-3-Clause"
+edition = "2021"
+
+[workspace.dependencies]
 oxigraph = "0.4.11"
+shacl = { version = "0.1.0", path = "lib" }

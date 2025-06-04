@@ -3,11 +3,14 @@ use crate::named_nodes::SHACL;
 
 pub type ID = u64;
 pub type ComponentID = u64;
+pub type PropShapeID = u64;
 
+#[derive(Debug)]
 pub enum Path {
     Simple(Term),
 }
 
+#[derive(Debug)]
 pub enum Target {
     Class(Term),
     Node(Term),

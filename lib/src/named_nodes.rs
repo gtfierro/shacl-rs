@@ -22,9 +22,11 @@ pub struct SHACL {
     pub language_in: NamedNodeRef<'static>,
     pub unique_lang: NamedNodeRef<'static>,
     pub node_shape: NamedNodeRef<'static>,
+    pub property_shape: NamedNodeRef<'static>,
     pub and_: NamedNodeRef<'static>,
     pub or_: NamedNodeRef<'static>,
     pub xone: NamedNodeRef<'static>,
+    pub path: NamedNodeRef<'static>,
 
     pub target_class: NamedNodeRef<'static>,
     pub target_node: NamedNodeRef<'static>,
@@ -56,9 +58,11 @@ impl SHACL {
             language_in: NamedNodeRef::new("http://www.w3.org/ns/shacl#languageIn").unwrap(),
             unique_lang: NamedNodeRef::new("http://www.w3.org/ns/shacl#uniqueLang").unwrap(),
             node_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#NodeShape").unwrap(),
+            property_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#PropertyShape").unwrap(),
             and_: NamedNodeRef::new("http://www.w3.org/ns/shacl#and").unwrap(),
             or_: NamedNodeRef::new("http://www.w3.org/ns/shacl#or").unwrap(),
             xone: NamedNodeRef::new("http://www.w3.org/ns/shacl#xone").unwrap(),
+            path: NamedNodeRef::new("http://www.w3.org/ns/shacl#path").unwrap(),
 
             target_class: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetClass").unwrap(),
             target_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetNode").unwrap(),

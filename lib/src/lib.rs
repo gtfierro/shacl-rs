@@ -2,7 +2,7 @@
 mod types;
 mod components;
 mod shape;
-mod context;
+pub mod context;
 mod named_nodes;
 
 use components::Component;

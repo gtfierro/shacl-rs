@@ -274,6 +274,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Hash
     new_components
 }
 
+#[derive(Debug)]
 pub enum Component {
     NodeConstraint(NodeConstraintComponent),
     PropertyConstraint(PropertyConstraintComponent),
@@ -303,26 +304,32 @@ pub enum Component {
 }
 
 // value type
+#[derive(Debug)]
 pub struct ClassConstraintComponent {
     class: Term,
 }
 
+#[derive(Debug)]
 pub struct DatatypeConstraintComponent {
     datatype: Term,
 }
 
+#[derive(Debug)]
 pub struct NodeKindConstraintComponent {
     node_kind: Term,
 }
 
+#[derive(Debug)]
 pub struct NodeConstraintComponent {
     shape: ID,
 }
 
+#[derive(Debug)]
 pub struct PropertyConstraintComponent {
     shape: ID,
 }
 
+#[derive(Debug)]
 pub struct QualifiedValueShapeComponent {
     shape: ID,
     min_count: Option<u64>,
@@ -330,49 +337,60 @@ pub struct QualifiedValueShapeComponent {
     disjoint: Option<bool>,
 }
 
+#[derive(Debug)]
 pub struct MinCountConstraintComponent {
     min_count: u64,
 }
 
+#[derive(Debug)]
 pub struct MaxCountConstraintComponent {
     max_count: u64,
 }
 
 // value range constraints
+#[derive(Debug)]
 pub struct MinExclusiveConstraintComponent {
     min_exclusive: Term,
 }
 
+#[derive(Debug)]
 pub struct MinInclusiveConstraintComponent {
     min_inclusive: Term,
 }
 
+#[derive(Debug)]
 pub struct MaxExclusiveConstraintComponent {
     max_exclusive: Term,
 }
 
+#[derive(Debug)]
 pub struct MaxInclusiveConstraintComponent {
     max_inclusive: Term,
 }
 
 // string-based constraints
+#[derive(Debug)]
 pub struct MinLengthConstraintComponent {
     min_length: u64,
 }
 
+#[derive(Debug)]
 pub struct MaxLengthConstraintComponent {
     max_length: u64,
 }
 
+#[derive(Debug)]
 pub struct PatternConstraintComponent {
     pattern: String,
     flags: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct LanguageInConstraintComponent {
     languages: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct UniqueLangConstraintComponent {
     unique_lang: bool,
 }
