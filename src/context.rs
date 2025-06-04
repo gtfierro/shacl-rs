@@ -74,11 +74,9 @@ impl ValidationContext {
         let file = File::open(path)
             .map_err(|e| format!("Failed to open file '{}': {}", file_path, e))?;
         let reader = BufReader::new(file);
-        let format = RdfFormat::from_file_path(path)
-            .map_err(|e| format!("Failed to determine RDF format for '{}': {}", file_path, e))?;
 
         let mut graph = Graph::new();
-        let quad_iter = RdfParser::from_format(format).for_reader(reader);
+        let quad_iter = RdfParser::from_format(RdfFormat::Turtle).for_reader(reader);
 
         for quad_result in quad_iter {
             let quad = quad_result
