@@ -1,22 +1,45 @@
-use oxigraph::model::{Term, NamedNodeRef, TermRef, Literal};
-use oxigraph::model::{Dataset, Graph, GraphName, Quad, Triple};
+use oxigraph::model::{Term, NamedNodeRef, TermRef, SubjectRef, BlankNode};
 use crate::types::ID;
+
+trait ToSubjectRef {
+    fn to_subject_ref(&self) -> SubjectRef;
+}
+
+impl ToSubjectRef for Term {
+    fn to_subject_ref(&self) -> SubjectRef {
+        match self {
+            Term::NamedNode(n) => n.into(),
+            Term::BlankNode(b) => b.into(),
+            _ => panic!("Invalid subject term: {:?}", self),
+        }
+    }
+}
+
+impl<'a> ToSubjectRef for TermRef<'a> {
+    fn to_subject_ref(&self) -> SubjectRef<'a> {
+        match self {
+            TermRef::NamedNodeRef(nr) => nr.clone().into(),
+            TermRef::BlankNodeRef(br) => br.clone().into(),
+            _ => panic!("Invalid subject term ref: {:?}", self),
+        }
+    }
+}
 
 
 pub fn parse_components(start: Term, shape_graph: &Graph) -> Vec<Component> {
     let mut components = Vec::new();
     // Class constraints
     if let Some(class_term) = shape_graph.object_for_subject_predicate(
-        &start,
+        start.to_subject_ref(),
         NamedNodeRef::new("http://www.w3.org/ns/shacl#class").unwrap(),
     ) {
         components.push(Component::ClassConstraint(ClassConstraintComponent {
-            class: class_term.to_owned(),
+            class: class_term.into(),
         }));
     }
     // Node constraints
     if let Some(shape_term) = shape_graph.object_for_subject_predicate(
-        &start,
+        start.to_subject_ref(),
         NamedNodeRef::new("http://www.w3.org/ns/shacl#node").unwrap(),
     ) {
         components.push(Component::NodeConstraint(NodeConstraintComponent {
@@ -28,7 +51,7 @@ pub fn parse_components(start: Term, shape_graph: &Graph) -> Vec<Component> {
     }
     // Property constraints
     for prop in shape_graph.objects_for_subject_predicate(
-        &start,
+        start.to_subject_ref(),
         NamedNodeRef::new("http://www.w3.org/ns/shacl#property").unwrap(),
     ) {
         components.push(Component::PropertyConstraint(PropertyConstraintComponent {
@@ -40,24 +63,24 @@ pub fn parse_components(start: Term, shape_graph: &Graph) -> Vec<Component> {
     }
     // Qualified value shape constraints
     for qvs in shape_graph.objects_for_subject_predicate(
-        &start,
+        start.to_subject_ref(),
         NamedNodeRef::new("http://www.w3.org/ns/shacl#qualifiedValueShape").unwrap(),
     ) {
         let min_count = shape_graph
             .object_for_subject_predicate(
-                &qvs.to_owned(),
+                qvs.to_subject_ref(),
                 NamedNodeRef::new("http://www.w3.org/ns/shacl#minCount").unwrap(),
             )
             .and_then(|t| if let TermRef::Literal(lit) = t { lit.value().parse().ok() } else { None });
         let max_count = shape_graph
             .object_for_subject_predicate(
-                &qvs.to_owned(),
+                qvs.to_subject_ref(),
                 NamedNodeRef::new("http://www.w3.org/ns/shacl#maxCount").unwrap(),
             )
             .and_then(|t| if let TermRef::Literal(lit) = t { lit.value().parse().ok() } else { None });
         let disjoint = shape_graph
             .object_for_subject_predicate(
-                &qvs.to_owned(),
+                qvs.to_subject_ref(),
                 NamedNodeRef::new("http://www.w3.org/ns/shacl#qualifiedValueShapesDisjoint")
                     .unwrap(),
             )
