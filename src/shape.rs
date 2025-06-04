@@ -16,6 +16,17 @@ pub struct NodeShape {
     // TODO message
 }
 
+impl NodeShape {
+    pub fn new(identifier: ID, targets: Vec<Target>, property_shapes: Vec<ID>, constraints: Vec<ComponentID>) -> Self {
+        NodeShape {
+            identifier,
+            targets,
+            property_shapes,
+            constraints,
+        }
+    }
+}
+
 pub struct PropertyShape {
     identifier: ID,
     path: Path,

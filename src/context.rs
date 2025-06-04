@@ -146,12 +146,18 @@ impl ValidationContext {
 
         // get constraint components
         let constraints = parse_components(shape, self);
-        let node_shape = NodeShape {
-            identifier: id,
+        let component_ids: Vec<ComponentID> = constraints.keys().cloned().collect();
+        for (component_id, component) in constraints {
+            // add the component to our context.components map
+            self.components.insert(component_id, component);
+        }
+
+        let node_shape = NodeShape::new(
+            id,
             targets,
-            property_shapes: Vec::new(), // This will be filled later
-            constraints,
-        };
+            vec![], // Property shapes will be added later
+            component_ids,
+        );
         self.node_shapes.insert(id, node_shape);
         id
     }

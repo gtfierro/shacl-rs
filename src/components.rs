@@ -28,8 +28,8 @@ impl<'a> ToSubjectRef for TermRef<'a> {
     }
 }
 
-pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<ComponentID> {
-    let mut component_ids = Vec::new();
+pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> HashMap<ComponentID, Component> {
+    let mut new_components = HashMap::new();
     let shacl = SHACL::new();
 
     // make a list of all the predicate-object pairs for the given start term, as a dictionary
@@ -56,8 +56,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 class: class_term_ref.clone().into(),
             });
             let component_id = context.get_or_create_component_id(class_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -67,8 +66,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 datatype: datatype_term_ref.clone().into(),
             });
             let component_id = context.get_or_create_component_id(datatype_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -78,8 +76,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 node_kind: node_kind_term_ref.clone().into(),
             });
             let component_id = context.get_or_create_component_id(node_kind_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -91,8 +88,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 shape: target_shape_id,
             });
             let component_id = context.get_or_create_component_id(node_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -104,8 +100,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 shape: target_shape_id,
             });
             let component_id = context.get_or_create_component_id(property_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -119,8 +114,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                         min_count: min_count_val,
                     });
                     let component_id = context.get_or_create_component_id(min_count_term_ref.into_owned());
-                    context.components.insert(component_id, component);
-                    component_ids.push(component_id);
+                    new_components.insert(component_id, component);
                 }
             }
         }
@@ -134,8 +128,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                         max_count: max_count_val,
                     });
                     let component_id = context.get_or_create_component_id(max_count_term_ref.into_owned());
-                    context.components.insert(component_id, component);
-                    component_ids.push(component_id);
+                    new_components.insert(component_id, component);
                 }
             }
         }
@@ -151,8 +144,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                     },
                 );
                 let component_id = context.get_or_create_component_id(min_exclusive_term_ref.into_owned());
-                context.components.insert(component_id, component);
-                component_ids.push(component_id);
+                new_components.insert(component_id, component);
             }
         }
     }
@@ -166,8 +158,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                     },
                 );
                 let component_id = context.get_or_create_component_id(min_inclusive_term_ref.into_owned());
-                context.components.insert(component_id, component);
-                component_ids.push(component_id);
+                new_components.insert(component_id, component);
             }
         }
     }
@@ -181,8 +172,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                     },
                 );
                 let component_id = context.get_or_create_component_id(max_exclusive_term_ref.into_owned());
-                context.components.insert(component_id, component);
-                component_ids.push(component_id);
+                new_components.insert(component_id, component);
             }
         }
     }
@@ -196,8 +186,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                     },
                 );
                 let component_id = context.get_or_create_component_id(max_inclusive_term_ref.into_owned());
-                context.components.insert(component_id, component);
-                component_ids.push(component_id);
+                new_components.insert(component_id, component);
             }
         }
     }
@@ -211,8 +200,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                         MinLengthConstraintComponent { min_length: min_length_val },
                     );
                     let component_id = context.get_or_create_component_id(min_length_term_ref.into_owned());
-                    context.components.insert(component_id, component);
-                    component_ids.push(component_id);
+                    new_components.insert(component_id, component);
                 }
             }
         }
@@ -226,8 +214,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                         MaxLengthConstraintComponent { max_length: max_length_val },
                     );
                     let component_id = context.get_or_create_component_id(max_length_term_ref.into_owned());
-                    context.components.insert(component_id, component);
-                    component_ids.push(component_id);
+                    new_components.insert(component_id, component);
                 }
             }
         }
@@ -244,8 +231,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 flags: flags_str,
             });
             let component_id = context.get_or_create_component_id(pattern_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -268,8 +254,7 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                 LanguageInConstraintComponent { languages },
             );
             let component_id = context.get_or_create_component_id(list_head_term_ref.into_owned());
-            context.components.insert(component_id, component);
-            component_ids.push(component_id);
+            new_components.insert(component_id, component);
         }
     }
 
@@ -281,51 +266,12 @@ pub fn parse_components(start: TermRef, context: &mut ValidationContext) -> Vec<
                         UniqueLangConstraintComponent { unique_lang: unique_lang_val },
                     );
                     let component_id = context.get_or_create_component_id(unique_lang_term_ref.into_owned());
-                    context.components.insert(component_id, component);
-                    component_ids.push(component_id);
+                    new_components.insert(component_id, component);
                 }
             }
         }
     }
-
-
-    //// Qualified value shape constraints
-    //for qvs in context.shape_graph().objects_for_subject_predicate(
-    //    start.to_subject_ref(),
-    //    shacl.qualified_value_shape,
-    //) {
-    //    let min_count = context.shape_graph()
-    //        .object_for_subject_predicate(
-    //            qvs.to_subject_ref(),
-    //            shacl.min_count,
-    //        )
-    //        .and_then(|t| if let TermRef::Literal(lit) = t { lit.value().parse().ok() } else { None });
-    //    let max_count = context.shape_graph()
-    //        .object_for_subject_predicate(
-    //            qvs.to_subject_ref(),
-    //            shacl.max_count,
-    //        )
-    //        .and_then(|t| if let TermRef::Literal(lit) = t { lit.value().parse().ok() } else { None });
-    //    let disjoint = context.shape_graph()
-    //        .object_for_subject_predicate(
-    //            qvs.to_subject_ref(),
-    //            shacl.qualified_value_shapes_disjoint,
-    //        )
-    //        .and_then(|t| if let TermRef::Literal(lit) = t { lit.value().parse().ok() } else { None });
-    //    let component = Component::QualifiedValueShape(
-    //        QualifiedValueShapeComponent {
-    //            shape: context.get_or_create_node_id(qvs.clone().into()), // Corrected to get_or_create_node_id
-    //            min_count,
-    //            max_count,
-    //            disjoint,
-    //        },
-    //    );
-    //    // TODO: Determine appropriate Term for component_id, then:
-    //    // let component_id = context.get_or_create_component_id(term_for_qvs_component.into_owned());
-    //    // context.components.insert(component_id, component);
-    //    // component_ids.push(component_id);
-    //}
-    component_ids
+    new_components
 }
 
 pub enum Component {

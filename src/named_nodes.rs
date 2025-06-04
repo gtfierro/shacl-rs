@@ -21,10 +21,15 @@ pub struct SHACL {
     pub flags: NamedNodeRef<'static>,
     pub language_in: NamedNodeRef<'static>,
     pub unique_lang: NamedNodeRef<'static>,
-    pub rdf_first: NamedNodeRef<'static>,
-    pub rdf_rest: NamedNodeRef<'static>,
-    pub rdf_nil: NamedNodeRef<'static>,
     pub node_shape: NamedNodeRef<'static>,
+    pub and_: NamedNodeRef<'static>,
+    pub or_: NamedNodeRef<'static>,
+    pub xone: NamedNodeRef<'static>,
+
+    pub target_class: NamedNodeRef<'static>,
+    pub target_node: NamedNodeRef<'static>,
+    pub target_objects_of: NamedNodeRef<'static>,
+    pub target_subjects_of: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -50,10 +55,15 @@ impl SHACL {
             flags: NamedNodeRef::new("http://www.w3.org/ns/shacl#flags").unwrap(),
             language_in: NamedNodeRef::new("http://www.w3.org/ns/shacl#languageIn").unwrap(),
             unique_lang: NamedNodeRef::new("http://www.w3.org/ns/shacl#uniqueLang").unwrap(),
-            rdf_first: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#first").unwrap(),
-            rdf_rest: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest").unwrap(),
-            rdf_nil: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil").unwrap(),
             node_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#NodeShape").unwrap(),
+            and_: NamedNodeRef::new("http://www.w3.org/ns/shacl#and").unwrap(),
+            or_: NamedNodeRef::new("http://www.w3.org/ns/shacl#or").unwrap(),
+            xone: NamedNodeRef::new("http://www.w3.org/ns/shacl#xone").unwrap(),
+
+            target_class: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetClass").unwrap(),
+            target_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetNode").unwrap(),
+            target_objects_of: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetObjectsOf").unwrap(),
+            target_subjects_of: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetSubjectsOf").unwrap(),
         }
     }
 }
