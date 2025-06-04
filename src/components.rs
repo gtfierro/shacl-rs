@@ -1,4 +1,4 @@
-use oxigraph::model::{Term, NamedNodeRef, TermRef, SubjectRef, BlankNode};
+use oxigraph::model::{Term, NamedNodeRef, TermRef, SubjectRef, BlankNode, Graph};
 use crate::types::ID;
 
 trait ToSubjectRef {
@@ -18,8 +18,8 @@ impl ToSubjectRef for Term {
 impl<'a> ToSubjectRef for TermRef<'a> {
     fn to_subject_ref(&self) -> SubjectRef<'a> {
         match self {
-            TermRef::NamedNodeRef(nr) => nr.clone().into(),
-            TermRef::BlankNodeRef(br) => br.clone().into(),
+            TermRef::NamedNode(nr) => nr.clone().into(),
+            TermRef::BlankNode(br) => br.clone().into(),
             _ => panic!("Invalid subject term ref: {:?}", self),
         }
     }
