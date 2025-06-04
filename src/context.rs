@@ -1,4 +1,4 @@
-use oxigraph::model::{Term, TermRef, SubjectRef, Quad};
+use oxigraph::model::{Term, TermRef, SubjectRef, TripleRef};
 use std::hash::Hash;
 use crate::named_nodes::{RDF, SHACL};
 use crate::shape::NodeShape; // Removed PropertyShape, Shape
@@ -83,7 +83,7 @@ impl ValidationContext {
                 .map_err(|e| format!("RDF parsing error in '{}': {}", file_path, e))?;
             // Insert the subject, predicate, object from the Quad into the Graph.
             // This effectively merges all named graphs and the default graph into one.
-            graph.insert((quad.subject.as_ref(), quad.predicate.as_ref(), quad.object.as_ref()).into());
+            graph.insert(TripleRef::new(quad.subject.as_ref(), quad.predicate.as_ref(), quad.object.as_ref()));
         }
         Ok(graph)
     }
