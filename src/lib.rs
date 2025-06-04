@@ -3,6 +3,7 @@ mod types;
 mod components;
 mod shape;
 mod context;
+mod named_nodes;
 
 use components::Component;
 use shape::Shape;

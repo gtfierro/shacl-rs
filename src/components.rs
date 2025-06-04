@@ -1,6 +1,7 @@
 use oxigraph::model::{Term, NamedNodeRef, TermRef, SubjectRef, BlankNode, Graph};
 use crate::context::ValidationContext;
 use crate::types::ID;
+use crate::named_nodes::SHACL;
 
 trait ToSubjectRef {
     fn to_subject_ref(&self) -> SubjectRef;
@@ -29,6 +30,7 @@ impl<'a> ToSubjectRef for TermRef<'a> {
 
 pub fn parse_components(start: Term, context: &mut ValidationContext) -> Vec<Component> {
     let mut components = Vec::new();
+    let shacl = SHACL::new();
     // Class constraints
     if let Some(class_term) = context.shape_graph().object_for_subject_predicate(
         start.to_subject_ref(),
