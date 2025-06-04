@@ -12,6 +12,7 @@ impl IDLookupTable {
     pub fn new() -> Self {
         IDLookupTable {
             id_map: std::collections::HashMap::new(),
+            id_to_term: std::collections::HashMap::new(),
             next_id: 0,
         }
     }
@@ -39,6 +40,24 @@ pub struct ValidationContext {
     id_lookup: IDLookupTable,
     shape_graph: Graph,
     data_graph: Graph,
+}
+
+impl ValidationContext {
+    pub fn new(shape_graph: Graph, data_graph: Graph) -> Self {
+        ValidationContext {
+            id_lookup: IDLookupTable::new(),
+            shape_graph,
+            data_graph,
+        }
+    }
+
+    pub fn shape_graph(&self) -> &Graph {
+        &self.shape_graph
+    }
+
+    pub fn data_graph(&self) -> &Graph {
+        &self.data_graph
+    }
 }
 
 pub struct Context {
