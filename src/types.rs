@@ -1,4 +1,4 @@
-use oxigraph::model::{Term, NamedNode, TermRef, NamedNodeRef};
+use oxigraph::model::{Term, TermRef, NamedNodeRef}; // Removed NamedNode
 use crate::named_nodes::SHACL;
 
 pub type ID = u64;

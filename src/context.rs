@@ -1,9 +1,9 @@
 use oxigraph::model::{Term, TermRef, SubjectRef};
 use std::hash::Hash;
 use crate::named_nodes::{RDF, SHACL};
-use crate::shape::{NodeShape, PropertyShape, Shape};
+use crate::shape::NodeShape; // Removed PropertyShape, Shape
 use oxigraph::model::Graph;
-use crate::components::{ToSubjectRef, parse_components};
+use crate::components::{ToSubjectRef, parse_components, Component}; // Added Component
 use std::cell::RefCell;
 use crate::types::{ID, Target, ComponentID};
 use std::collections::{HashSet, HashMap};
