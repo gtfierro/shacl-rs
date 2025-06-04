@@ -1,10 +1,11 @@
-use oxigraph::model::{Term, TermRef};
+use oxigraph::model::{Term, TermRef, SubjectRef};
 use crate::named_nodes::{RDF, SHACL};
+use crate::shape::{NodeShape, PropertyShape, Shape};
 use oxigraph::model::Graph;
-use crate::components::ToSubjectRef;
+use crate::components::{ToSubjectRef, parse_components};
 use std::cell::RefCell;
-use crate::types::ID;
-use std::collections::HashSet;
+use crate::types::{ID, Target, ComponentID};
+use std::collections::{HashSet, HashMap};
 
 pub struct IDLookupTable {
     id_map: std::collections::HashMap<Term, ID>,
@@ -44,6 +45,8 @@ pub struct ValidationContext {
     id_lookup: RefCell<IDLookupTable>,
     shape_graph: Graph,
     data_graph: Graph,
+    node_shapes: HashMap<ID, NodeShape>,
+    components: HashMap<ComponentID, Component>,
 }
 
 impl ValidationContext {
@@ -52,6 +55,8 @@ impl ValidationContext {
             id_lookup: RefCell::new(IDLookupTable::new()),
             shape_graph,
             data_graph,
+            node_shapes: HashMap::new(),
+            components: HashMap::new(),
         }
     }
 
@@ -90,7 +95,28 @@ impl ValidationContext {
         }
 
         // ? sh:or (list of <shape>)
+        for triple in self.shape_graph.triples_for_predicate(shacl.or_) {
+            let list = triple.object.into();
+            for item in self.parse_rdf_list(list) {
+                node_shapes.insert(self.get_or_create_id(item.into()));
+            }
+        }
 
+        // ? sh:and (list of <shape>)
+        for triple in self.shape_graph.triples_for_predicate(shacl.and_) {
+            let list = triple.object.into();
+            for item in self.parse_rdf_list(list) {
+                node_shapes.insert(self.get_or_create_id(item.into()));
+            }
+        }
+
+        // ? sh:xone (list of <shape>)
+        for triple in self.shape_graph.triples_for_predicate(shacl.xone) {
+            let list = triple.object.into();
+            for item in self.parse_rdf_list(list) {
+                node_shapes.insert(self.get_or_create_id(item.into()));
+            }
+        }
 
         return node_shapes.into_iter().collect();
     }
@@ -99,6 +125,31 @@ impl ValidationContext {
         // parses the shape graph to get all of the shapes and components defined within
 
 
+    }
+
+    pub fn parse_node_shape(&mut self, shape: TermRef) -> ID {
+        // Parses a shape from the shape graph and returns its ID.
+        // Adds the shape to the node_shapes map.
+        let id = self.get_or_create_id(shape.into());
+
+        let subject: SubjectRef = shape.to_subject_ref();
+
+        // get the targets
+        let targets: Vec<Target> = self.shape_graph
+            .triples_for_subject(subject)
+            .filter_map(|triple| Target::from_predicate_object(triple.predicate, triple.object))
+            .collect();
+
+        // get constraint components
+        let constraints = parse_components(shape, self);
+        let node_shape = NodeShape {
+            identifier: id,
+            targets,
+            property_shapes: Vec::new(), // This will be filled later
+            constraints,
+        };
+        self.node_shapes.insert(id, node_shape);
+        id
     }
 
     pub fn parse_rdf_list(&self, list: TermRef) -> Vec<TermRef> {
