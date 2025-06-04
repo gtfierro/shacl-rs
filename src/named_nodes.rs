@@ -14,6 +14,12 @@ pub struct SHACL {
     pub min_inclusive: NamedNodeRef<'static>,
     pub max_exclusive: NamedNodeRef<'static>,
     pub max_inclusive: NamedNodeRef<'static>,
+    pub min_length: NamedNodeRef<'static>,
+    pub max_length: NamedNodeRef<'static>,
+    pub pattern: NamedNodeRef<'static>,
+    pub flags: NamedNodeRef<'static>,
+    pub language_in: NamedNodeRef<'static>,
+    pub unique_lang: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -32,6 +38,12 @@ impl SHACL {
             min_inclusive: NamedNodeRef::new("http://www.w3.org/ns/shacl#minInclusive").unwrap(),
             max_exclusive: NamedNodeRef::new("http://www.w3.org/ns/shacl#maxExclusive").unwrap(),
             max_inclusive: NamedNodeRef::new("http://www.w3.org/ns/shacl#maxInclusive").unwrap(),
+            min_length: NamedNodeRef::new("http://www.w3.org/ns/shacl#minLength").unwrap(),
+            max_length: NamedNodeRef::new("http://www.w3.org/ns/shacl#maxLength").unwrap(),
+            pattern: NamedNodeRef::new("http://www.w3.org/ns/shacl#pattern").unwrap(),
+            flags: NamedNodeRef::new("http://www.w3.org/ns/shacl#flags").unwrap(),
+            language_in: NamedNodeRef::new("http://www.w3.org/ns/shacl#languageIn").unwrap(),
+            unique_lang: NamedNodeRef::new("http://www.w3.org/ns/shacl#uniqueLang").unwrap(),
         }
     }
 }

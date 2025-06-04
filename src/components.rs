@@ -168,6 +168,67 @@ pub fn parse_components(start: Term, context: &mut ValidationContext) -> Vec<Com
         }
     }
 
+    // string-based constraints
+    if let Some(min_length_terms) = pred_obj_pairs.get(&shacl.min_length.into()) {
+        for min_length_term in min_length_terms {
+            if let TermRef::Literal(lit) = min_length_term {
+                if let Ok(min_length) = lit.value().parse::<u64>() {
+                    components.push(Component::MinLengthConstraint(
+                        MinLengthConstraintComponent { min_length },
+                    ));
+                }
+            }
+        }
+    }
+
+    if let Some(max_length_terms) = pred_obj_pairs.get(&shacl.max_length.into()) {
+        for max_length_term in max_length_terms {
+            if let TermRef::Literal(lit) = max_length_term {
+                if let Ok(max_length) = lit.value().parse::<u64>() {
+                    components.push(Component::MaxLengthConstraint(
+                        MaxLengthConstraintComponent { max_length },
+                    ));
+                }
+            }
+        }
+    }
+
+    if let Some(pattern_terms) = pred_obj_pairs.get(&shacl.pattern.into()) {
+        if let Some(TermRef::Literal(pattern_lit)) = pattern_terms.first() { // sh:pattern maxCount 1
+            let pattern_str = pattern_lit.value().to_string();
+            let flags_str = pred_obj_pairs.get(&shacl.flags.into())
+                .and_then(|flags_terms| flags_terms.first())
+                .and_then(|flag_term| if let TermRef::Literal(flag_lit) = flag_term { Some(flag_lit.value().to_string()) } else { None });
+            components.push(Component::PatternConstraint(PatternConstraintComponent {
+                pattern: pattern_str,
+                flags: flags_str,
+            }));
+        }
+    }
+
+    if let Some(language_in_terms) = pred_obj_pairs.get(&shacl.language_in.into()) {
+        if let Some(list_head_term) = language_in_terms.first() { // sh:languageIn maxCount 1
+            // TODO: Actual list parsing. For now, store the head of the list.
+            // The validator will need to traverse this list.
+            components.push(Component::LanguageInConstraint(
+                LanguageInConstraintComponent { list_head: list_head_term.clone().into() },
+            ));
+        }
+    }
+
+    if let Some(unique_lang_terms) = pred_obj_pairs.get(&shacl.unique_lang.into()) {
+        for unique_lang_term in unique_lang_terms { // sh:uniqueLang maxCount 1, but loop for safety
+            if let TermRef::Literal(lit) = unique_lang_term {
+                if let Ok(unique_lang) = lit.value().parse::<bool>() {
+                    components.push(Component::UniqueLangConstraint(
+                        UniqueLangConstraintComponent { unique_lang },
+                    ));
+                }
+            }
+        }
+    }
+
+
     //// Qualified value shape constraints
     //for qvs in context.shape_graph().objects_for_subject_predicate(
     //    start.to_subject_ref(),
@@ -222,6 +283,13 @@ pub enum Component {
     MinInclusiveConstraint(MinInclusiveConstraintComponent),
     MaxExclusiveConstraint(MaxExclusiveConstraintComponent),
     MaxInclusiveConstraint(MaxInclusiveConstraintComponent),
+
+    // string-based constraints
+    MinLengthConstraint(MinLengthConstraintComponent),
+    MaxLengthConstraint(MaxLengthConstraintComponent),
+    PatternConstraint(PatternConstraintComponent),
+    LanguageInConstraint(LanguageInConstraintComponent),
+    UniqueLangConstraint(UniqueLangConstraintComponent),
 }
 
 // value type
@@ -275,4 +343,27 @@ pub struct MaxExclusiveConstraintComponent {
 
 pub struct MaxInclusiveConstraintComponent {
     max_inclusive: Term,
+}
+
+// string-based constraints
+pub struct MinLengthConstraintComponent {
+    min_length: u64,
+}
+
+pub struct MaxLengthConstraintComponent {
+    max_length: u64,
+}
+
+pub struct PatternConstraintComponent {
+    pattern: String,
+    flags: Option<String>,
+}
+
+pub struct LanguageInConstraintComponent {
+    // Head of the SHACL list. Actual list members (strings) will be parsed during validation.
+    list_head: Term,
+}
+
+pub struct UniqueLangConstraintComponent {
+    unique_lang: bool,
 }
