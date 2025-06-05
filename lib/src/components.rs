@@ -449,19 +449,17 @@ pub fn parse_components(
 
         // A QualifiedValueShapeComponent is formed if sh:qualifiedValueShape is present
         // AND (sh:qualifiedMinCount or sh:qualifiedMaxCount is present)
-        if q_min_count_opt.is_some() || q_max_count_opt.is_some() {
-            let shape_id = context.get_or_create_node_id(qvs_term_ref.clone().into());
-            let component = Component::QualifiedValueShape(QualifiedValueShapeComponent {
-                shape: shape_id,
-                min_count: q_min_count_opt,
-                max_count: q_max_count_opt,
-                disjoint: q_disjoint_opt,
-            });
-            // The component ID is based on the 'start' node, which is the subject
-            // of sh:qualifiedValueShape, sh:qualifiedMinCount, etc.
-            let component_id = context.get_or_create_component_id(start.into_owned());
-            new_components.insert(component_id, component);
-        }
+        let shape_id = context.get_or_create_node_id(qvs_term_ref.clone().into());
+        let component = Component::QualifiedValueShape(QualifiedValueShapeComponent {
+            shape: shape_id,
+            min_count: q_min_count_opt,
+            max_count: q_max_count_opt,
+            disjoint: q_disjoint_opt,
+        });
+        // The component ID is based on the 'start' node, which is the subject
+        // of sh:qualifiedValueShape, sh:qualifiedMinCount, etc.
+        let component_id = context.get_or_create_component_id(qvs_term_ref.into_owned());
+        new_components.insert(component_id, component);
     }
 
     new_components
