@@ -1,6 +1,6 @@
 use crate::context::ValidationContext;
 use crate::named_nodes::SHACL;
-use crate::types::{ComponentID, ID}; // Added ComponentID
+use crate::types::{ComponentID, ID, PropShapeID};
 use oxigraph::model::{SubjectRef, Term, TermRef, TripleRef};
 use std::collections::HashMap; // Removed RDF
 
@@ -381,7 +381,7 @@ pub struct NodeConstraintComponent {
 
 #[derive(Debug)]
 pub struct PropertyConstraintComponent {
-    shape: ID,
+    shape: PropShapeID,
 }
 
 #[derive(Debug)]
