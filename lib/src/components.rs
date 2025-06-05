@@ -298,6 +298,63 @@ pub fn parse_components(
             }
         }
     }
+
+    // property pair constraints
+    if let Some(equals_terms) = pred_obj_pairs.get(&shacl.equals.into()) {
+        for equals_term_ref in equals_terms {
+            if let TermRef::NamedNode(_nn) = equals_term_ref {
+                let component = Component::EqualsConstraint(EqualsConstraintComponent {
+                    property: equals_term_ref.clone().into(),
+                });
+                let component_id =
+                    context.get_or_create_component_id(equals_term_ref.into_owned());
+                new_components.insert(component_id, component);
+            }
+        }
+    }
+
+    if let Some(disjoint_terms) = pred_obj_pairs.get(&shacl.disjoint.into()) {
+        for disjoint_term_ref in disjoint_terms {
+            if let TermRef::NamedNode(_nn) = disjoint_term_ref {
+                let component = Component::DisjointConstraint(DisjointConstraintComponent {
+                    property: disjoint_term_ref.clone().into(),
+                });
+                let component_id =
+                    context.get_or_create_component_id(disjoint_term_ref.into_owned());
+                new_components.insert(component_id, component);
+            }
+        }
+    }
+
+    if let Some(less_than_terms) = pred_obj_pairs.get(&shacl.less_than.into()) {
+        for less_than_term_ref in less_than_terms {
+            if let TermRef::NamedNode(_nn) = less_than_term_ref {
+                let component = Component::LessThanConstraint(LessThanConstraintComponent {
+                    property: less_than_term_ref.clone().into(),
+                });
+                let component_id =
+                    context.get_or_create_component_id(less_than_term_ref.into_owned());
+                new_components.insert(component_id, component);
+            }
+        }
+    }
+
+    if let Some(less_than_or_equals_terms) =
+        pred_obj_pairs.get(&shacl.less_than_or_equals.into())
+    {
+        for less_than_or_equals_term_ref in less_than_or_equals_terms {
+            if let TermRef::NamedNode(_nn) = less_than_or_equals_term_ref {
+                let component =
+                    Component::LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent {
+                        property: less_than_or_equals_term_ref.clone().into(),
+                    });
+                let component_id =
+                    context.get_or_create_component_id(less_than_or_equals_term_ref.into_owned());
+                new_components.insert(component_id, component);
+            }
+        }
+    }
+
     new_components
 }
 
@@ -332,6 +389,12 @@ pub enum Component {
     PatternConstraint(PatternConstraintComponent),
     LanguageInConstraint(LanguageInConstraintComponent),
     UniqueLangConstraint(UniqueLangConstraintComponent),
+
+    // property pair constraints
+    EqualsConstraint(EqualsConstraintComponent),
+    DisjointConstraint(DisjointConstraintComponent),
+    LessThanConstraint(LessThanConstraintComponent),
+    LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent),
 }
 
 impl Component {
@@ -358,6 +421,11 @@ impl Component {
             Component::PatternConstraint(_) => "PatternConstraint".to_string(),
             Component::LanguageInConstraint(_) => "LanguageInConstraint".to_string(),
             Component::UniqueLangConstraint(_) => "UniqueLangConstraint".to_string(),
+
+            Component::EqualsConstraint(_) => "EqualsConstraint".to_string(),
+            Component::DisjointConstraint(_) => "DisjointConstraint".to_string(),
+            Component::LessThanConstraint(_) => "LessThanConstraint".to_string(),
+            Component::LessThanOrEqualsConstraint(_) => "LessThanOrEqualsConstraint".to_string(),
         }
     }
 
@@ -380,6 +448,10 @@ impl Component {
             Component::PatternConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::LanguageInConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::UniqueLangConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::EqualsConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::DisjointConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::LessThanConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::LessThanOrEqualsConstraint(c) => c.to_graphviz_string(component_id, context),
         }
     }
 }
@@ -650,5 +722,66 @@ pub struct UniqueLangConstraintComponent {
 impl GraphvizOutput for UniqueLangConstraintComponent {
     fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
         format!("c{} [label=\"UniqueLang: {}\"];", component_id.0, self.unique_lang)
+    }
+}
+
+// property pair constraints
+#[derive(Debug)]
+pub struct EqualsConstraintComponent {
+    property: Term, // Should be an IRI
+}
+
+impl GraphvizOutput for EqualsConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let property_name = format_term_for_label(&self.property);
+        format!(
+            "c{} [label=\"Equals: {}\"];",
+            component_id.0, property_name
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct DisjointConstraintComponent {
+    property: Term, // Should be an IRI
+}
+
+impl GraphvizOutput for DisjointConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let property_name = format_term_for_label(&self.property);
+        format!(
+            "c{} [label=\"Disjoint: {}\"];",
+            component_id.0, property_name
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct LessThanConstraintComponent {
+    property: Term, // Should be an IRI
+}
+
+impl GraphvizOutput for LessThanConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let property_name = format_term_for_label(&self.property);
+        format!(
+            "c{} [label=\"LessThan: {}\"];",
+            component_id.0, property_name
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct LessThanOrEqualsConstraintComponent {
+    property: Term, // Should be an IRI
+}
+
+impl GraphvizOutput for LessThanOrEqualsConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let property_name = format_term_for_label(&self.property);
+        format!(
+            "c{} [label=\"LessThanOrEquals: {}\"];",
+            component_id.0, property_name
+        )
     }
 }

@@ -32,6 +32,11 @@ pub struct SHACL {
     pub target_node: NamedNodeRef<'static>,
     pub target_objects_of: NamedNodeRef<'static>,
     pub target_subjects_of: NamedNodeRef<'static>,
+
+    pub equals: NamedNodeRef<'static>,
+    pub disjoint: NamedNodeRef<'static>,
+    pub less_than: NamedNodeRef<'static>,
+    pub less_than_or_equals: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -76,6 +81,14 @@ impl SHACL {
                 .unwrap(),
             target_subjects_of: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetSubjectsOf")
                 .unwrap(),
+
+            equals: NamedNodeRef::new("http://www.w3.org/ns/shacl#equals").unwrap(),
+            disjoint: NamedNodeRef::new("http://www.w3.org/ns/shacl#disjoint").unwrap(),
+            less_than: NamedNodeRef::new("http://www.w3.org/ns/shacl#lessThan").unwrap(),
+            less_than_or_equals: NamedNodeRef::new(
+                "http://www.w3.org/ns/shacl#lessThanOrEquals",
+            )
+            .unwrap(),
         }
     }
 }
