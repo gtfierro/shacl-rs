@@ -355,6 +355,59 @@ pub fn parse_components(
         }
     }
 
+    // logical constraints
+    if let Some(not_terms) = pred_obj_pairs.get(&shacl.not.into()) {
+        for not_term_ref in not_terms {
+            // Assuming sh:not takes a single shape
+            let negated_shape_id = context.get_or_create_node_id(not_term_ref.clone().into());
+            let component = Component::NotConstraint(NotConstraintComponent {
+                shape: negated_shape_id,
+            });
+            let component_id = context.get_or_create_component_id(not_term_ref.into_owned());
+            new_components.insert(component_id, component);
+        }
+    }
+
+    if let Some(and_terms) = pred_obj_pairs.get(&shacl.and_.into()) {
+        // sh:and expects a list of shapes
+        if let Some(list_head_ref) = and_terms.first() {
+            let shape_list = context.parse_rdf_list(list_head_ref.clone());
+            let shape_ids: Vec<ID> = shape_list
+                .iter()
+                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+                .collect();
+            let component = Component::AndConstraint(AndConstraintComponent { shapes: shape_ids });
+            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            new_components.insert(component_id, component);
+        }
+    }
+
+    if let Some(or_terms) = pred_obj_pairs.get(&shacl.or_.into()) {
+        if let Some(list_head_ref) = or_terms.first() {
+            let shape_list = context.parse_rdf_list(list_head_ref.clone());
+            let shape_ids: Vec<ID> = shape_list
+                .iter()
+                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+                .collect();
+            let component = Component::OrConstraint(OrConstraintComponent { shapes: shape_ids });
+            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            new_components.insert(component_id, component);
+        }
+    }
+
+    if let Some(xone_terms) = pred_obj_pairs.get(&shacl.xone.into()) {
+        if let Some(list_head_ref) = xone_terms.first() {
+            let shape_list = context.parse_rdf_list(list_head_ref.clone());
+            let shape_ids: Vec<ID> = shape_list
+                .iter()
+                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+                .collect();
+            let component = Component::XoneConstraint(XoneConstraintComponent { shapes: shape_ids });
+            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            new_components.insert(component_id, component);
+        }
+    }
+
     new_components
 }
 
@@ -395,6 +448,12 @@ pub enum Component {
     DisjointConstraint(DisjointConstraintComponent),
     LessThanConstraint(LessThanConstraintComponent),
     LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent),
+
+    // logical constraints
+    NotConstraint(NotConstraintComponent),
+    AndConstraint(AndConstraintComponent),
+    OrConstraint(OrConstraintComponent),
+    XoneConstraint(XoneConstraintComponent),
 }
 
 impl Component {
@@ -426,6 +485,11 @@ impl Component {
             Component::DisjointConstraint(_) => "DisjointConstraint".to_string(),
             Component::LessThanConstraint(_) => "LessThanConstraint".to_string(),
             Component::LessThanOrEqualsConstraint(_) => "LessThanOrEqualsConstraint".to_string(),
+
+            Component::NotConstraint(_) => "NotConstraint".to_string(),
+            Component::AndConstraint(_) => "AndConstraint".to_string(),
+            Component::OrConstraint(_) => "OrConstraint".to_string(),
+            Component::XoneConstraint(_) => "XoneConstraint".to_string(),
         }
     }
 
@@ -452,6 +516,10 @@ impl Component {
             Component::DisjointConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::LessThanConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::LessThanOrEqualsConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::NotConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::AndConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::OrConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::XoneConstraint(c) => c.to_graphviz_string(component_id, context),
         }
     }
 }
@@ -783,5 +851,83 @@ impl GraphvizOutput for LessThanOrEqualsConstraintComponent {
             "c{} [label=\"LessThanOrEquals: {}\"];",
             component_id.0, property_name
         )
+    }
+}
+
+// logical constraints
+#[derive(Debug)]
+pub struct NotConstraintComponent {
+    shape: ID, // NodeShape ID
+}
+
+impl GraphvizOutput for NotConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let shape_term_str = context
+            .nodeshape_id_lookup()
+            .borrow()
+            .get_term(self.shape)
+            .map_or_else(
+                || format!("MissingNodeShape:{}", self.shape),
+                |term| format_term_for_label(term),
+            );
+        let label = format!("Not\\n({})", shape_term_str);
+        format!(
+            "c{0} [label=\"{1}\"];\n    c{0} -> n{2} [style=dashed, label=\"negates\"];",
+            component_id.0, label, self.shape.0
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct AndConstraintComponent {
+    shapes: Vec<ID>, // List of NodeShape IDs
+}
+
+impl GraphvizOutput for AndConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let mut edges = String::new();
+        for shape_id in &self.shapes {
+            edges.push_str(&format!(
+                "    c{} -> n{} [style=dashed, label=\"conjunct\"];\n",
+                component_id.0, shape_id.0
+            ));
+        }
+        format!("c{} [label=\"And\"];\n{}", component_id.0, edges.trim_end())
+    }
+}
+
+#[derive(Debug)]
+pub struct OrConstraintComponent {
+    shapes: Vec<ID>, // List of NodeShape IDs
+}
+
+impl GraphvizOutput for OrConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let mut edges = String::new();
+        for shape_id in &self.shapes {
+            edges.push_str(&format!(
+                "    c{} -> n{} [style=dashed, label=\"disjunct\"];\n",
+                component_id.0, shape_id.0
+            ));
+        }
+        format!("c{} [label=\"Or\"];\n{}", component_id.0, edges.trim_end())
+    }
+}
+
+#[derive(Debug)]
+pub struct XoneConstraintComponent {
+    shapes: Vec<ID>, // List of NodeShape IDs
+}
+
+impl GraphvizOutput for XoneConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let mut edges = String::new();
+        for shape_id in &self.shapes {
+            edges.push_str(&format!(
+                "    c{} -> n{} [style=dashed, label=\"xone_option\"];\n",
+                component_id.0, shape_id.0
+            ));
+        }
+        format!("c{} [label=\"Xone\"];\n{}", component_id.0, edges.trim_end())
     }
 }
