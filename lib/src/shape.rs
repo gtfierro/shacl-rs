@@ -64,6 +64,13 @@ impl PropertyShape {
             Path::Simple(t) => format!("{}", t),
         }
     }
+
+    pub fn path_term(&self) -> &crate::types::Term {
+        match &self.path {
+            Path::Simple(t) => t,
+        }
+    }
+
     pub fn constraints(&self) -> &[ComponentID] {
         &self.constraints
     }
