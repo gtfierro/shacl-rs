@@ -1,5 +1,6 @@
 use crate::named_nodes::SHACL;
 use oxigraph::model::{NamedNodeRef, Term, TermRef}; // Removed NamedNode
+use std::fmt; // Added for Display trait
 use std::hash::Hash; // Added Hash for derived traits
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -8,6 +9,12 @@ pub struct ID(pub u64);
 impl From<u64> for ID {
     fn from(item: u64) -> Self {
         ID(item)
+    }
+}
+
+impl fmt::Display for ID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -20,12 +27,24 @@ impl From<u64> for ComponentID {
     }
 }
 
+impl fmt::Display for ComponentID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PropShapeID(pub u64);
 
 impl From<u64> for PropShapeID {
     fn from(item: u64) -> Self {
         PropShapeID(item)
+    }
+}
+
+impl fmt::Display for PropShapeID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

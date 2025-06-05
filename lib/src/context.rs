@@ -102,9 +102,6 @@ impl ValidationContext {
             let name = format!("{}", name);
             let name = clean(&name);
             println!("n{} [label=\"{}\"];", shape.identifier().0, name);
-            for pshape in shape.property_shapes() {
-                println!("n{} -> p{};", shape.identifier().0, pshape.0);
-            }
             for comp in shape.constraints() {
                 println!("    n{} -> c{};", shape.identifier().0, comp.0);
             }
@@ -311,7 +308,7 @@ impl ValidationContext {
             .filter_map(|o| self.propshape_id_lookup.borrow().get(&o.into_owned()))
             .collect();
 
-        let node_shape = NodeShape::new(id, targets, property_shapes, component_ids);
+        let node_shape = NodeShape::new(id, targets, component_ids);
         self.node_shapes.insert(id, node_shape);
         id
     }

@@ -104,7 +104,7 @@ pub fn parse_components(
     // property constraints
     if let Some(property_terms) = pred_obj_pairs.get(&shacl.property.into()) {
         for property_term_ref in property_terms {
-            let target_shape_id = context.get_or_create_node_id(property_term_ref.clone().into());
+            let target_shape_id = context.get_or_create_prop_id(property_term_ref.clone().into());
             let component = Component::PropertyConstraint(PropertyConstraintComponent {
                 shape: target_shape_id,
             });
