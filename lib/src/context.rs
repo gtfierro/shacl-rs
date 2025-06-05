@@ -102,12 +102,12 @@ impl ValidationContext {
                 .clone();
             let name = format!("{}", name);
             let name = clean(&name);
-            println!("n{} [label=\"{}\"];", shape.identifier(), name);
+            println!("n{} [label=\"{}\"];", shape.identifier().0, name);
             for pshape in shape.property_shapes() {
-                println!("n{} -> p{};", shape.identifier(), pshape);
+                println!("n{} -> p{};", shape.identifier().0, pshape.0);
             }
             for comp in shape.constraints() {
-                println!("    n{} -> c{};", shape.identifier(), comp);
+                println!("    n{} -> c{};", shape.identifier().0, comp.0);
             }
         }
         for pshape in self.prop_shapes.values() {
@@ -123,9 +123,9 @@ impl ValidationContext {
 
             let path = pshape.path();
             let path = clean(&path);
-            println!("    p{} [label=\"{}\"];", pshape.identifier(), path);
+            println!("    p{} [label=\"{}\"];", pshape.identifier().0, path);
             for comp in pshape.constraints() {
-                println!("    p{} -> c{};", pshape.identifier(), comp);
+                println!("    p{} -> c{};", pshape.identifier().0, comp.0);
             }
         }
         for (ident, comp) in self.components.iter() {

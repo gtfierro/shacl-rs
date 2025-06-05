@@ -1,9 +1,33 @@
 use crate::named_nodes::SHACL;
 use oxigraph::model::{NamedNodeRef, Term, TermRef}; // Removed NamedNode
+use std::hash::Hash; // Added Hash for derived traits
 
-pub type ID = u64;
-pub type ComponentID = u64;
-pub type PropShapeID = u64;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ID(pub u64);
+
+impl From<u64> for ID {
+    fn from(item: u64) -> Self {
+        ID(item)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ComponentID(pub u64);
+
+impl From<u64> for ComponentID {
+    fn from(item: u64) -> Self {
+        ComponentID(item)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct PropShapeID(pub u64);
+
+impl From<u64> for PropShapeID {
+    fn from(item: u64) -> Self {
+        PropShapeID(item)
+    }
+}
 
 #[derive(Debug)]
 pub enum Path {

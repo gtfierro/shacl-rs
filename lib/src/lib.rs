@@ -8,11 +8,11 @@ mod types;
 use components::Component;
 use shape::Shape;
 use std::collections::HashMap;
-use types::ID;
+use types::{ComponentID, ID}; // Added ComponentID
 
 pub struct Store {
     shape_lookup: HashMap<ID, Shape>,
-    component_lookup: HashMap<ID, Component>,
+    component_lookup: HashMap<ComponentID, Component>,
 }
 
 pub fn add(left: u64, right: u64) -> u64 {

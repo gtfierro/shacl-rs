@@ -48,7 +48,7 @@ impl NodeShape {
 
 #[derive(Debug)]
 pub struct PropertyShape {
-    identifier: ID,
+    identifier: PropShapeID,
     path: Path,
     constraints: Vec<ComponentID>,
     // TODO severity
@@ -56,14 +56,14 @@ pub struct PropertyShape {
 }
 
 impl PropertyShape {
-    pub fn new(identifier: ID, path: Path, constraints: Vec<ComponentID>) -> Self {
+    pub fn new(identifier: PropShapeID, path: Path, constraints: Vec<ComponentID>) -> Self {
         PropertyShape {
             identifier,
             path,
             constraints,
         }
     }
-    pub fn identifier(&self) -> &ID {
+    pub fn identifier(&self) -> &PropShapeID {
         &self.identifier
     }
     pub fn path(&self) -> String {
