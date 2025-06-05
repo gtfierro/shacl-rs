@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::io::BufReader;
 use std::path::Path;
 
-fn clean(input: &str) -> String {
+pub(crate) fn clean(input: &str) -> String {
     input.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
@@ -106,7 +106,7 @@ impl ValidationContext {
                 println!("n{} -> p{};", shape.identifier(), pshape);
             }
             for comp in shape.constraints() {
-                println!("n{} -> c{};", shape.identifier(), comp);
+                println!("    n{} -> c{};", shape.identifier(), comp);
             }
         }
         for pshape in self.prop_shapes.values() {
@@ -122,13 +122,15 @@ impl ValidationContext {
 
             let path = pshape.path();
             let path = clean(&path);
-            println!("p{} [label=\"{}\"];", pshape.identifier(), path);
+            println!("    p{} [label=\"{}\"];", pshape.identifier(), path);
             for comp in pshape.constraints() {
-                println!("p{} -> c{};", pshape.identifier(), comp);
+                println!("    p{} -> c{};", pshape.identifier(), comp);
             }
         }
         for (ident, comp) in self.components.iter() {
-            println!("c{} [label=\"{}\"];", ident, comp.label());
+            comp.to_graphviz_string(*ident, self)
+                .lines()
+                .for_each(|line| println!("    {}", line));
         }
         println!("}}")
     }
@@ -376,6 +378,15 @@ impl ValidationContext {
     /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
     pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
+    }
+
+    // Getter methods for ID lookup tables
+    pub fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
+        &self.nodeshape_id_lookup
+    }
+
+    pub fn propshape_id_lookup(&self) -> &RefCell<IDLookupTable<PropShapeID>> {
+        &self.propshape_id_lookup
     }
 }
 

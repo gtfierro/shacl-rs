@@ -1,4 +1,4 @@
-use crate::context::ValidationContext;
+use crate::context::{clean, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{ComponentID, ID, PropShapeID};
 use oxigraph::model::{SubjectRef, Term, TermRef, TripleRef};
@@ -301,6 +301,10 @@ pub fn parse_components(
     new_components
 }
 
+pub trait GraphvizOutput {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String;
+}
+
 #[derive(Debug)]
 pub enum Component {
     NodeConstraint(NodeConstraintComponent),
@@ -356,6 +360,28 @@ impl Component {
             Component::UniqueLangConstraint(_) => "UniqueLangConstraint".to_string(),
         }
     }
+
+    pub fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        match self {
+            Component::NodeConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::PropertyConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::QualifiedValueShape(c) => c.to_graphviz_string(component_id, context),
+            Component::ClassConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::DatatypeConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::NodeKindConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MinCount(c) => c.to_graphviz_string(component_id, context),
+            Component::MaxCount(c) => c.to_graphviz_string(component_id, context),
+            Component::MinExclusiveConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MinInclusiveConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MaxExclusiveConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MaxInclusiveConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MinLengthConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::MaxLengthConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::PatternConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::LanguageInConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::UniqueLangConstraint(c) => c.to_graphviz_string(component_id, context),
+        }
+    }
 }
 
 // value type
@@ -364,9 +390,23 @@ pub struct ClassConstraintComponent {
     class: Term,
 }
 
+impl GraphvizOutput for ClassConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let class_name = clean(&format!("{}", self.class));
+        format!("c{} [label=\"Class: {}\"];", component_id, class_name)
+    }
+}
+
 #[derive(Debug)]
 pub struct DatatypeConstraintComponent {
     datatype: Term,
+}
+
+impl GraphvizOutput for DatatypeConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let datatype_name = clean(&format!("{}", self.datatype));
+        format!("c{} [label=\"Datatype: {}\"];", component_id, datatype_name)
+    }
 }
 
 #[derive(Debug)]
@@ -374,9 +414,34 @@ pub struct NodeKindConstraintComponent {
     node_kind: Term,
 }
 
+impl GraphvizOutput for NodeKindConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let node_kind_name = clean(&format!("{}", self.node_kind));
+        format!("c{} [label=\"NodeKind: {}\"];", component_id, node_kind_name)
+    }
+}
+
 #[derive(Debug)]
 pub struct NodeConstraintComponent {
     shape: ID,
+}
+
+impl GraphvizOutput for NodeConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let shape_term_str = context
+            .nodeshape_id_lookup()
+            .borrow()
+            .get_term(self.shape)
+            .map_or_else(
+                || format!("MissingNodeShape:{}", self.shape),
+                |term| clean(&format!("{}", term)),
+            );
+        let label = format!("NodeConstraint\\n({})", shape_term_str);
+        format!(
+            "c{0} [label=\"{1}\"];\n    c{0} -> n{2} [style=dashed, label=\"validates\"];",
+            component_id, label, self.shape
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -384,12 +449,58 @@ pub struct PropertyConstraintComponent {
     shape: PropShapeID,
 }
 
+impl GraphvizOutput for PropertyConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let shape_term_str = context
+            .propshape_id_lookup()
+            .borrow()
+            .get_term(self.shape)
+            .map_or_else(
+                || format!("MissingPropShape:{}", self.shape),
+                |term| clean(&format!("{}", term)),
+            );
+        let label = format!("PropertyConstraint\\n({})", shape_term_str);
+        format!(
+            "c{0} [label=\"{1}\"];\n    c{0} -> p{2} [style=dashed, label=\"validates\"];",
+            component_id, label, self.shape
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct QualifiedValueShapeComponent {
-    shape: ID,
+    shape: ID, // This is a NodeShape ID
     min_count: Option<u64>,
     max_count: Option<u64>,
     disjoint: Option<bool>,
+}
+
+impl GraphvizOutput for QualifiedValueShapeComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
+        let shape_term_str = context
+            .nodeshape_id_lookup()
+            .borrow()
+            .get_term(self.shape)
+            .map_or_else(
+                || format!("MissingNodeShape:{}", self.shape),
+                |term| clean(&format!("{}", term)),
+            );
+        let mut label_parts = vec![format!("QualifiedValueShape\\nShape: {}", shape_term_str)];
+        if let Some(min) = self.min_count {
+            label_parts.push(format!("MinCount: {}", min));
+        }
+        if let Some(max) = self.max_count {
+            label_parts.push(format!("MaxCount: {}", max));
+        }
+        if let Some(disjoint) = self.disjoint {
+            label_parts.push(format!("Disjoint: {}", disjoint));
+        }
+        let label = label_parts.join("\\n");
+        format!(
+            "c{0} [label=\"{1}\"];\n    c{0} -> n{2} [style=dashed, label=\"qualifies\"];",
+            component_id, label, self.shape
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -397,9 +508,21 @@ pub struct MinCountConstraintComponent {
     min_count: u64,
 }
 
+impl GraphvizOutput for MinCountConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!("c{} [label=\"MinCount: {}\"];", component_id, self.min_count)
+    }
+}
+
 #[derive(Debug)]
 pub struct MaxCountConstraintComponent {
     max_count: u64,
+}
+
+impl GraphvizOutput for MaxCountConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!("c{} [label=\"MaxCount: {}\"];", component_id, self.max_count)
+    }
 }
 
 // value range constraints
@@ -408,9 +531,29 @@ pub struct MinExclusiveConstraintComponent {
     min_exclusive: Term,
 }
 
+impl GraphvizOutput for MinExclusiveConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!(
+            "c{} [label=\"MinExclusive: {}\"];",
+            component_id,
+            clean(&format!("{}", self.min_exclusive))
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct MinInclusiveConstraintComponent {
     min_inclusive: Term,
+}
+
+impl GraphvizOutput for MinInclusiveConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!(
+            "c{} [label=\"MinInclusive: {}\"];",
+            component_id,
+            clean(&format!("{}", self.min_inclusive))
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -418,9 +561,29 @@ pub struct MaxExclusiveConstraintComponent {
     max_exclusive: Term,
 }
 
+impl GraphvizOutput for MaxExclusiveConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!(
+            "c{} [label=\"MaxExclusive: {}\"];",
+            component_id,
+            clean(&format!("{}", self.max_exclusive))
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct MaxInclusiveConstraintComponent {
     max_inclusive: Term,
+}
+
+impl GraphvizOutput for MaxInclusiveConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!(
+            "c{} [label=\"MaxInclusive: {}\"];",
+            component_id,
+            clean(&format!("{}", self.max_inclusive))
+        )
+    }
 }
 
 // string-based constraints
@@ -429,9 +592,21 @@ pub struct MinLengthConstraintComponent {
     min_length: u64,
 }
 
+impl GraphvizOutput for MinLengthConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!("c{} [label=\"MinLength: {}\"];", component_id, self.min_length)
+    }
+}
+
 #[derive(Debug)]
 pub struct MaxLengthConstraintComponent {
     max_length: u64,
+}
+
+impl GraphvizOutput for MaxLengthConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!("c{} [label=\"MaxLength: {}\"];", component_id, self.max_length)
+    }
 }
 
 #[derive(Debug)]
@@ -440,12 +615,40 @@ pub struct PatternConstraintComponent {
     flags: Option<String>,
 }
 
+impl GraphvizOutput for PatternConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        let flags_str = self.flags.as_deref().unwrap_or("");
+        format!(
+            "c{} [label=\"Pattern: {}\\nFlags: {}\"];",
+            component_id,
+            clean(&self.pattern),
+            flags_str
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct LanguageInConstraintComponent {
     languages: Vec<String>,
 }
 
+impl GraphvizOutput for LanguageInConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!(
+            "c{} [label=\"LanguageIn: [{}]\"];",
+            component_id,
+            self.languages.join(", ")
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct UniqueLangConstraintComponent {
     unique_lang: bool,
+}
+
+impl GraphvizOutput for UniqueLangConstraintComponent {
+    fn to_graphviz_string(&self, component_id: ComponentID, _context: &ValidationContext) -> String {
+        format!("c{} [label=\"UniqueLang: {}\"];", component_id, self.unique_lang)
+    }
 }
