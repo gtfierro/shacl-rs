@@ -22,7 +22,7 @@ impl NodeShape {
     pub fn new(
         identifier: ID,
         targets: Vec<Target>,
-        property_shapes: Vec<ID>,
+        property_shapes: Vec<PropShapeID>,
         constraints: Vec<ComponentID>,
     ) -> Self {
         NodeShape {
