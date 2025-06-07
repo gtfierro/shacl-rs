@@ -1,8 +1,8 @@
 use crate::context::{format_term_for_label, sanitize_graphviz_string, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{ComponentID, ID, PropShapeID};
-use oxigraph::model::{SubjectRef, Term, TermRef, TripleRef};
-use std::collections::HashMap; // Removed RDF
+use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef}; // Removed TripleRef
+use std::collections::HashMap;
 
 pub trait ToSubjectRef {
     fn to_subject_ref(&self) -> SubjectRef;
@@ -36,108 +36,97 @@ pub fn parse_components(
     let shacl = SHACL::new();
 
     // make a list of all the predicate-object pairs for the given start term, as a dictionary
-    let pred_obj_pairs: HashMap<TermRef, Vec<TermRef>> = context
+    // The key is NamedNode (predicate), value is Vec<Term> (objects)
+    let pred_obj_pairs: HashMap<NamedNode, Vec<Term>> = context
         .shape_graph()
-        .triples_for_subject(start.to_subject_ref())
-        .fold(
-            HashMap::new(),
-            |mut acc,
-             TripleRef {
-                 subject,
-                 predicate,
-                 object,
-             }| {
-                let predicate: TermRef = predicate.into();
-                let object: TermRef = object.into();
-                if let Some(objects) = acc.get_mut(&predicate) {
-                    objects.push(object);
-                } else {
-                    acc.insert(predicate.clone(), vec![object]);
-                }
-                acc
-            },
-        );
+        .quads_for_pattern(Some(start.to_subject_ref()), None, None, None)
+        .filter_map(Result::ok) // Filter out StorageError
+        .fold(HashMap::new(), |mut acc, quad| {
+            // quad.predicate is NamedNode, quad.object is Term
+            acc.entry(quad.predicate).or_default().push(quad.object);
+            acc
+        });
 
     // value type
-    if let Some(class_terms) = pred_obj_pairs.get(&shacl.class.into()) {
-        for class_term_ref in class_terms {
+    if let Some(class_terms) = pred_obj_pairs.get(&shacl.class.into_owned()) {
+        for class_term in class_terms { // class_term is &Term
             let component = Component::ClassConstraint(ClassConstraintComponent {
-                class: class_term_ref.clone().into(),
+                class: class_term.clone(),
             });
-            let component_id = context.get_or_create_component_id(class_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(class_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(datatype_terms) = pred_obj_pairs.get(&shacl.datatype.into()) {
-        for datatype_term_ref in datatype_terms {
+    if let Some(datatype_terms) = pred_obj_pairs.get(&shacl.datatype.into_owned()) {
+        for datatype_term in datatype_terms { // datatype_term is &Term
             let component = Component::DatatypeConstraint(DatatypeConstraintComponent {
-                datatype: datatype_term_ref.clone().into(),
+                datatype: datatype_term.clone(),
             });
-            let component_id = context.get_or_create_component_id(datatype_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(datatype_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(node_kind_terms) = pred_obj_pairs.get(&shacl.node_kind.into()) {
-        for node_kind_term_ref in node_kind_terms {
+    if let Some(node_kind_terms) = pred_obj_pairs.get(&shacl.node_kind.into_owned()) {
+        for node_kind_term in node_kind_terms { // node_kind_term is &Term
             let component = Component::NodeKindConstraint(NodeKindConstraintComponent {
-                node_kind: node_kind_term_ref.clone().into(),
+                node_kind: node_kind_term.clone(),
             });
-            let component_id = context.get_or_create_component_id(node_kind_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(node_kind_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
     // node constraint component
-    if let Some(node_terms) = pred_obj_pairs.get(&shacl.node.into()) {
-        for node_term_ref in node_terms {
-            let target_shape_id = context.get_or_create_node_id(node_term_ref.clone().into());
+    if let Some(node_terms) = pred_obj_pairs.get(&shacl.node.into_owned()) {
+        for node_term in node_terms { // node_term is &Term
+            let target_shape_id = context.get_or_create_node_id(node_term.clone());
             let component = Component::NodeConstraint(NodeConstraintComponent {
                 shape: target_shape_id,
             });
-            let component_id = context.get_or_create_component_id(node_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(node_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
     // property constraints
-    if let Some(property_terms) = pred_obj_pairs.get(&shacl.property.into()) {
-        for property_term_ref in property_terms {
-            let target_shape_id = context.get_or_create_prop_id(property_term_ref.clone().into());
+    if let Some(property_terms) = pred_obj_pairs.get(&shacl.property.into_owned()) {
+        for property_term in property_terms { // property_term is &Term
+            let target_shape_id = context.get_or_create_prop_id(property_term.clone());
             let component = Component::PropertyConstraint(PropertyConstraintComponent {
                 shape: target_shape_id,
             });
-            let component_id = context.get_or_create_component_id(property_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(property_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
     // cardinality
-    if let Some(min_count_terms) = pred_obj_pairs.get(&shacl.min_count.into()) {
-        for min_count_term_ref in min_count_terms {
-            if let TermRef::Literal(lit) = min_count_term_ref {
+    if let Some(min_count_terms) = pred_obj_pairs.get(&shacl.min_count.into_owned()) {
+        for min_count_term in min_count_terms { // min_count_term is &Term
+            if let Term::Literal(lit) = min_count_term {
                 if let Ok(min_count_val) = lit.value().parse::<u64>() {
                     let component = Component::MinCount(MinCountConstraintComponent {
                         min_count: min_count_val,
                     });
                     let component_id =
-                        context.get_or_create_component_id(min_count_term_ref.into_owned());
+                        context.get_or_create_component_id(min_count_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
         }
     }
 
-    if let Some(max_count_terms) = pred_obj_pairs.get(&shacl.max_count.into()) {
-        for max_count_term_ref in max_count_terms {
-            if let TermRef::Literal(lit) = max_count_term_ref {
+    if let Some(max_count_terms) = pred_obj_pairs.get(&shacl.max_count.into_owned()) {
+        for max_count_term in max_count_terms { // max_count_term is &Term
+            if let Term::Literal(lit) = max_count_term {
                 if let Ok(max_count_val) = lit.value().parse::<u64>() {
                     let component = Component::MaxCount(MaxCountConstraintComponent {
                         max_count: max_count_val,
                     });
                     let component_id =
-                        context.get_or_create_component_id(max_count_term_ref.into_owned());
+                        context.get_or_create_component_id(max_count_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
@@ -145,103 +134,101 @@ pub fn parse_components(
     }
 
     // value range
-    if let Some(min_exclusive_terms) = pred_obj_pairs.get(&shacl.min_exclusive.into()) {
-        for min_exclusive_term_ref in min_exclusive_terms {
-            if let TermRef::Literal(_lit) = min_exclusive_term_ref {
-                // Ensure it's a literal
+    if let Some(min_exclusive_terms) = pred_obj_pairs.get(&shacl.min_exclusive.into_owned()) {
+        for min_exclusive_term in min_exclusive_terms { // min_exclusive_term is &Term
+            if let Term::Literal(_lit) = min_exclusive_term {
                 let component =
                     Component::MinExclusiveConstraint(MinExclusiveConstraintComponent {
-                        min_exclusive: min_exclusive_term_ref.clone().into(),
+                        min_exclusive: min_exclusive_term.clone(),
                     });
                 let component_id =
-                    context.get_or_create_component_id(min_exclusive_term_ref.into_owned());
+                    context.get_or_create_component_id(min_exclusive_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
-    if let Some(min_inclusive_terms) = pred_obj_pairs.get(&shacl.min_inclusive.into()) {
-        for min_inclusive_term_ref in min_inclusive_terms {
-            if let TermRef::Literal(_lit) = min_inclusive_term_ref {
+    if let Some(min_inclusive_terms) = pred_obj_pairs.get(&shacl.min_inclusive.into_owned()) {
+        for min_inclusive_term in min_inclusive_terms { // min_inclusive_term is &Term
+            if let Term::Literal(_lit) = min_inclusive_term {
                 let component =
                     Component::MinInclusiveConstraint(MinInclusiveConstraintComponent {
-                        min_inclusive: min_inclusive_term_ref.clone().into(),
+                        min_inclusive: min_inclusive_term.clone(),
                     });
                 let component_id =
-                    context.get_or_create_component_id(min_inclusive_term_ref.into_owned());
+                    context.get_or_create_component_id(min_inclusive_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
-    if let Some(max_exclusive_terms) = pred_obj_pairs.get(&shacl.max_exclusive.into()) {
-        for max_exclusive_term_ref in max_exclusive_terms {
-            if let TermRef::Literal(_lit) = max_exclusive_term_ref {
+    if let Some(max_exclusive_terms) = pred_obj_pairs.get(&shacl.max_exclusive.into_owned()) {
+        for max_exclusive_term in max_exclusive_terms { // max_exclusive_term is &Term
+            if let Term::Literal(_lit) = max_exclusive_term {
                 let component =
                     Component::MaxExclusiveConstraint(MaxExclusiveConstraintComponent {
-                        max_exclusive: max_exclusive_term_ref.clone().into(),
+                        max_exclusive: max_exclusive_term.clone(),
                     });
                 let component_id =
-                    context.get_or_create_component_id(max_exclusive_term_ref.into_owned());
+                    context.get_or_create_component_id(max_exclusive_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
-    if let Some(max_inclusive_terms) = pred_obj_pairs.get(&shacl.max_inclusive.into()) {
-        for max_inclusive_term_ref in max_inclusive_terms {
-            if let TermRef::Literal(_lit) = max_inclusive_term_ref {
+    if let Some(max_inclusive_terms) = pred_obj_pairs.get(&shacl.max_inclusive.into_owned()) {
+        for max_inclusive_term in max_inclusive_terms { // max_inclusive_term is &Term
+            if let Term::Literal(_lit) = max_inclusive_term {
                 let component =
                     Component::MaxInclusiveConstraint(MaxInclusiveConstraintComponent {
-                        max_inclusive: max_inclusive_term_ref.clone().into(),
+                        max_inclusive: max_inclusive_term.clone(),
                     });
                 let component_id =
-                    context.get_or_create_component_id(max_inclusive_term_ref.into_owned());
+                    context.get_or_create_component_id(max_inclusive_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
     // string-based constraints
-    if let Some(min_length_terms) = pred_obj_pairs.get(&shacl.min_length.into()) {
-        for min_length_term_ref in min_length_terms {
-            if let TermRef::Literal(lit) = min_length_term_ref {
+    if let Some(min_length_terms) = pred_obj_pairs.get(&shacl.min_length.into_owned()) {
+        for min_length_term in min_length_terms { // min_length_term is &Term
+            if let Term::Literal(lit) = min_length_term {
                 if let Ok(min_length_val) = lit.value().parse::<u64>() {
                     let component = Component::MinLengthConstraint(MinLengthConstraintComponent {
                         min_length: min_length_val,
                     });
                     let component_id =
-                        context.get_or_create_component_id(min_length_term_ref.into_owned());
+                        context.get_or_create_component_id(min_length_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
         }
     }
 
-    if let Some(max_length_terms) = pred_obj_pairs.get(&shacl.max_length.into()) {
-        for max_length_term_ref in max_length_terms {
-            if let TermRef::Literal(lit) = max_length_term_ref {
+    if let Some(max_length_terms) = pred_obj_pairs.get(&shacl.max_length.into_owned()) {
+        for max_length_term in max_length_terms { // max_length_term is &Term
+            if let Term::Literal(lit) = max_length_term {
                 if let Ok(max_length_val) = lit.value().parse::<u64>() {
                     let component = Component::MaxLengthConstraint(MaxLengthConstraintComponent {
                         max_length: max_length_val,
                     });
                     let component_id =
-                        context.get_or_create_component_id(max_length_term_ref.into_owned());
+                        context.get_or_create_component_id(max_length_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
         }
     }
 
-    if let Some(pattern_terms) = pred_obj_pairs.get(&shacl.pattern.into()) {
-        if let Some(pattern_term_ref @ TermRef::Literal(pattern_lit)) = pattern_terms.first() {
-            // sh:pattern maxCount 1
+    if let Some(pattern_terms) = pred_obj_pairs.get(&shacl.pattern.into_owned()) {
+        if let Some(pattern_term @ Term::Literal(pattern_lit)) = pattern_terms.first() { // pattern_term is &Term
             let pattern_str = pattern_lit.value().to_string();
             let flags_str = pred_obj_pairs
-                .get(&shacl.flags.into())
+                .get(&shacl.flags.into_owned())
                 .and_then(|flags_terms| flags_terms.first())
-                .and_then(|flag_term| {
-                    if let TermRef::Literal(flag_lit) = flag_term {
+                .and_then(|flag_term| { // flag_term is &Term
+                    if let Term::Literal(flag_lit) = flag_term {
                         Some(flag_lit.value().to_string())
                     } else {
                         None
@@ -251,25 +238,20 @@ pub fn parse_components(
                 pattern: pattern_str,
                 flags: flags_str,
             });
-            let component_id = context.get_or_create_component_id(pattern_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(pattern_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(language_in_terms) = pred_obj_pairs.get(&shacl.language_in.into()) {
-        if let Some(list_head_term_ref) = language_in_terms.first() {
-            // sh:languageIn maxCount 1
-            let list_items = context.parse_rdf_list(list_head_term_ref.clone());
+    if let Some(language_in_terms) = pred_obj_pairs.get(&shacl.language_in.into_owned()) {
+        if let Some(list_head_term) = language_in_terms.first() { // list_head_term is &Term
+            let list_items = context.parse_rdf_list(list_head_term.clone()); // parse_rdf_list takes Term, returns Vec<Term>
             let languages: Vec<String> = list_items
-                .into_iter()
-                .filter_map(|term| {
-                    let term_owned = term.into_owned(); // Use into_owned() to avoid lifetime issues if term is used later
-                    if let Term::Literal(lit) = term_owned {
-                        // TODO: Validate that datatype is xsd:string as per spec?
-                        // For now, just extract the string value.
+                .into_iter() // Iterates over Term
+                .filter_map(|term| { // term is Term
+                    if let Term::Literal(lit) = term {
                         Some(lit.value().to_string())
                     } else {
-                        // Non-literal in languageIn list, should ideally be a validation error for the shapes graph.
                         None
                     }
                 })
@@ -277,22 +259,21 @@ pub fn parse_components(
 
             let component =
                 Component::LanguageInConstraint(LanguageInConstraintComponent { languages });
-            let component_id = context.get_or_create_component_id(list_head_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(unique_lang_terms) = pred_obj_pairs.get(&shacl.unique_lang.into()) {
-        for unique_lang_term_ref in unique_lang_terms {
-            // sh:uniqueLang maxCount 1, but loop for safety
-            if let TermRef::Literal(lit) = unique_lang_term_ref {
+    if let Some(unique_lang_terms) = pred_obj_pairs.get(&shacl.unique_lang.into_owned()) {
+        for unique_lang_term in unique_lang_terms { // unique_lang_term is &Term
+            if let Term::Literal(lit) = unique_lang_term {
                 if let Ok(unique_lang_val) = lit.value().parse::<bool>() {
                     let component =
                         Component::UniqueLangConstraint(UniqueLangConstraintComponent {
                             unique_lang: unique_lang_val,
                         });
                     let component_id =
-                        context.get_or_create_component_id(unique_lang_term_ref.into_owned());
+                        context.get_or_create_component_id(unique_lang_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
@@ -300,125 +281,123 @@ pub fn parse_components(
     }
 
     // property pair constraints
-    if let Some(equals_terms) = pred_obj_pairs.get(&shacl.equals.into()) {
-        for equals_term_ref in equals_terms {
-            if let TermRef::NamedNode(_nn) = equals_term_ref {
+    if let Some(equals_terms) = pred_obj_pairs.get(&shacl.equals.into_owned()) {
+        for equals_term in equals_terms { // equals_term is &Term
+            if let Term::NamedNode(_nn) = equals_term {
                 let component = Component::EqualsConstraint(EqualsConstraintComponent {
-                    property: equals_term_ref.clone().into(),
+                    property: equals_term.clone(),
                 });
                 let component_id =
-                    context.get_or_create_component_id(equals_term_ref.into_owned());
+                    context.get_or_create_component_id(equals_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
-    if let Some(disjoint_terms) = pred_obj_pairs.get(&shacl.disjoint.into()) {
-        for disjoint_term_ref in disjoint_terms {
-            if let TermRef::NamedNode(_nn) = disjoint_term_ref {
+    if let Some(disjoint_terms) = pred_obj_pairs.get(&shacl.disjoint.into_owned()) {
+        for disjoint_term in disjoint_terms { // disjoint_term is &Term
+            if let Term::NamedNode(_nn) = disjoint_term {
                 let component = Component::DisjointConstraint(DisjointConstraintComponent {
-                    property: disjoint_term_ref.clone().into(),
+                    property: disjoint_term.clone(),
                 });
                 let component_id =
-                    context.get_or_create_component_id(disjoint_term_ref.into_owned());
+                    context.get_or_create_component_id(disjoint_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
-    if let Some(less_than_terms) = pred_obj_pairs.get(&shacl.less_than.into()) {
-        for less_than_term_ref in less_than_terms {
-            if let TermRef::NamedNode(_nn) = less_than_term_ref {
+    if let Some(less_than_terms) = pred_obj_pairs.get(&shacl.less_than.into_owned()) {
+        for less_than_term in less_than_terms { // less_than_term is &Term
+            if let Term::NamedNode(_nn) = less_than_term {
                 let component = Component::LessThanConstraint(LessThanConstraintComponent {
-                    property: less_than_term_ref.clone().into(),
+                    property: less_than_term.clone(),
                 });
                 let component_id =
-                    context.get_or_create_component_id(less_than_term_ref.into_owned());
+                    context.get_or_create_component_id(less_than_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
     if let Some(less_than_or_equals_terms) =
-        pred_obj_pairs.get(&shacl.less_than_or_equals.into())
+        pred_obj_pairs.get(&shacl.less_than_or_equals.into_owned())
     {
-        for less_than_or_equals_term_ref in less_than_or_equals_terms {
-            if let TermRef::NamedNode(_nn) = less_than_or_equals_term_ref {
+        for less_than_or_equals_term in less_than_or_equals_terms { // less_than_or_equals_term is &Term
+            if let Term::NamedNode(_nn) = less_than_or_equals_term {
                 let component =
                     Component::LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent {
-                        property: less_than_or_equals_term_ref.clone().into(),
+                        property: less_than_or_equals_term.clone(),
                     });
                 let component_id =
-                    context.get_or_create_component_id(less_than_or_equals_term_ref.into_owned());
+                    context.get_or_create_component_id(less_than_or_equals_term.clone());
                 new_components.insert(component_id, component);
             }
         }
     }
 
     // logical constraints
-    if let Some(not_terms) = pred_obj_pairs.get(&shacl.not.into()) {
-        for not_term_ref in not_terms {
-            // Assuming sh:not takes a single shape
-            let negated_shape_id = context.get_or_create_node_id(not_term_ref.clone().into());
+    if let Some(not_terms) = pred_obj_pairs.get(&shacl.not.into_owned()) {
+        for not_term in not_terms { // not_term is &Term
+            let negated_shape_id = context.get_or_create_node_id(not_term.clone());
             let component = Component::NotConstraint(NotConstraintComponent {
                 shape: negated_shape_id,
             });
-            let component_id = context.get_or_create_component_id(not_term_ref.into_owned());
+            let component_id = context.get_or_create_component_id(not_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(and_terms) = pred_obj_pairs.get(&shacl.and_.into()) {
-        // sh:and expects a list of shapes
-        if let Some(list_head_ref) = and_terms.first() {
-            let shape_list = context.parse_rdf_list(list_head_ref.clone());
-            let shape_ids: Vec<ID> = shape_list
-                .iter()
-                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+    if let Some(and_terms) = pred_obj_pairs.get(&shacl.and_.into_owned()) {
+        if let Some(list_head_term) = and_terms.first() { // list_head_term is &Term
+            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_ids: Vec<ID> = shape_list_terms
+                .iter() // Iterates over &Term
+                .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
             let component = Component::AndConstraint(AndConstraintComponent { shapes: shape_ids });
-            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(or_terms) = pred_obj_pairs.get(&shacl.or_.into()) {
-        if let Some(list_head_ref) = or_terms.first() {
-            let shape_list = context.parse_rdf_list(list_head_ref.clone());
-            let shape_ids: Vec<ID> = shape_list
+    if let Some(or_terms) = pred_obj_pairs.get(&shacl.or_.into_owned()) {
+        if let Some(list_head_term) = or_terms.first() { // list_head_term is &Term
+            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_ids: Vec<ID> = shape_list_terms
                 .iter()
-                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+                .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
             let component = Component::OrConstraint(OrConstraintComponent { shapes: shape_ids });
-            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    if let Some(xone_terms) = pred_obj_pairs.get(&shacl.xone.into()) {
-        if let Some(list_head_ref) = xone_terms.first() {
-            let shape_list = context.parse_rdf_list(list_head_ref.clone());
-            let shape_ids: Vec<ID> = shape_list
+    if let Some(xone_terms) = pred_obj_pairs.get(&shacl.xone.into_owned()) {
+        if let Some(list_head_term) = xone_terms.first() { // list_head_term is &Term
+            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_ids: Vec<ID> = shape_list_terms
                 .iter()
-                .map(|term_ref| context.get_or_create_node_id(term_ref.clone().into()))
+                .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
             let component = Component::XoneConstraint(XoneConstraintComponent { shapes: shape_ids });
-            let component_id = context.get_or_create_component_id(list_head_ref.into_owned());
+            let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
-    // Qualified Value Shape (must be parsed together as they belong to the same component instance)
+    // Qualified Value Shape
     let qvs_term_opt = pred_obj_pairs
-        .get(&shacl.qualified_value_shape.into())
-        .and_then(|terms| terms.first().cloned()); // sh:qualifiedValueShape has maxCount 1 on its subject in SHACL spec for this component context
+        .get(&shacl.qualified_value_shape.into_owned())
+        .and_then(|terms| terms.first().cloned()); // qvs_term_opt is Option<Term>
 
-    if let Some(qvs_term_ref) = qvs_term_opt {
+    if let Some(qvs_term) = qvs_term_opt { // qvs_term is Term
         let q_min_count_opt = pred_obj_pairs
-            .get(&shacl.qualified_min_count.into())
-            .and_then(|terms| terms.first())
-            .and_then(|term_ref| {
-                if let TermRef::Literal(lit) = term_ref {
+            .get(&shacl.qualified_min_count.into_owned())
+            .and_then(|terms| terms.first()) // &Term
+            .and_then(|term_ref_val| { // term_ref_val is &Term
+                if let Term::Literal(lit) = term_ref_val {
                     lit.value().parse::<u64>().ok()
                 } else {
                     None
@@ -426,10 +405,10 @@ pub fn parse_components(
             });
 
         let q_max_count_opt = pred_obj_pairs
-            .get(&shacl.qualified_max_count.into())
-            .and_then(|terms| terms.first())
-            .and_then(|term_ref| {
-                if let TermRef::Literal(lit) = term_ref {
+            .get(&shacl.qualified_max_count.into_owned())
+            .and_then(|terms| terms.first()) // &Term
+            .and_then(|term_ref_val| { // term_ref_val is &Term
+                if let Term::Literal(lit) = term_ref_val {
                     lit.value().parse::<u64>().ok()
                 } else {
                     None
@@ -437,49 +416,44 @@ pub fn parse_components(
             });
 
         let q_disjoint_opt = pred_obj_pairs
-            .get(&shacl.qualified_value_shapes_disjoint.into())
-            .and_then(|terms| terms.first())
-            .and_then(|term_ref| {
-                if let TermRef::Literal(lit) = term_ref {
+            .get(&shacl.qualified_value_shapes_disjoint.into_owned())
+            .and_then(|terms| terms.first()) // &Term
+            .and_then(|term_ref_val| { // term_ref_val is &Term
+                if let Term::Literal(lit) = term_ref_val {
                     lit.value().parse::<bool>().ok()
                 } else {
                     None
                 }
             });
 
-        // A QualifiedValueShapeComponent is formed if sh:qualifiedValueShape is present
-        // AND (sh:qualifiedMinCount or sh:qualifiedMaxCount is present)
-        let shape_id = context.get_or_create_node_id(qvs_term_ref.clone().into());
+        let shape_id = context.get_or_create_node_id(qvs_term.clone());
         let component = Component::QualifiedValueShape(QualifiedValueShapeComponent {
             shape: shape_id,
             min_count: q_min_count_opt,
             max_count: q_max_count_opt,
             disjoint: q_disjoint_opt,
         });
-        // The component ID is based on the 'start' node, which is the subject
-        // of sh:qualifiedValueShape, sh:qualifiedMinCount, etc.
-        let component_id = context.get_or_create_component_id(qvs_term_ref.into_owned());
+        let component_id = context.get_or_create_component_id(qvs_term); // qvs_term is Term
         new_components.insert(component_id, component);
     }
 
     // Other Constraint Components
 
     // sh:closed / sh:ignoredProperties
-    if let Some(closed_terms) = pred_obj_pairs.get(&shacl.closed.into()) {
-        for closed_term_ref in closed_terms {
-            // sh:closed maxCount 1, but loop for safety
-            if let TermRef::Literal(lit) = closed_term_ref {
+    if let Some(closed_terms) = pred_obj_pairs.get(&shacl.closed.into_owned()) {
+        for closed_term in closed_terms { // closed_term is &Term
+            if let Term::Literal(lit) = closed_term {
                 if let Ok(closed_val) = lit.value().parse::<bool>() {
                     let ignored_properties_list_opt = pred_obj_pairs
-                        .get(&shacl.ignored_properties.into())
-                        .and_then(|terms| terms.first().cloned()); // sh:ignoredProperties maxCount 1
+                        .get(&shacl.ignored_properties.into_owned())
+                        .and_then(|terms| terms.first().cloned()); // Option<Term>
 
                     let ignored_properties_terms: Vec<Term> =
-                        if let Some(list_head) = ignored_properties_list_opt {
+                        if let Some(list_head) = ignored_properties_list_opt { // list_head is Term
                             context
-                                .parse_rdf_list(list_head)
-                                .into_iter()
-                                .map(|t| t.into_owned())
+                                .parse_rdf_list(list_head) // parse_rdf_list takes Term, returns Vec<Term>
+                                .into_iter() // Iterates Term
+                                // .map(|t| t) // No .into_owned() needed as it's already Term
                                 .collect()
                         } else {
                             Vec::new()
@@ -495,7 +469,7 @@ pub fn parse_components(
                             },
                         });
                     let component_id =
-                        context.get_or_create_component_id(closed_term_ref.into_owned());
+                        context.get_or_create_component_id(closed_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
@@ -503,27 +477,26 @@ pub fn parse_components(
     }
 
     // sh:hasValue
-    if let Some(has_value_terms) = pred_obj_pairs.get(&shacl.has_value.into()) {
-        for has_value_term_ref in has_value_terms {
+    if let Some(has_value_terms) = pred_obj_pairs.get(&shacl.has_value.into_owned()) {
+        for has_value_term in has_value_terms { // has_value_term is &Term
             let component = Component::HasValueConstraint(HasValueConstraintComponent {
-                value: has_value_term_ref.clone().into(),
+                value: has_value_term.clone(),
             });
             let component_id =
-                context.get_or_create_component_id(has_value_term_ref.into_owned());
+                context.get_or_create_component_id(has_value_term.clone());
             new_components.insert(component_id, component);
         }
     }
 
     // sh:in
-    if let Some(in_terms) = pred_obj_pairs.get(&shacl.in_.into()) {
-        if let Some(list_head_term_ref) = in_terms.first() {
-            // sh:in maxCount 1
-            let list_items = context.parse_rdf_list(list_head_term_ref.clone());
-            let values: Vec<Term> = list_items.into_iter().map(|t| t.into_owned()).collect();
+    if let Some(in_terms) = pred_obj_pairs.get(&shacl.in_.into_owned()) {
+        if let Some(list_head_term) = in_terms.first() { // list_head_term is &Term
+            let list_items = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let values: Vec<Term> = list_items.into_iter().collect(); // Already Vec<Term>
 
             let component = Component::InConstraint(InConstraintComponent { values });
             let component_id =
-                context.get_or_create_component_id(list_head_term_ref.into_owned());
+                context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
     }

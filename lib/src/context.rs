@@ -3,8 +3,8 @@ use crate::named_nodes::{RDF, SHACL};
 use crate::shape::{NodeShape, PropertyShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID};
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::Graph;
-use oxigraph::model::{SubjectRef, Term, TermRef, TripleRef};
+use oxigraph::model::{SubjectRef, Term, TermRef}; // Removed TripleRef
+use oxigraph::store::Store; // Added Store
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -91,15 +91,15 @@ pub struct ValidationContext {
     nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
     propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
     component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
-    shape_graph: Graph,
-    data_graph: Graph,
+    shape_graph: Store,
+    data_graph: Store,
     node_shapes: HashMap<ID, NodeShape>,
     prop_shapes: HashMap<PropShapeID, PropertyShape>,
     components: HashMap<ComponentID, Component>,
 }
 
 impl ValidationContext {
-    pub fn new(shape_graph: Graph, data_graph: Graph) -> Self {
+    pub fn new(shape_graph: Store, data_graph: Store) -> Self {
         ValidationContext {
             nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
             propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
@@ -171,27 +171,34 @@ impl ValidationContext {
         println!("}}")
     }
 
-    fn load_graph_from_path_internal(file_path: &str) -> Result<Graph, Box<dyn Error>> {
+    fn load_graph_from_path_internal(file_path: &str) -> Result<Store, Box<dyn Error>> {
         let path = Path::new(file_path);
         let file =
             File::open(path).map_err(|e| format!("Failed to open file '{}': {}", file_path, e))?;
         let reader = BufReader::new(file);
 
-        let mut graph = Graph::new();
-        let quad_iter = RdfParser::from_format(RdfFormat::Turtle).for_reader(reader);
+        let store = Store::new().map_err(|e| Box::new(e) as Box<dyn Error>)?;
+        let parser = RdfParser::from_format(RdfFormat::Turtle); // Assuming Turtle, adjust if needed
 
-        for quad_result in quad_iter {
-            let quad =
-                quad_result.map_err(|e| format!("RDF parsing error in '{}': {}", file_path, e))?;
-            // Insert the subject, predicate, object from the Quad into the Graph.
-            // This effectively merges all named graphs and the default graph into one.
-            graph.insert(TripleRef::new(
-                quad.subject.as_ref(),
-                quad.predicate.as_ref(),
-                quad.object.as_ref(),
-            ));
+        // Store::load_from_reader consumes the reader and parser.
+        // We need to ensure all quads go into the default graph for Store,
+        // or handle graph names if the RDF format supports them and it's desired.
+        // For simplicity, this example loads into the default graph.
+        // RdfParser can be configured with .with_default_graph() or .without_named_graphs()
+        // if specific graph handling is needed before passing to load_from_reader.
+        // The load_from_reader method itself doesn't offer direct control over which graph
+        // triples from a triple-based format go into, beyond parser configuration.
+        // For quad-based formats, it respects the graph name in the quad.
+
+        // To mimic the old behavior of merging all into one graph (effectively the default graph of the Store):
+        // We can iterate and insert manually if RdfParser is configured to strip graph names or if it's a triples format.
+        for quad_result in parser.for_reader(reader) {
+            let quad = quad_result.map_err(|e| format!("RDF parsing error in '{}': {}", file_path, e))?;
+            // Insert into the store. If quad has a graph name, it will be used.
+            // If it's from a triples format and parser is not set to a default graph, it goes to store's default graph.
+            store.insert(&quad).map_err(|e| Box::new(e) as Box<dyn Error>)?;
         }
-        Ok(graph)
+        Ok(store)
     }
 
     pub fn from_files(
@@ -221,21 +228,31 @@ impl ValidationContext {
     fn get_property_shapes(&self) -> Vec<Term> {
         let rdf = RDF::new();
         let sh = SHACL::new();
-        // - ? sh:property <pshape>
-        // - <pshape> a sh:PropertyShape
         let mut prop_shapes = HashSet::new();
-        for pshape in self
+
+        // - <pshape> a sh:PropertyShape
+        for quad_res in self.shape_graph.quads_for_pattern(
+            None,
+            Some(rdf.type_.as_ref()),
+            Some(sh.property_shape.as_ref()),
+            None,
+        ) {
+            if let Ok(quad) = quad_res {
+                prop_shapes.insert(quad.subject.into()); // quad.subject is Subject, .into() converts to Term
+            }
+        }
+
+        // - ? sh:property <pshape>
+        for quad_res in self
             .shape_graph
-            .subjects_for_predicate_object(rdf.type_, sh.property_shape)
+            .quads_for_pattern(None, Some(sh.property.as_ref()), None, None)
         {
-            prop_shapes.insert(pshape.into());
+            if let Ok(quad) = quad_res {
+                prop_shapes.insert(quad.object); // quad.object is Term
+            }
         }
 
-        for triple in self.shape_graph.triples_for_predicate(sh.property) {
-            prop_shapes.insert(triple.object.into());
-        }
-
-        return prop_shapes.into_iter().collect();
+        prop_shapes.into_iter().collect()
     }
 
     fn get_node_shapes(&self) -> Vec<Term> {
@@ -252,57 +269,76 @@ impl ValidationContext {
 
         // parse these out of the shape graph and return a vector of IDs
         let mut node_shapes = HashSet::new();
+
         // <shape> rdf:type sh:NodeShape
-        for shape in self
-            .shape_graph
-            .subjects_for_predicate_object(rdf.type_, shacl.node_shape)
-        {
-            node_shapes.insert(shape.into());
+        for quad_res in self.shape_graph.quads_for_pattern(
+            None,
+            Some(rdf.type_.as_ref()),
+            Some(shacl.node_shape.as_ref()),
+            None,
+        ) {
+            if let Ok(quad) = quad_res {
+                node_shapes.insert(quad.subject.into());
+            }
         }
 
         // ? sh:node <shape>
-        for triple in self.shape_graph.triples_for_predicate(shacl.node) {
-            node_shapes.insert(triple.object.into());
+        for quad_res in self
+            .shape_graph
+            .quads_for_pattern(None, Some(shacl.node.as_ref()), None, None)
+        {
+            if let Ok(quad) = quad_res {
+                node_shapes.insert(quad.object);
+            }
         }
 
         // ? sh:qualifiedValueShape <shape>
-        for triple in self
-            .shape_graph
-            .triples_for_predicate(shacl.qualified_value_shape)
-        {
-            node_shapes.insert(triple.object.into());
+        for quad_res in self.shape_graph.quads_for_pattern(
+            None,
+            Some(shacl.qualified_value_shape.as_ref()),
+            None,
+            None,
+        ) {
+            if let Ok(quad) = quad_res {
+                node_shapes.insert(quad.object);
+            }
         }
 
         // ? sh:not <shape>
-        for triple in self.shape_graph.triples_for_predicate(shacl.not) {
-            node_shapes.insert(triple.object.into());
+        for quad_res in self
+            .shape_graph
+            .quads_for_pattern(None, Some(shacl.not.as_ref()), None, None)
+        {
+            if let Ok(quad) = quad_res {
+                node_shapes.insert(quad.object);
+            }
         }
+
+        // Helper to process lists for logical constraints
+        let mut process_list_constraint = |predicate_ref| {
+            for quad_res in self
+                .shape_graph
+                .quads_for_pattern(None, Some(predicate_ref), None, None)
+            {
+                if let Ok(quad) = quad_res {
+                    let list_head_term = quad.object; // This is Term
+                    for item_term in self.parse_rdf_list(list_head_term) {
+                        node_shapes.insert(item_term);
+                    }
+                }
+            }
+        };
 
         // ? sh:or (list of <shape>)
-        for triple in self.shape_graph.triples_for_predicate(shacl.or_) {
-            let list = triple.object.into();
-            for item in self.parse_rdf_list(list) {
-                node_shapes.insert(item.into());
-            }
-        }
+        process_list_constraint(shacl.or_.as_ref());
 
         // ? sh:and (list of <shape>)
-        for triple in self.shape_graph.triples_for_predicate(shacl.and_) {
-            let list = triple.object.into();
-            for item in self.parse_rdf_list(list) {
-                node_shapes.insert(item.into());
-            }
-        }
+        process_list_constraint(shacl.and_.as_ref());
 
         // ? sh:xone (list of <shape>)
-        for triple in self.shape_graph.triples_for_predicate(shacl.xone) {
-            let list = triple.object.into();
-            for item in self.parse_rdf_list(list) {
-                node_shapes.insert(item.into());
-            }
-        }
+        process_list_constraint(shacl.xone.as_ref());
 
-        return node_shapes.into_iter().collect();
+        node_shapes.into_iter().collect()
     }
 
     pub fn parse(&mut self) {
@@ -329,8 +365,11 @@ impl ValidationContext {
         // get the targets
         let targets: Vec<Target> = self
             .shape_graph
-            .triples_for_subject(subject)
-            .filter_map(|triple| Target::from_predicate_object(triple.predicate, triple.object))
+            .quads_for_pattern(Some(subject), None, None, None)
+            .filter_map(Result::ok)
+            .filter_map(|quad| {
+                Target::from_predicate_object(quad.predicate.as_ref(), quad.object.as_ref())
+            })
             .collect();
 
         // get constraint components
@@ -343,8 +382,9 @@ impl ValidationContext {
 
         let property_shapes: Vec<PropShapeID> = self
             .shape_graph
-            .objects_for_subject_predicate(subject, sh.property)
-            .filter_map(|o| self.propshape_id_lookup.borrow().get(&o.into_owned()))
+            .quads_for_pattern(Some(subject), Some(sh.property.as_ref()), None, None)
+            .filter_map(Result::ok)
+            .filter_map(|quad| self.propshape_id_lookup.borrow().get(&quad.object))
             .collect();
 
         let node_shape = NodeShape::new(id, targets, component_ids);
@@ -353,14 +393,17 @@ impl ValidationContext {
     }
 
     pub fn parse_property_shape(&mut self, pshape: TermRef) -> PropShapeID {
-        let id = self.get_or_create_prop_id(pshape.into());
+        let id = self.get_or_create_prop_id(pshape.into_owned());
         let shacl = SHACL::new();
         let subject: SubjectRef = pshape.to_subject_ref();
-        let path_head: TermRef = self
+        let path_head_term: Term = self
             .shape_graph
-            .object_for_subject_predicate(subject, shacl.path)
-            .unwrap();
-        let path = PShapePath::Simple(path_head.into());
+            .quads_for_pattern(Some(subject), Some(shacl.path.as_ref()), None, None)
+            .filter_map(Result::ok)
+            .map(|quad| quad.object)
+            .next()
+            .unwrap(); // Assuming path is always present and valid
+        let path = PShapePath::Simple(path_head_term);
         // get constraint components
         let constraints = parse_components(pshape, self);
         let component_ids: Vec<ComponentID> = constraints.keys().cloned().collect();
@@ -373,32 +416,54 @@ impl ValidationContext {
         id
     }
 
-    pub fn parse_rdf_list(&self, list: TermRef) -> Vec<TermRef> {
-        let mut items: Vec<TermRef> = Vec::new();
+    // Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
+    pub fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
+        let mut items: Vec<Term> = Vec::new();
         let rdf = RDF::new();
-        let mut current: TermRef = list;
-        while let Some(first) = self
-            .shape_graph
-            .object_for_subject_predicate(current.to_subject_ref(), rdf.first)
-        {
-            items.push(first);
-            if let Some(rest) = self
+        let mut current_term = list_head_term;
+        let nil_term: Term = rdf.nil.into_owned().into(); // Convert NamedNodeRef to Term
+
+        while current_term != nil_term {
+            let subject_ref = match current_term.as_ref() {
+                TermRef::NamedNode(nn) => SubjectRef::NamedNode(nn),
+                TermRef::BlankNode(bn) => SubjectRef::BlankNode(bn),
+                _ => return items, // Or handle error: list node not an IRI/BlankNode
+            };
+
+            let first_val_opt: Option<Term> = self
                 .shape_graph
-                .object_for_subject_predicate(current.to_subject_ref(), rdf.rest)
-            {
-                current = rest.into();
+                .quads_for_pattern(Some(subject_ref), Some(rdf.first.as_ref()), None, None)
+                .filter_map(Result::ok)
+                .map(|q| q.object)
+                .next();
+
+            if let Some(val) = first_val_opt {
+                items.push(val);
             } else {
-                break;
+                break; // Malformed list (no rdf:first)
+            }
+
+            let rest_node_opt: Option<Term> = self
+                .shape_graph
+                .quads_for_pattern(Some(subject_ref), Some(rdf.rest.as_ref()), None, None)
+                .filter_map(Result::ok)
+                .map(|q| q.object)
+                .next();
+
+            if let Some(rest_term) = rest_node_opt {
+                current_term = rest_term;
+            } else {
+                break; // Malformed list (no rdf:rest)
             }
         }
         items
     }
 
-    pub fn shape_graph(&self) -> &Graph {
+    pub fn shape_graph(&self) -> &Store {
         &self.shape_graph
     }
 
-    pub fn data_graph(&self) -> &Graph {
+    pub fn data_graph(&self) -> &Store {
         &self.data_graph
     }
 
