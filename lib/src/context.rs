@@ -288,16 +288,17 @@ impl ValidationContext {
         // - ? sh:xone (list of <shape>)
         let rdf = RDF::new();
         let shacl = SHACL::new();
+        let shape_graph_name_ref = GraphNameRef::NamedNode(self.shape_graph_iri.as_ref());
 
         // parse these out of the shape graph and return a vector of IDs
         let mut node_shapes = HashSet::new();
 
         // <shape> rdf:type sh:NodeShape
-        for quad_res in self.shape_graph.quads_for_pattern(
+        for quad_res in self.store.quads_for_pattern(
             None,
             Some(rdf.type_),
             Some(shacl.node_shape.into()),
-            None,
+            Some(shape_graph_name_ref),
         ) {
             if let Ok(quad) = quad_res {
                 node_shapes.insert(quad.subject.into());
@@ -305,21 +306,23 @@ impl ValidationContext {
         }
 
         // ? sh:node <shape>
-        for quad_res in self
-            .shape_graph
-            .quads_for_pattern(None, Some(shacl.node), None, None)
-        {
+        for quad_res in self.store.quads_for_pattern(
+            None,
+            Some(shacl.node),
+            None,
+            Some(shape_graph_name_ref),
+        ) {
             if let Ok(quad) = quad_res {
                 node_shapes.insert(quad.object);
             }
         }
 
         // ? sh:qualifiedValueShape <shape>
-        for quad_res in self.shape_graph.quads_for_pattern(
+        for quad_res in self.store.quads_for_pattern(
             None,
             Some(shacl.qualified_value_shape),
             None,
-            None,
+            Some(shape_graph_name_ref),
         ) {
             if let Ok(quad) = quad_res {
                 node_shapes.insert(quad.object);
@@ -327,10 +330,12 @@ impl ValidationContext {
         }
 
         // ? sh:not <shape>
-        for quad_res in self
-            .shape_graph
-            .quads_for_pattern(None, Some(shacl.not), None, None)
-        {
+        for quad_res in self.store.quads_for_pattern(
+            None,
+            Some(shacl.not),
+            None,
+            Some(shape_graph_name_ref),
+        ) {
             if let Ok(quad) = quad_res {
                 node_shapes.insert(quad.object);
             }
@@ -338,12 +343,15 @@ impl ValidationContext {
 
         // Helper to process lists for logical constraints
         let mut process_list_constraint = |predicate_ref| {
-            for quad_res in self
-                .shape_graph
-                .quads_for_pattern(None, Some(predicate_ref), None, None)
-            {
+            for quad_res in self.store.quads_for_pattern(
+                None,
+                Some(predicate_ref),
+                None,
+                Some(shape_graph_name_ref),
+            ) {
                 if let Ok(quad) = quad_res {
                     let list_head_term = quad.object; // This is Term
+                    // parse_rdf_list will also use shape_graph_name_ref internally
                     for item_term in self.parse_rdf_list(list_head_term) {
                         node_shapes.insert(item_term);
                     }
