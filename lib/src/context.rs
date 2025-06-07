@@ -234,7 +234,7 @@ impl ValidationContext {
         for quad_res in self.shape_graph.quads_for_pattern(
             None,
             Some(rdf.type_),
-            Some(sh.property_shape),
+            Some(sh.property_shape.into()),
             None,
         ) {
             if let Ok(quad) = quad_res {
@@ -274,7 +274,7 @@ impl ValidationContext {
         for quad_res in self.shape_graph.quads_for_pattern(
             None,
             Some(rdf.type_),
-            Some(shacl.node_shape),
+            Some(shacl.node_shape.into()),
             None,
         ) {
             if let Ok(quad) = quad_res {
