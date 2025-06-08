@@ -680,7 +680,7 @@ impl Component {
             Component::DatatypeConstraint(comp) => comp.validate(c, context, rb),
             Component::NodeKindConstraint(comp) => comp.validate(c, context, rb),
             Component::MinCount(comp) => comp.validate(c, context, rb),
-            //Component::MaxCount(c) => c.validate(c, context, rb),
+            Component::MaxCount(comp) => comp.validate(c, context, rb),
             //Component::MinExclusiveConstraint(c) => c.validate(c, context, rb),
             //Component::MinInclusiveConstraint(c) => c.validate(c, context, rb),
             //Component::MaxExclusiveConstraint(c) => c.validate(c, context, rb),
@@ -876,19 +876,19 @@ impl ValidateComponent for NodeKindConstraintComponent {
                 for value_node in value_nodes {
                     let matches = match value_node.as_ref() {
                         TermRef::NamedNode(_) => {
-                            expected_node_kind_term == sh.IRI.as_ref()
-                                || expected_node_kind_term == sh.BlankNodeOrIRI.as_ref()
-                                || expected_node_kind_term == sh.IRIOrLiteral.as_ref()
+                            expected_node_kind_term == sh.IRI.into()
+                                || expected_node_kind_term == sh.BlankNodeOrIRI.into()
+                                || expected_node_kind_term == sh.IRIOrLiteral.into()
                         }
                         TermRef::BlankNode(_) => {
-                            expected_node_kind_term == sh.BlankNode.as_ref()
-                                || expected_node_kind_term == sh.BlankNodeOrIRI.as_ref()
-                                || expected_node_kind_term == sh.BlankNodeOrLiteral.as_ref()
+                            expected_node_kind_term == sh.BlankNode.into()
+                                || expected_node_kind_term == sh.BlankNodeOrIRI.into()
+                                || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
                         }
                         TermRef::Literal(_) => {
-                            expected_node_kind_term == sh.Literal.as_ref()
-                                || expected_node_kind_term == sh.BlankNodeOrLiteral.as_ref()
-                                || expected_node_kind_term == sh.IRIOrLiteral.as_ref()
+                            expected_node_kind_term == sh.Literal.into()
+                                || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
+                                || expected_node_kind_term == sh.IRIOrLiteral.into()
                         }
                         _ => false, // Triple, GraphName - should not occur as value nodes
                     };
@@ -1084,6 +1084,29 @@ impl GraphvizOutput for MaxCountConstraintComponent {
             component_id.to_graphviz_id(),
             self.max_count
         )
+    }
+}
+
+impl ValidateComponent for MaxCountConstraintComponent {
+    fn validate(
+        &self,
+        c: &[&Context],
+        context: &ValidationContext,
+        rb: &mut ValidationReportBuilder,
+    ) -> Result<(), String> {
+        // check the number of value_nodes
+        for cc in c {
+            if cc.value_nodes().map_or(0, |v| v.len()) > self.max_count as usize {
+                rb.add_error(
+                    cc,
+                    format!(
+                        "Value count does not meet maximum requirement: {}",
+                        self.max_count
+                    ),
+                );
+            }
+        }
+        Ok(())
     }
 }
 
