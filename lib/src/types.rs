@@ -105,7 +105,7 @@ impl Target {
             Target::Class(c) => {
                 let query_str = "SELECT DISTINCT ?inst WHERE { ?inst rdf:type/rdfs:subClassOf* ?target_class . }";
                 let target_class_var = Variable::new_unchecked("target_class");
-                match context.store.query_opt_with_substituted_variables(
+                match context.store().query_opt_with_substituted_variables(
                     query_str,
                     QueryOptions::default(),
                     [(target_class_var, c.clone())],
@@ -114,7 +114,7 @@ impl Target {
                         .filter_map(|solution_result| {
                             solution_result.ok().and_then(|solution| {
                                 solution.get("inst").map(|term_ref| {
-                                    Context::new(term_ref.into_owned(), None, None)
+                                    Context::new(term_ref.to_owned(), None, None)
                                 })
                             })
                         })
@@ -125,12 +125,12 @@ impl Target {
             Target::SubjectsOf(p) => {
                 if let Term::NamedNode(predicate_node) = p {
                     let query_str = format!("SELECT DISTINCT ?s WHERE {{ ?s <{}> ?any . }}", predicate_node.as_str());
-                    match context.store.query(&query_str) {
+                    match context.store().query(&query_str) {
                         Ok(QueryResults::Solutions(solutions)) => solutions
                             .filter_map(|solution_result| {
                                 solution_result.ok().and_then(|solution| {
                                     solution.get("s").map(|term_ref| {
-                                        Context::new(term_ref.into_owned(), None, None)
+                                        Context::new(term_ref.to_owned(), None, None)
                                     })
                                 })
                             })
@@ -144,12 +144,12 @@ impl Target {
             Target::ObjectsOf(p) => {
                 if let Term::NamedNode(predicate_node) = p {
                     let query_str = format!("SELECT DISTINCT ?o WHERE {{ ?any <{}> ?o . }}", predicate_node.as_str());
-                    match context.store.query(&query_str) {
+                    match context.store().query(&query_str) {
                         Ok(QueryResults::Solutions(solutions)) => solutions
                             .filter_map(|solution_result| {
                                 solution_result.ok().and_then(|solution| {
                                     solution.get("o").map(|term_ref| {
-                                        Context::new(term_ref.into_owned(), None, None)
+                                        Context::new(term_ref.to_owned(), None, None)
                                     })
                                 })
                             })
