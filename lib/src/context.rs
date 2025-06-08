@@ -1,6 +1,7 @@
-use crate::components::{parse_components, Component, ToSubjectRef}; // Added Component
+use crate::components::{parse_components, Component, ToSubjectRef, ValidateComponent}; // Added Component
 use crate::named_nodes::{RDF, SHACL};
-use crate::shape::{NodeShape, PropertyShape};
+use crate::report::ValidationReportBuilder;
+use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID};
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{GraphName, GraphNameRef, NamedNode, SubjectRef, Term, TermRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
@@ -117,6 +118,16 @@ impl ValidationContext {
         }
     }
 
+    pub fn validate(&self) {
+        let mut b = ValidationReportBuilder::new();
+        for node_shape in self.node_shapes.values() {
+            // Validate each NodeShape
+            if let Err(e) = node_shape.validate(self, &mut b) {
+                eprintln!("Error validating NodeShape {}: {}", node_shape.identifier(), e);
+            }
+        }
+    }
+
     pub fn dump(&self) {
         // print all of the shapes
         for shape in self.node_shapes.values() {
@@ -155,9 +166,9 @@ impl ValidationContext {
                 .get(pshape.identifier())
                 .unwrap()
                 .clone();
-            // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above) 
+            // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above)
             // is not used for the label. We use the path term for the label as it's generally more informative.
-            
+
             let path_term = pshape.path_term(); // Get the Term of the path
             let path_label = format_term_for_label(path_term); // Format it
             dot_string.push_str(&format!(
@@ -535,6 +546,7 @@ impl ValidationContext {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Context {
     focus_node: Term,
     path: Option<Term>,

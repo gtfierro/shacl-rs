@@ -37,12 +37,25 @@ struct PdfArgs {
     output_file: PathBuf,
 }
 
+#[derive(Parser)]
+struct ValidateArgs {
+    /// Path to the shapes file
+    #[arg(short, long, value_name = "FILE")]
+    shapes_file: PathBuf,
+
+    /// Path to the data file
+    #[arg(short, long, value_name = "FILE")]
+    data_file: PathBuf,
+}
+
 #[derive(clap::Subcommand)]
 enum Commands {
     /// Output the Graphviz DOT string of the shape graph
     Graphviz(GraphvizArgs),
     /// Generate a PDF of the shape graph using Graphviz
     Pdf(PdfArgs),
+    /// Validate the data against the shapes
+    Validate(ValidateArgs),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -78,6 +91,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map_err(|e| format!("Graphviz execution error: {}", e))?;
 
             println!("PDF generated at: {}", args.output_file.display());
+        },
+        Commands::Validate(args) => {
+            let ctx = ValidationContext::from_files(
+                args.shapes_file.to_str().ok_or_else(|| "Invalid shapes file path")?,
+                args.data_file.to_str().ok_or_else(|| "Invalid data file path")?,
+            )
+            .map_err(|e| format!("Error loading files: {}", e))?;
+            ctx.validate();
+            println!("Validation completed successfully.");
         }
     }
     Ok(())

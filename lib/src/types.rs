@@ -103,18 +103,16 @@ impl Target {
                 vec![Context::new(t.clone(), None, None)]
             }
             Target::Class(c) => {
-                let query_str = "SELECT DISTINCT ?inst WHERE { ?inst rdf:type/rdfs:subClassOf* ?target_class . }";
+                let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                    SELECT DISTINCT ?inst ?target_class WHERE { ?inst rdf:type ?c . ?c rdfs:subClassOf* ?target_class }";
                 let target_class_var = Variable::new_unchecked("target_class");
 
                 match Query::parse(query_str, None) {
                     Ok(mut parsed_query) => {
                         parsed_query.dataset_mut().set_default_graph_as_union();
-                        // NOTE: The following method call 'execute_parsed_query_with_substitutions' is hypothetical.
-                        // It assumes that 'context.store()' provides a way to execute a pre-parsed 'Query' object
-                        // with variable substitutions, and that it respects the dataset configuration
-                        // set on the 'parsed_query' object.
-                        match context.store().execute_parsed_query_with_substitutions(
-                            &parsed_query,
+                        match context.store().query_opt_with_substituted_variables(
+                            parsed_query,
                             QueryOptions::default(), // Base options, assuming dataset config is from parsed_query
                             [(target_class_var, c.clone())],
                         ) {
@@ -127,11 +125,18 @@ impl Target {
                                     })
                                 })
                                 .collect(),
-                            _ => vec![], // Handles query errors or unexpected result types
+                            Err(e) => {
+                                eprintln!("SPARQL query error for Target::Class: {} {:?}", query_str, e); // Optional: log error
+                                vec![] // Handle query error
+                            },
+                            _ => {
+                                eprintln!("Unexpected result type for Target::Class: {}", query_str); // Optional: log unexpected result type
+                                vec![] // Handle unexpected result type
+                            }
                         }
                     }
-                    Err(_) => {
-                        // eprintln!("SPARQL parse error for Target::Class: {}", query_str); // Optional: log error
+                    Err(e) => {
+                        eprintln!("SPARQL parse error for Target::Class: {} {:?}", query_str, e); // Optional: log error
                         vec![] // Handle SPARQL parse error
                     }
                 }
@@ -142,10 +147,7 @@ impl Target {
                     match Query::parse(&query_str, None) {
                         Ok(mut parsed_query) => {
                             parsed_query.dataset_mut().set_default_graph_as_union();
-                            // NOTE: The following method call 'execute_parsed_query' is hypothetical.
-                            // It assumes that 'context.store()' provides a way to execute a pre-parsed 'Query' object
-                            // and that it respects the dataset configuration set on the 'parsed_query' object.
-                            match context.store().execute_parsed_query(&parsed_query, QueryOptions::default()) {
+                            match context.store().query_opt(parsed_query, QueryOptions::default()) {
                                 Ok(QueryResults::Solutions(solutions)) => solutions
                                     .filter_map(|solution_result| {
                                         solution_result.ok().and_then(|solution| {
@@ -159,7 +161,7 @@ impl Target {
                             }
                         }
                         Err(_) => {
-                            // eprintln!("SPARQL parse error for Target::SubjectsOf: {}", query_str); // Optional: log error
+                            eprintln!("SPARQL parse error for Target::SubjectsOf: {}", query_str); // Optional: log error
                             vec![] // Handle SPARQL parse error
                         }
                     }
@@ -173,9 +175,7 @@ impl Target {
                     match Query::parse(&query_str, None) {
                         Ok(mut parsed_query) => {
                             parsed_query.dataset_mut().set_default_graph_as_union();
-                            // NOTE: The following method call 'execute_parsed_query' is hypothetical.
-                            // See note in Target::SubjectsOf.
-                            match context.store().execute_parsed_query(&parsed_query, QueryOptions::default()) {
+                            match context.store().query_opt(parsed_query, QueryOptions::default()) {
                                 Ok(QueryResults::Solutions(solutions)) => solutions
                                     .filter_map(|solution_result| {
                                         solution_result.ok().and_then(|solution| {
@@ -189,7 +189,7 @@ impl Target {
                             }
                         }
                         Err(_) => {
-                            // eprintln!("SPARQL parse error for Target::ObjectsOf: {}", query_str); // Optional: log error
+                            eprintln!("SPARQL parse error for Target::ObjectsOf: {}", query_str); // Optional: log error
                             vec![] // Handle SPARQL parse error
                         }
                     }

@@ -1,6 +1,12 @@
 use crate::types::{ComponentID, PropShapeID, ID};
 use crate::types::{Path, Target};
+use crate::context::{ValidationContext, Context};
+use crate::report::ValidationReportBuilder;
 // SHACL, Term, NamedNode, TermRef were unused
+
+pub trait ValidateShape {
+    fn validate(&self, context: &ValidationContext, rb: &mut ValidationReportBuilder) -> Result<(), String>;
+}
 
 #[derive(Debug)]
 pub enum Shape {
@@ -36,6 +42,30 @@ impl NodeShape {
 
     pub fn constraints(&self) -> &[ComponentID] {
         &self.constraints
+    }
+}
+
+impl ValidateShape for NodeShape {
+    fn validate(&self, context: &ValidationContext, rb: &mut ValidationReportBuilder) -> Result<(), String> {
+        println!("Validating NodeShape with identifier: {}", self.identifier);
+        // first gather all of the targets
+        println!("targets: {:?}", self.targets);
+        let target_contexts = self.targets.iter().map(|t| t.get_target_nodes(context)).flatten();
+        let target_contexts: Vec<_> = target_contexts.collect();
+
+        if target_contexts.len() > 0 {
+            println!("Targets: {:?}", target_contexts.len());
+        }
+
+        // for target in target_contexts {
+        //     // for each target, validate the constraints
+        //     for constraint in &self.constraints {
+        //         // if let Err(e) = constraint.validate(&target, rb) {
+        //         //     rb.add_error(&target, e);
+        //         // }
+        //     }
+        // }
+        Ok(())
     }
 }
 

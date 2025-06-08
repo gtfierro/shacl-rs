@@ -1,5 +1,6 @@
-use crate::context::{format_term_for_label, sanitize_graphviz_string, ValidationContext};
+use crate::context::{format_term_for_label, sanitize_graphviz_string, ValidationContext, Context};
 use crate::named_nodes::SHACL;
+use crate::report::ValidationReportBuilder;
 use crate::types::{ComponentID, ID, PropShapeID};
 use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef}; // Removed TripleRef
 use std::collections::HashMap;
@@ -512,6 +513,10 @@ pub fn parse_components(
 
 pub trait GraphvizOutput {
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String;
+}
+
+pub trait ValidateComponent {
+    fn validate(&self, c: &[Context], context: &ValidationContext, rb: &mut ValidationReportBuilder) -> Result<(), String>;
 }
 
 #[derive(Debug)]
