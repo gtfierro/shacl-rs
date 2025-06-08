@@ -177,8 +177,7 @@ impl ValidationContext {
             // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above)
             // is not used for the label. We use the path term for the label as it's generally more informative.
 
-            let path_term = pshape.path_term(); // Get the Term of the path
-            let path_label = format_term_for_label(path_term); // Format it
+            let path_label = pshape.sparql_path(); // Get the Term of the path
             dot_string.push_str(&format!(
                 "  {} [label=\"PropertyShape\\nPath: {}\"];\n",
                 pshape.identifier().to_graphviz_id(),
@@ -585,13 +584,13 @@ impl ValidationContext {
 #[derive(Debug, Clone)]
 pub struct Context {
     focus_node: Term,
-    path: Option<Term>,
+    path: Option<PShapePath>,
     value_nodes: Option<Vec<Term>>,
     source_shape: Option<ID>,
 }
 
 impl Context {
-    pub fn new(focus_node: Term, path: Option<Term>, value_nodes: Option<Vec<Term>>) -> Self {
+    pub fn new(focus_node: Term, path: Option<PShapePath>, value_nodes: Option<Vec<Term>>) -> Self {
         Context {
             focus_node,
             path,
