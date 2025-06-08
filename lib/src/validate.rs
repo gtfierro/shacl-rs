@@ -1,7 +1,7 @@
-use crate::context::{ValidationContext, Context};
+use crate::context::ValidationContext;
 use crate::report::ValidationReportBuilder;
-use crate::types::{ComponentID, ID};
-use crate::shape::{ValidateShape, NodeShape, PropertyShape};
+
+use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 

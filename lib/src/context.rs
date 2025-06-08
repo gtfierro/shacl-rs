@@ -1,4 +1,4 @@
-use crate::components::{parse_components, Component, ToSubjectRef, ValidateComponent}; // Added Component
+use crate::components::{parse_components, Component, ToSubjectRef}; // Added Component
 use crate::named_nodes::{RDF, SHACL};
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
