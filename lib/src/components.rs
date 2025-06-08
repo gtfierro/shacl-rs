@@ -536,7 +536,7 @@ pub trait GraphvizOutput {
 pub trait ValidateComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String>;
@@ -668,7 +668,7 @@ impl Component {
 
     pub fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
@@ -753,40 +753,38 @@ impl GraphvizOutput for ClassConstraintComponent {
 impl ValidateComponent for ClassConstraintComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         let cc_var = Variable::new("value_node").unwrap();
-        for cc in c {
-
-            if cc.value_nodes().is_none() {
-                continue; // Skip if value is None
-            }
-            let vns = cc.value_nodes().unwrap();
-            for vn in vns.iter() {
-                match context.store().query_opt_with_substituted_variables(
-                    self.query.clone(),
-                    QueryOptions::default(),
-                    [(cc_var.clone(), vn.clone())],
-                ) {
-                    Ok(QueryResults::Boolean(result)) => {
-                        if !result {
-                            rb.add_error(cc,
-                                format!("Value does not conform to class constraint: {}", self.class),
-                            );
-                        }
-                    },
-                    Ok(_) => {
-                        return Err("Expected a boolean result for class constraint query".to_string());
-                    },
-                    Err(e) => {
-                        return Err(format!(
-                            "Failed to execute class constraint query: {}",
-                            e
-                        ));
-                    },
-                }
+        // Loop removed, operating on single 'c'
+        if c.value_nodes().is_none() {
+            return Ok(()); // No value nodes to validate
+        }
+        let vns = c.value_nodes().unwrap();
+        for vn in vns.iter() {
+            match context.store().query_opt_with_substituted_variables(
+                self.query.clone(),
+                QueryOptions::default(),
+                [(cc_var.clone(), vn.clone())],
+            ) {
+                Ok(QueryResults::Boolean(result)) => {
+                    if !result {
+                        rb.add_error(c, // Use c directly
+                            format!("Value does not conform to class constraint: {}", self.class),
+                        );
+                    }
+                },
+                Ok(_) => {
+                    return Err("Expected a boolean result for class constraint query".to_string());
+                },
+                Err(e) => {
+                    return Err(format!(
+                        "Failed to execute class constraint query: {}",
+                        e
+                    ));
+                },
             }
         }
         Ok(())
@@ -801,7 +799,7 @@ pub struct DatatypeConstraintComponent {
 impl ValidateComponent for DatatypeConstraintComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         _context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
@@ -810,29 +808,28 @@ impl ValidateComponent for DatatypeConstraintComponent {
             _ => return Err("sh:datatype must be an IRI".to_string()),
         };
 
-        for context_instance in c {
-            if let Some(value_nodes) = context_instance.value_nodes() {
-                for value_node in value_nodes {
-                    match value_node.as_ref() {
-                        TermRef::Literal(lit) => {
-                            if lit.datatype() != target_datatype_iri {
-                                // TODO: Consider ill-typed literals if required by spec for specific datatypes
-                                rb.add_error(
-                                    context_instance,
-                                    format!(
-                                        "Value {:?} does not have datatype {}",
-                                        value_node, self.datatype
-                                    ),
-                                );
-                            }
-                        }
-                        _ => {
-                            // Not a literal, so it cannot conform to a datatype constraint
+        // Loop removed, operating on single 'c' (renamed from context_instance)
+        if let Some(value_nodes) = c.value_nodes() {
+            for value_node in value_nodes {
+                match value_node.as_ref() {
+                    TermRef::Literal(lit) => {
+                        if lit.datatype() != target_datatype_iri {
+                            // TODO: Consider ill-typed literals if required by spec for specific datatypes
                             rb.add_error(
-                                context_instance,
-                                format!("Value {:?} is not a literal, expected datatype {}", value_node, self.datatype),
+                                c, // Use c directly
+                                format!(
+                                    "Value {:?} does not have datatype {}",
+                                    value_node, self.datatype
+                                ),
                             );
                         }
+                    }
+                    _ => {
+                        // Not a literal, so it cannot conform to a datatype constraint
+                        rb.add_error(
+                            c, // Use c directly
+                            format!("Value {:?} is not a literal, expected datatype {}", value_node, self.datatype),
+                        );
                     }
                 }
             }
@@ -864,44 +861,43 @@ pub struct NodeKindConstraintComponent {
 impl ValidateComponent for NodeKindConstraintComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         _context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         let sh = SHACL::new();
         let expected_node_kind_term = self.node_kind.as_ref();
 
-        for context_instance in c {
-            if let Some(value_nodes) = context_instance.value_nodes() {
-                for value_node in value_nodes {
-                    let matches = match value_node.as_ref() {
-                        TermRef::NamedNode(_) => {
-                            expected_node_kind_term == sh.IRI.into()
-                                || expected_node_kind_term == sh.BlankNodeOrIRI.into()
-                                || expected_node_kind_term == sh.IRIOrLiteral.into()
-                        }
-                        TermRef::BlankNode(_) => {
-                            expected_node_kind_term == sh.BlankNode.into()
-                                || expected_node_kind_term == sh.BlankNodeOrIRI.into()
-                                || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
-                        }
-                        TermRef::Literal(_) => {
-                            expected_node_kind_term == sh.Literal.into()
-                                || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
-                                || expected_node_kind_term == sh.IRIOrLiteral.into()
-                        }
-                        _ => false, // Triple, GraphName - should not occur as value nodes
-                    };
-
-                    if !matches {
-                        rb.add_error(
-                            context_instance,
-                            format!(
-                                "Value {:?} does not match nodeKind {}",
-                                value_node, self.node_kind
-                            ),
-                        );
+        // Loop removed, operating on single 'c' (renamed from context_instance)
+        if let Some(value_nodes) = c.value_nodes() {
+            for value_node in value_nodes {
+                let matches = match value_node.as_ref() {
+                    TermRef::NamedNode(_) => {
+                        expected_node_kind_term == sh.IRI.into()
+                            || expected_node_kind_term == sh.BlankNodeOrIRI.into()
+                            || expected_node_kind_term == sh.IRIOrLiteral.into()
                     }
+                    TermRef::BlankNode(_) => {
+                        expected_node_kind_term == sh.BlankNode.into()
+                            || expected_node_kind_term == sh.BlankNodeOrIRI.into()
+                            || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
+                    }
+                    TermRef::Literal(_) => {
+                        expected_node_kind_term == sh.Literal.into()
+                            || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
+                            || expected_node_kind_term == sh.IRIOrLiteral.into()
+                    }
+                    _ => false, // Triple, GraphName - should not occur as value nodes
+                };
+
+                if !matches {
+                    rb.add_error(
+                        c, // Use c directly
+                        format!(
+                            "Value {:?} does not match nodeKind {}",
+                            value_node, self.node_kind
+                        ),
+                    );
                 }
             }
         }
@@ -1049,21 +1045,20 @@ impl GraphvizOutput for MinCountConstraintComponent {
 impl ValidateComponent for MinCountConstraintComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         // check the number of value_nodes
-        for cc in c {
-            if cc.value_nodes().map_or(0, |v| v.len()) < self.min_count as usize {
-                rb.add_error(
-                    cc,
-                    format!(
-                        "Value count does not meet minimum requirement: {}",
-                        self.min_count
-                    ),
-                );
-            }
+        // Loop removed, operating on single 'c' (renamed from cc)
+        if c.value_nodes().map_or(0, |v| v.len()) < self.min_count as usize {
+            rb.add_error(
+                c, // Use c directly
+                format!(
+                    "Value count does not meet minimum requirement: {}",
+                    self.min_count
+                ),
+            );
         }
         Ok(())
     }
@@ -1091,21 +1086,20 @@ impl GraphvizOutput for MaxCountConstraintComponent {
 impl ValidateComponent for MaxCountConstraintComponent {
     fn validate(
         &self,
-        c: &[&Context],
+        c: &Context, // Changed from &[&Context]
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         // check the number of value_nodes
-        for cc in c {
-            if cc.value_nodes().map_or(0, |v| v.len()) > self.max_count as usize {
-                rb.add_error(
-                    cc,
-                    format!(
-                        "Value count does not meet maximum requirement: {}",
-                        self.max_count
-                    ),
-                );
-            }
+        // Loop removed, operating on single 'c' (renamed from cc)
+        if c.value_nodes().map_or(0, |v| v.len()) > self.max_count as usize {
+            rb.add_error(
+                c, // Use c directly
+                format!(
+                    "Value count does not meet maximum requirement: {}",
+                    self.max_count
+                ),
+            );
         }
         Ok(())
     }
