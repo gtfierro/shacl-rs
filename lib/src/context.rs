@@ -391,12 +391,12 @@ impl ValidationContext {
         let sh = SHACL::new();
 
         let subject: SubjectRef = shape.to_subject_ref();
-        let shape_graph_name_ref = GraphNameRef::NamedNode(self.shape_graph_iri.as_ref());
+        let shape_graph_name = GraphName::NamedNode(self.shape_graph_iri.clone());
 
         // get the targets
         let targets: Vec<Target> = self
             .store
-            .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name_ref))
+            .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name.as_ref()))
             .filter_map(Result::ok)
             .filter_map(|quad| {
                 Target::from_predicate_object(quad.predicate.as_ref(), quad.object.as_ref())
@@ -414,7 +414,7 @@ impl ValidationContext {
 
         let _property_shapes: Vec<PropShapeID> = self // This seems to be about sh:property linking to PropertyShapes.
             .store                                     // It was collected but not used in NodeShape::new.
-            .quads_for_pattern(Some(subject), Some(sh.property), None, Some(shape_graph_name_ref))
+            .quads_for_pattern(Some(subject), Some(sh.property), None, Some(shape_graph_name.as_ref()))
             .filter_map(Result::ok)
             .filter_map(|quad| self.propshape_id_lookup.borrow().get(&quad.object))
             .collect();
