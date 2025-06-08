@@ -1,4 +1,4 @@
-use crate::context::ValidationContext;
+use crate::context::{Context, ValidationContext};
 use crate::report::ValidationReportBuilder;
 
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};

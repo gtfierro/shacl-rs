@@ -1,5 +1,4 @@
 use crate::context::{format_term_for_label, sanitize_graphviz_string, Context, ValidationContext};
-use crate::shape::ValidateShape;
 use crate::named_nodes::SHACL;
 use crate::report::ValidationReportBuilder;
 use crate::types::{ComponentID, PropShapeID, ID};

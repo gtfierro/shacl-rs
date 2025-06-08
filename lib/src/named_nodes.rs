@@ -50,6 +50,14 @@ pub struct SHACL {
     pub ignored_properties: NamedNodeRef<'static>,
     pub has_value: NamedNodeRef<'static>,
     pub in_: NamedNodeRef<'static>, // `in` is a reserved keyword in Rust
+
+    // NodeKind instances
+    pub IRI: NamedNodeRef<'static>,
+    pub Literal: NamedNodeRef<'static>,
+    pub BlankNode: NamedNodeRef<'static>,
+    pub BlankNodeOrIRI: NamedNodeRef<'static>,
+    pub BlankNodeOrLiteral: NamedNodeRef<'static>,
+    pub IRIOrLiteral: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -116,6 +124,14 @@ impl SHACL {
                 .unwrap(),
             has_value: NamedNodeRef::new("http://www.w3.org/ns/shacl#hasValue").unwrap(),
             in_: NamedNodeRef::new("http://www.w3.org/ns/shacl#in").unwrap(),
+
+            // NodeKind instances
+            IRI: NamedNodeRef::new("http://www.w3.org/ns/shacl#IRI").unwrap(),
+            Literal: NamedNodeRef::new("http://www.w3.org/ns/shacl#Literal").unwrap(),
+            BlankNode: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNode").unwrap(),
+            BlankNodeOrIRI: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrIRI").unwrap(),
+            BlankNodeOrLiteral: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrLiteral").unwrap(),
+            IRIOrLiteral: NamedNodeRef::new("http://www.w3.org/ns/shacl#IRIOrLiteral").unwrap(),
         }
     }
 }
