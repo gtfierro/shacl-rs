@@ -99,9 +99,7 @@ impl Target {
 
     pub fn get_target_nodes(&self, context: &ValidationContext) -> Vec<Context> {
         match self {
-            Target::Node(t) => {
-                vec![Context::new(t.clone(), None, None)]
-            }
+            Target::Node(t) => vec![Context::new(t.clone(), None, Some(vec![t.clone()]))],
             Target::Class(c) => {
                 let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -120,7 +118,7 @@ impl Target {
                                 .filter_map(|solution_result| {
                                     solution_result.ok().and_then(|solution| {
                                         solution.get("inst").map(|term_ref| {
-                                            Context::new(term_ref.to_owned(), None, None)
+                                            Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]))
                                         })
                                     })
                                 })
@@ -140,7 +138,7 @@ impl Target {
                                 vec![] // Handle unexpected result type
                             }
                         }
-                    }
+                    },
                     Err(e) => {
                         eprintln!(
                             "SPARQL parse error for Target::Class: {} {:?}",
@@ -167,7 +165,7 @@ impl Target {
                                     .filter_map(|solution_result| {
                                         solution_result.ok().and_then(|solution| {
                                             solution.get("s").map(|term_ref| {
-                                                Context::new(term_ref.to_owned(), None, None)
+                                                Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]))
                                             })
                                         })
                                     })
@@ -201,7 +199,7 @@ impl Target {
                                     .filter_map(|solution_result| {
                                         solution_result.ok().and_then(|solution| {
                                             solution.get("o").map(|term_ref| {
-                                                Context::new(term_ref.to_owned(), None, None)
+                                                Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]))
                                             })
                                         })
                                     })
