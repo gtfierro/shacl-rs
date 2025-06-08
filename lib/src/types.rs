@@ -1,6 +1,7 @@
 use crate::named_nodes::SHACL;
 use crate::context::{ValidationContext, Context};
-use oxigraph::model::{NamedNodeRef, Term, TermRef}; // Removed NamedNode
+use oxigraph::model::{NamedNodeRef, Term, TermRef, Variable};
+use oxigraph::sparql::{QueryResults, QueryOptions};
 use std::fmt; // Added for Display trait
 use std::hash::Hash; // Added Hash for derived traits
 
@@ -98,13 +99,67 @@ impl Target {
 
     pub fn get_target_nodes(&self, context: &ValidationContext) -> Vec<Context> {
         match self {
-            Target::Node(t) => vec![
-                Context::new(t.clone(), None, None)
-            ],
+            Target::Node(t) => {
+                vec![Context::new(t.clone(), None, None)]
+            }
             Target::Class(c) => {
-                // query 'context' for all ?inst rdf:type/rdfs:subClassOf* c
-            },
-            _ => vec![]
+                let query_str = "SELECT DISTINCT ?inst WHERE { ?inst rdf:type/rdfs:subClassOf* ?target_class . }";
+                let target_class_var = Variable::new_unchecked("target_class");
+                match context.store.query_opt_with_substituted_variables(
+                    query_str,
+                    QueryOptions::default(),
+                    [(target_class_var, c.clone())],
+                ) {
+                    Ok(QueryResults::Solutions(solutions)) => solutions
+                        .filter_map(|solution_result| {
+                            solution_result.ok().and_then(|solution| {
+                                solution.get("inst").map(|term_ref| {
+                                    Context::new(term_ref.into_owned(), None, None)
+                                })
+                            })
+                        })
+                        .collect(),
+                    _ => vec![], // Handles query errors or unexpected result types
+                }
+            }
+            Target::SubjectsOf(p) => {
+                if let Term::NamedNode(predicate_node) = p {
+                    let query_str = format!("SELECT DISTINCT ?s WHERE {{ ?s <{}> ?any . }}", predicate_node.as_str());
+                    match context.store.query(&query_str) {
+                        Ok(QueryResults::Solutions(solutions)) => solutions
+                            .filter_map(|solution_result| {
+                                solution_result.ok().and_then(|solution| {
+                                    solution.get("s").map(|term_ref| {
+                                        Context::new(term_ref.into_owned(), None, None)
+                                    })
+                                })
+                            })
+                            .collect(),
+                        _ => vec![], // Handles query errors or unexpected result types
+                    }
+                } else {
+                    vec![] // Predicate for SubjectsOf must be an IRI
+                }
+            }
+            Target::ObjectsOf(p) => {
+                if let Term::NamedNode(predicate_node) = p {
+                    let query_str = format!("SELECT DISTINCT ?o WHERE {{ ?any <{}> ?o . }}", predicate_node.as_str());
+                    match context.store.query(&query_str) {
+                        Ok(QueryResults::Solutions(solutions)) => solutions
+                            .filter_map(|solution_result| {
+                                solution_result.ok().and_then(|solution| {
+                                    solution.get("o").map(|term_ref| {
+                                        Context::new(term_ref.into_owned(), None, None)
+                                    })
+                                })
+                            })
+                            .collect(),
+                        _ => vec![], // Handles query errors or unexpected result types
+                    }
+                } else {
+                    vec![] // Predicate for ObjectsOf must be an IRI
+                }
+            }
         }
     }
 }
