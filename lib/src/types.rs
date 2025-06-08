@@ -68,9 +68,83 @@ impl PropShapeID {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Path {
-    Simple(Term),
+    Simple(Term), // An IRI
+    Inverse(Box<Path>),
+    Sequence(Vec<Path>),
+    Alternative(Vec<Path>),
+    ZeroOrMore(Box<Path>),
+    OneOrMore(Box<Path>),
+    ZeroOrOne(Box<Path>),
+}
+
+impl Path {
+    // Helper to format a NamedNode for SPARQL path
+    fn format_named_node_for_sparql(nn: &oxigraph::model::NamedNode) -> String {
+        format!("<{}>", nn.as_str())
+    }
+
+    pub fn to_sparql_path(&self) -> Result<String, String> {
+        match self {
+            Path::Simple(term) => match term {
+                Term::NamedNode(nn) => Ok(Self::format_named_node_for_sparql(nn)),
+                _ => Err("Simple path must be an IRI".to_string()),
+            },
+            Path::Inverse(inner_path) => {
+                let inner_sparql = inner_path.to_sparql_path()?;
+                // Based on SPARQL grammar, if inner_sparql is already a (Path) or an IRIref,
+                // it doesn't need more parentheses for ^.
+                // Our Sequence and Alternative variants return parenthesized strings.
+                // Simple returns an IRIref.
+                Ok(format!("^{}", inner_sparql))
+            }
+            Path::Sequence(paths) => {
+                if paths.len() < 2 {
+                    // SHACL specification: sequence path is a list of at least two members.
+                    // If parsing allowed a single path, it should be simplified upstream.
+                    // For now, error if not adhering to the typical structure.
+                    return Err(format!(
+                        "Sequence path must have at least two elements, found {}",
+                        paths.len()
+                    ));
+                }
+                let mut sparql_paths = Vec::new();
+                for p in paths {
+                    sparql_paths.push(p.to_sparql_path()?);
+                }
+                let result = sparql_paths.join(" / ");
+                Ok(format!("({})", result)) // Always parenthesize sequence for clarity and safety.
+            }
+            Path::Alternative(paths) => {
+                if paths.len() < 2 {
+                    // SHACL specification: alternative path is a list of at least two members.
+                    return Err(format!(
+                        "Alternative path must have at least two elements, found {}",
+                        paths.len()
+                    ));
+                }
+                let mut sparql_paths = Vec::new();
+                for p in paths {
+                    sparql_paths.push(p.to_sparql_path()?);
+                }
+                let result = sparql_paths.join(" | ");
+                Ok(format!("({})", result)) // Always parenthesize alternative for clarity and safety.
+            }
+            Path::ZeroOrMore(inner_path) => {
+                let inner_sparql = inner_path.to_sparql_path()?;
+                Ok(format!("{}*", inner_sparql))
+            }
+            Path::OneOrMore(inner_path) => {
+                let inner_sparql = inner_path.to_sparql_path()?;
+                Ok(format!("{}+", inner_sparql))
+            }
+            Path::ZeroOrOne(inner_path) => {
+                let inner_sparql = inner_path.to_sparql_path()?;
+                Ok(format!("{}?", inner_sparql))
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
