@@ -718,6 +718,11 @@ impl ValidationContext {
         // Returns a reference to the PropertyShape by its ID
         self.prop_shapes.get(id)
     }
+
+    pub fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
+        // Returns a reference to the NodeShape by its ID
+        self.node_shapes.get(id)
+    }
 }
 
 #[derive(Debug, Clone)]

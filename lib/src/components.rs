@@ -1,6 +1,7 @@
 use crate::context::{format_term_for_label, sanitize_graphviz_string, Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::report::ValidationReportBuilder;
+use crate::shape::{NodeShape, PropertyShape}; // Added NodeShape, PropertyShape
 use crate::types::{ComponentID, PropShapeID, ID};
 use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef}; // Removed TripleRef
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable}; // Added Query
@@ -702,10 +703,10 @@ impl Component {
             //Component::DisjointConstraint(c) => c.validate(component_id, c, context),
             //Component::LessThanConstraint(c) => c.validate(component_id, c, context),
             //Component::LessThanOrEqualsConstraint(c) => c.validate(component_id, c, context),
-            //Component::NotConstraint(c) => c.validate(component_id, c, context),
-            //Component::AndConstraint(c) => c.validate(component_id, c, context),
-            //Component::OrConstraint(c) => c.validate(component_id, c, context),
-            //Component::XoneConstraint(c) => c.validate(component_id, c, context),
+            Component::NotConstraint(comp) => comp.validate(component_id, c, context),
+            Component::AndConstraint(comp) => comp.validate(component_id, c, context),
+            Component::OrConstraint(comp) => comp.validate(component_id, c, context),
+            Component::XoneConstraint(comp) => comp.validate(component_id, c, context),
             //Component::ClosedConstraint(_) |
                 // Other components that do not have validate method
                 // For components without specific validation logic, or structural ones, consider them as passing.
@@ -713,6 +714,55 @@ impl Component {
         }
     }
 }
+
+/// Checks if a given node (represented by `node_as_context`) conforms to the `shape_to_check_against`.
+/// Returns `Ok(true)` if it conforms, `Ok(false)` if it does not, or `Err(String)` for an internal error.
+fn check_conformance_for_node(
+    node_as_context: &Context,
+    shape_to_check_against: &NodeShape,
+    main_validation_context: &ValidationContext,
+) -> Result<bool, String> {
+    for constraint_id in shape_to_check_against.constraints() {
+        let component = main_validation_context
+            .get_component_by_id(constraint_id)
+            .ok_or_else(|| format!("Logical check: Component not found: {}", constraint_id))?;
+
+        match component.validate(*constraint_id, node_as_context, main_validation_context) {
+            Ok(_validation_result) => {
+                // If the component is a PropertyConstraint, we need to further validate the property shape.
+                if let Component::PropertyConstraint(pc_comp) = component {
+                    let prop_shape = main_validation_context
+                        .get_prop_shape_by_id(pc_comp.shape())
+                        .ok_or_else(|| {
+                            format!(
+                                "Logical check: Property shape not found for ID: {}",
+                                pc_comp.shape()
+                            )
+                        })?;
+                    
+                    // PropertyShape::validate is an inherent method in lib/src/validate.rs
+                    // It takes &Context, &ValidationContext, &mut ValidationReportBuilder
+                    let mut temp_rb = ValidationReportBuilder::new();
+                    if let Err(e) = prop_shape.validate(node_as_context, main_validation_context, &mut temp_rb) {
+                        // Error during property shape validation itself (e.g., query parse error)
+                        return Err(format!("Logical check: Error validating property shape {}: {}", pc_comp.shape(), e));
+                    }
+                    if !temp_rb.results.is_empty() {
+                        // The property shape validation produced errors for the node_as_context.
+                        return Ok(false); // Does not conform
+                    }
+                }
+                // Other component types passed their own validation.
+            }
+            Err(_e) => {
+                // The component's validate method returned an Err, meaning a constraint violation.
+                return Ok(false); // Does not conform
+            }
+        }
+    }
+    Ok(true) // All constraints passed for the node_as_context against shape_to_check_against
+}
+
 
 // value type
 #[derive(Debug)]
@@ -1394,6 +1444,63 @@ impl GraphvizOutput for NotConstraintComponent {
     }
 }
 
+impl ValidateComponent for NotConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context, // This is the context of the shape that has the sh:not constraint
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let Some(value_nodes) = c.value_nodes() else {
+            return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes to check
+        };
+
+        let Some(negated_node_shape) = validation_context.get_node_shape_by_id(&self.shape) else {
+            return Err(format!(
+                "sh:not referenced shape {:?} not found",
+                self.shape
+            ));
+        };
+
+        for value_node_to_check in value_nodes {
+            // Create a new context where the current value_node is the focus node.
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(),
+                None, // Path is not directly relevant for this sub-check's context
+                Some(vec![value_node_to_check.clone()]) // Value nodes for the sub-check
+            );
+
+            match check_conformance_for_node(
+                &value_node_as_context,
+                negated_node_shape,
+                validation_context,
+            ) {
+                Ok(true) => {
+                    // value_node_to_check CONFORMS to the negated_node_shape.
+                    // This means the sh:not constraint FAILS for this value_node.
+                    return Err(format!(
+                        "Value {:?} conforms to sh:not shape {:?}, but should not.",
+                        value_node_to_check, self.shape
+                    ));
+                }
+                Ok(false) => {
+                    // value_node_to_check DOES NOT CONFORM to the negated_node_shape.
+                    // This means the sh:not constraint PASSES for this value_node. Continue.
+                }
+                Err(e) => {
+                    // An error occurred during the conformance check itself.
+                    return Err(format!(
+                        "Error checking conformance for sh:not shape {:?}: {}",
+                        self.shape, e
+                    ));
+                }
+            }
+        }
+        // All value_nodes correctly did not conform to the negated_node_shape.
+        Ok(ComponentValidationResult::Pass(component_id))
+    }
+}
+
 #[derive(Debug)]
 pub struct AndConstraintComponent {
     shapes: Vec<ID>, // List of NodeShape IDs
@@ -1414,6 +1521,61 @@ impl GraphvizOutput for AndConstraintComponent {
             component_id.to_graphviz_id(),
             edges.trim_end()
         )
+    }
+}
+
+impl ValidateComponent for AndConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context,
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let Some(value_nodes) = c.value_nodes() else {
+            return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes
+        };
+
+        for value_node_to_check in value_nodes {
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(), None, Some(vec![value_node_to_check.clone()])
+            );
+
+            for conjunct_shape_id in &self.shapes {
+                let Some(conjunct_node_shape) = validation_context.get_node_shape_by_id(conjunct_shape_id) else {
+                    return Err(format!(
+                        "sh:and referenced shape {:?} not found",
+                        conjunct_shape_id
+                    ));
+                };
+
+                match check_conformance_for_node(
+                    &value_node_as_context,
+                    conjunct_node_shape,
+                    validation_context,
+                ) {
+                    Ok(true) => {
+                        // value_node_to_check CONFORMS to this conjunct_node_shape. Continue to next conjunct.
+                    }
+                    Ok(false) => {
+                        // value_node_to_check DOES NOT CONFORM to this conjunct_node_shape.
+                        // For sh:and, all shapes must conform. So, this is a failure for this value_node.
+                        return Err(format!(
+                            "Value {:?} does not conform to sh:and shape {:?}",
+                            value_node_to_check, conjunct_shape_id
+                        ));
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Error checking conformance for sh:and shape {:?}: {}",
+                            conjunct_shape_id, e
+                        ));
+                    }
+                }
+            }
+            // If loop completes, value_node_to_check conformed to all conjunct_node_shapes.
+        }
+        // All value_nodes conformed to all conjunct_node_shapes.
+        Ok(ComponentValidationResult::Pass(component_id))
     }
 }
 
@@ -1440,6 +1602,76 @@ impl GraphvizOutput for OrConstraintComponent {
     }
 }
 
+impl ValidateComponent for OrConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context,
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let Some(value_nodes) = c.value_nodes() else {
+            return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes
+        };
+
+        if self.shapes.is_empty() {
+            // If sh:or list is empty, no value node can conform unless there are no value nodes.
+            return if value_nodes.is_empty() {
+                Ok(ComponentValidationResult::Pass(component_id))
+            } else {
+                Err("sh:or with an empty list of shapes cannot be satisfied by any value node.".to_string())
+            };
+        }
+
+        for value_node_to_check in value_nodes {
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(), None, Some(vec![value_node_to_check.clone()])
+            );
+            let mut passed_at_least_one_disjunct = false;
+
+            for disjunct_shape_id in &self.shapes {
+                let Some(disjunct_node_shape) = validation_context.get_node_shape_by_id(disjunct_shape_id) else {
+                    return Err(format!(
+                        "sh:or referenced shape {:?} not found",
+                        disjunct_shape_id
+                    ));
+                };
+
+                match check_conformance_for_node(
+                    &value_node_as_context,
+                    disjunct_node_shape,
+                    validation_context,
+                ) {
+                    Ok(true) => {
+                        // value_node_to_check CONFORMS to this disjunct_node_shape.
+                        // For sh:or, this is enough for this value_node.
+                        passed_at_least_one_disjunct = true;
+                        break; // Move to the next value_node_to_check
+                    }
+                    Ok(false) => {
+                        // value_node_to_check DOES NOT CONFORM. Try next disjunct shape.
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Error checking conformance for sh:or shape {:?}: {}",
+                            disjunct_shape_id, e
+                        ));
+                    }
+                }
+            }
+            if !passed_at_least_one_disjunct {
+                // This value_node_to_check did not conform to any of the sh:or shapes.
+                return Err(format!(
+                    "Value {:?} does not conform to any sh:or shapes.",
+                    value_node_to_check
+                ));
+            }
+            // If loop completes, value_node_to_check conformed to at least one disjunct.
+        }
+        // All value_nodes conformed to at least one of the disjunct_node_shapes.
+        Ok(ComponentValidationResult::Pass(component_id))
+    }
+}
+
 #[derive(Debug)]
 pub struct XoneConstraintComponent {
     shapes: Vec<ID>, // List of NodeShape IDs
@@ -1460,6 +1692,75 @@ impl GraphvizOutput for XoneConstraintComponent {
             component_id.to_graphviz_id(),
             edges.trim_end()
         )
+    }
+}
+
+impl ValidateComponent for XoneConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context,
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let Some(value_nodes) = c.value_nodes() else {
+            return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes
+        };
+
+        if self.shapes.is_empty() {
+            // If sh:xone list is empty, no value node can conform unless there are no value nodes.
+            return if value_nodes.is_empty() {
+                Ok(ComponentValidationResult::Pass(component_id))
+            } else {
+                Err("sh:xone with an empty list of shapes cannot be satisfied by any value node.".to_string())
+            };
+        }
+
+        for value_node_to_check in value_nodes {
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(), None, Some(vec![value_node_to_check.clone()])
+            );
+            let mut conforming_shapes_count = 0;
+
+            for xone_shape_id in &self.shapes {
+                let Some(xone_node_shape) = validation_context.get_node_shape_by_id(xone_shape_id) else {
+                    return Err(format!(
+                        "sh:xone referenced shape {:?} not found",
+                        xone_shape_id
+                    ));
+                };
+
+                match check_conformance_for_node(
+                    &value_node_as_context,
+                    xone_node_shape,
+                    validation_context,
+                ) {
+                    Ok(true) => {
+                        // value_node_to_check CONFORMS to this xone_node_shape.
+                        conforming_shapes_count += 1;
+                    }
+                    Ok(false) => {
+                        // value_node_to_check DOES NOT CONFORM. Continue.
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Error checking conformance for sh:xone shape {:?}: {}",
+                            xone_shape_id, e
+                        ));
+                    }
+                }
+            }
+
+            if conforming_shapes_count != 1 {
+                // This value_node_to_check did not conform to exactly one of the sh:xone shapes.
+                return Err(format!(
+                    "Value {:?} conformed to {} sh:xone shapes, but expected exactly 1.",
+                    value_node_to_check, conforming_shapes_count
+                ));
+            }
+            // If loop completes, value_node_to_check conformed to exactly one xone_shape.
+        }
+        // All value_nodes conformed to exactly one of the xone_node_shapes.
+        Ok(ComponentValidationResult::Pass(component_id))
     }
 }
 
