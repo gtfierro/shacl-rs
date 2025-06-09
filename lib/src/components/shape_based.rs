@@ -35,6 +35,145 @@ impl GraphvizOutput for NodeConstraintComponent {
     }
 }
 
+impl ValidateComponent for QualifiedValueShapeComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context,
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let value_nodes = match c.value_nodes() {
+            Some(vns) => vns,
+            None => {
+                // No value nodes. Check if min_count > 0.
+                if let Some(min_c) = self.min_count {
+                    if min_c > 0 {
+                        return Err(format!(
+                            "QualifiedValueShape: No value nodes, but sh:qualifiedMinCount is {} for shape {:?}",
+                            min_c, self.shape
+                        ));
+                    }
+                }
+                // If min_count is 0 or None, this is a pass. Max_count is also satisfied.
+                return Ok(ComponentValidationResult::Pass(component_id));
+            }
+        };
+
+        let Some(target_node_shape_for_self) = validation_context.get_node_shape_by_id(&self.shape) else {
+            return Err(format!(
+                "QualifiedValueShape: Referenced node shape {:?} for sh:qualifiedValueShape not found",
+                self.shape
+            ));
+        };
+
+        let mut sibling_target_node_shape_ids: std::collections::HashSet<ID> = std::collections::HashSet::new();
+        if self.disjoint.unwrap_or(false) {
+            let source_property_shape_id = match c.source_shape() {
+                Some(id) => id, // This is PropShapeID
+                None => return Err("QualifiedValueShape: Context is missing source_shape, cannot determine siblings for disjoint check.".to_string()),
+            };
+
+            let mut all_qvs_targets_from_relevant_parents: std::collections::HashSet<ID> = std::collections::HashSet::new();
+
+            for (_parent_node_shape_id, parent_node_shape) in validation_context.node_shapes() {
+                let mut is_parent_of_current_prop_shape = false;
+                for constraint_id_on_parent in parent_node_shape.constraints() {
+                    if let Some(super::Component::PropertyConstraint(pc)) = validation_context.get_component_by_id(constraint_id_on_parent) {
+                        if pc.shape() == &source_property_shape_id {
+                            is_parent_of_current_prop_shape = true;
+                            break;
+                        }
+                    }
+                }
+
+                if is_parent_of_current_prop_shape {
+                    // This parent_node_shape is one of the shapes `ps` from the spec.
+                    // Collect all sh:property / sh:qualifiedValueShape target IDs from this parent.
+                    for constraint_id_on_parent in parent_node_shape.constraints() {
+                        if let Some(super::Component::PropertyConstraint(any_pc_on_parent)) = validation_context.get_component_by_id(constraint_id_on_parent) {
+                            if let Some(any_prop_shape_on_parent) = validation_context.get_prop_shape_by_id(any_pc_on_parent.shape()) {
+                                for qvs_constraint_id_on_any_prop in any_prop_shape_on_parent.constraints() {
+                                    if let Some(super::Component::QualifiedValueShape(qvs_comp_on_any_prop)) = validation_context.get_component_by_id(qvs_constraint_id_on_any_prop) {
+                                        all_qvs_targets_from_relevant_parents.insert(qvs_comp_on_any_prop.shape);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Sibling shapes are this set minus self.shape (the QVS target of the current PropertyShape).
+            sibling_target_node_shape_ids = all_qvs_targets_from_relevant_parents;
+            sibling_target_node_shape_ids.remove(&self.shape);
+        }
+
+        let mut conforming_value_node_count = 0;
+        for value_node_to_check in value_nodes {
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(),
+                None, // Path is not directly relevant for this sub-check's context
+                Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
+            );
+
+            match check_conformance_for_node(
+                &value_node_as_context,
+                target_node_shape_for_self,
+                validation_context,
+            ) {
+                Ok(true) => { // Conforms to self.shape
+                    let mut conforms_to_a_sibling = false;
+                    if self.disjoint.unwrap_or(false) && !sibling_target_node_shape_ids.is_empty() {
+                        for sibling_shape_id in &sibling_target_node_shape_ids {
+                            if let Some(sibling_node_shape) = validation_context.get_node_shape_by_id(sibling_shape_id) {
+                                match check_conformance_for_node(
+                                    &value_node_as_context,
+                                    sibling_node_shape,
+                                    validation_context,
+                                ) {
+                                    Ok(true) => { // Conforms to this sibling shape
+                                        conforms_to_a_sibling = true;
+                                        break;
+                                    }
+                                    Ok(false) => {} // Does not conform to this sibling, continue
+                                    Err(e) => return Err(format!("Error checking conformance against sibling shape {:?}: {}", sibling_shape_id, e)),
+                                }
+                            } else {
+                                 return Err(format!("QualifiedValueShape: Sibling node shape {:?} for disjoint check not found", sibling_shape_id));
+                            }
+                        }
+                    }
+
+                    if !conforms_to_a_sibling {
+                        conforming_value_node_count += 1;
+                    }
+                }
+                Ok(false) => {} // Does not conform to self.shape, so don't count.
+                Err(e) => return Err(format!("Error checking conformance for sh:qualifiedValueShape target shape {:?}: {}", self.shape, e)),
+            }
+        }
+
+        if let Some(min_c) = self.min_count {
+            if conforming_value_node_count < min_c {
+                return Err(format!(
+                    "Value count {} is less than sh:qualifiedMinCount {} for shape {:?}",
+                    conforming_value_node_count, min_c, self.shape
+                ));
+            }
+        }
+
+        if let Some(max_c) = self.max_count {
+            if conforming_value_node_count > max_c {
+                return Err(format!(
+                    "Value count {} is greater than sh:qualifiedMaxCount {} for shape {:?}",
+                    conforming_value_node_count, max_c, self.shape
+                ));
+            }
+        }
+
+        Ok(ComponentValidationResult::Pass(component_id))
+    }
+}
+
 impl ValidateComponent for NodeConstraintComponent {
     fn validate(
         &self,
