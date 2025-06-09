@@ -683,7 +683,7 @@ impl Component {
     ) -> Result<ComponentValidationResult, String> {
         match self {
             Component::ClassConstraint(comp) => comp.validate(component_id, c, context),
-            //Component::NodeConstraint(c) => c.validate(component_id, c, context),
+            Component::NodeConstraint(comp) => comp.validate(component_id, c, context),
             Component::PropertyConstraint(comp) => comp.validate(component_id, c, context),
             //Component::QualifiedValueShape(c) => c.validate(component_id, c, context),
             Component::DatatypeConstraint(comp) => comp.validate(component_id, c, context),
@@ -993,6 +993,67 @@ impl GraphvizOutput for NodeConstraintComponent {
             label,
             self.shape.to_graphviz_id()
         )
+    }
+}
+
+impl ValidateComponent for NodeConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context, // Context of the shape that has the sh:node constraint
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        let Some(value_nodes) = c.value_nodes() else {
+            // No value nodes to check against the node constraint.
+            return Ok(ComponentValidationResult::Pass(component_id));
+        };
+
+        let Some(target_node_shape) = validation_context.get_node_shape_by_id(&self.shape) else {
+            return Err(format!(
+                "sh:node referenced shape {:?} not found",
+                self.shape
+            ));
+        };
+
+        for value_node_to_check in value_nodes {
+            // Create a new context where the current value_node is the focus node.
+            // The path and other aspects of the original context 'c' are not directly relevant
+            // for this specific conformance check of the value_node against target_node_shape.
+            let value_node_as_context = Context::new(
+                value_node_to_check.clone(),
+                None, // Path is not directly relevant for this sub-check's context
+                Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
+            );
+
+            match check_conformance_for_node(
+                &value_node_as_context,
+                target_node_shape,
+                validation_context,
+            ) {
+                Ok(true) => {
+                    // value_node_to_check CONFORMS to the target_node_shape.
+                    // This is the desired outcome for sh:node, so continue to the next value_node.
+                }
+                Ok(false) => {
+                    // value_node_to_check DOES NOT CONFORM to the target_node_shape.
+                    // This means the sh:node constraint FAILS for this value_node.
+                    return Err(format!(
+                        "Value {:?} does not conform to sh:node shape {:?}",
+                        value_node_to_check, self.shape
+                    ));
+                }
+                Err(e) => {
+                    // An error occurred during the conformance check itself.
+                    return Err(format!(
+                        "Error checking conformance for sh:node shape {:?}: {}",
+                        self.shape, e
+                    ));
+                }
+            }
+        }
+
+        // All value_nodes successfully conformed to the target_node_shape.
+        Ok(ComponentValidationResult::Pass(component_id))
     }
 }
 
