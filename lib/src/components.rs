@@ -707,7 +707,7 @@ impl Component {
             Component::PatternConstraint(comp) => comp.validate(component_id, c, context),
             Component::LanguageInConstraint(comp) => comp.validate(component_id, c, context),
             Component::UniqueLangConstraint(comp) => comp.validate(component_id, c, context),
-            //Component::EqualsConstraint(c) => c.validate(component_id, c, context),
+            //Component::EqualsConstraint(comp) => comp.validate(component_id, c, context),
             //Component::DisjointConstraint(c) => c.validate(component_id, c, context),
             //Component::LessThanConstraint(c) => c.validate(component_id, c, context),
             //Component::LessThanOrEqualsConstraint(c) => c.validate(component_id, c, context),
