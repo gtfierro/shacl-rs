@@ -1,4 +1,5 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
+use crate::components::ToSubjectRef;
 use crate::named_nodes::SHACL;
 use crate::types::ComponentID;
 use oxigraph::model::{Term, TermRef};
