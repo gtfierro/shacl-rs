@@ -707,6 +707,7 @@ impl Component {
             Component::AndConstraint(comp) => comp.validate(component_id, c, context),
             Component::OrConstraint(comp) => comp.validate(component_id, c, context),
             Component::XoneConstraint(comp) => comp.validate(component_id, c, context),
+            Component::HasValueConstraint(comp) => comp.validate(component_id, c, context),
             //Component::ClosedConstraint(_) |
                 // Other components that do not have validate method
                 // For components without specific validation logic, or structural ones, consider them as passing.
@@ -1873,6 +1874,37 @@ impl GraphvizOutput for HasValueConstraintComponent {
             component_id.to_graphviz_id(),
             format_term_for_label(&self.value)
         )
+    }
+}
+
+impl ValidateComponent for HasValueConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &Context,
+        _validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        match c.value_nodes() {
+            Some(value_nodes) => {
+                if value_nodes.iter().any(|vn| vn == &self.value) {
+                    // At least one value node is equal to self.value
+                    Ok(ComponentValidationResult::Pass(component_id))
+                } else {
+                    // No value node is equal to self.value
+                    Err(format!(
+                        "None of the value nodes {:?} are equal to the required value {:?}",
+                        value_nodes, self.value
+                    ))
+                }
+            }
+            None => {
+                // No value nodes present, so self.value cannot be among them.
+                Err(format!(
+                    "No value nodes found to check against required value {:?}",
+                    self.value
+                ))
+            }
+        }
     }
 }
 
