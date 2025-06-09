@@ -1,7 +1,7 @@
 use crate::context::{sanitize_graphviz_string, Context, ValidationContext};
 use crate::types::ComponentID;
 use oxigraph::model::TermRef;
-use regex::Regex;
+// Removed: use regex::Regex; 
 use std::collections::HashSet;
 
 use super::{ComponentValidationResult, GraphvizOutput, ValidateComponent};
@@ -48,7 +48,7 @@ impl ValidateComponent for MinLengthConstraintComponent {
                             vn
                         ));
                     }
-                    TermRef::IRI(iri) => iri.as_str().chars().count(),
+                    TermRef::NamedNode(nn) => nn.as_str().chars().count(),
                     TermRef::Literal(literal) => literal.value().chars().count(),
                     _ => {
                         return Err(format!(
@@ -110,7 +110,7 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                             vn
                         ));
                     }
-                    TermRef::IRI(iri) => iri.as_str().chars().count(),
+                    TermRef::NamedNode(nn) => nn.as_str().chars().count(),
                     TermRef::Literal(literal) => literal.value().chars().count(),
                      _ => {
                         return Err(format!(
@@ -195,7 +195,7 @@ impl ValidateComponent for PatternConstraintComponent {
                             vn
                         ));
                     }
-                    TermRef::IRI(iri) => iri.as_str().to_string(),
+                    TermRef::NamedNode(nn) => nn.as_str().to_string(),
                     TermRef::Literal(literal) => literal.value().to_string(),
                     _ => {
                         return Err(format!("Unexpected term type for pattern check: {:?}", vn));

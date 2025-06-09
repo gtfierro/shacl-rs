@@ -1,6 +1,6 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::types::{ComponentID, PropShapeID, ID};
-use oxigraph::model::Term; // For Graphviz labels if term not found
+// Removed: use oxigraph::model::Term; 
 
 use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult, check_conformance_for_node};
 

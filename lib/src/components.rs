@@ -1,10 +1,10 @@
-use crate::context::{format_term_for_label, sanitize_graphviz_string, Context, ValidationContext};
+use crate::context::{Context, ValidationContext}; // Removed format_term_for_label, sanitize_graphviz_string
 use crate::named_nodes::SHACL;
 use crate::report::ValidationReportBuilder;
-use crate::shape::{NodeShape, PropertyShape};
-use crate::types::{ComponentID, PropShapeID, ID};
+use crate::shape::NodeShape; // Removed PropertyShape
+use crate::types::{ComponentID, ID}; // Removed PropShapeID
 use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef};
-use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
+// Removed Query, QueryOptions, QueryResults, Variable from oxigraph::sparql
 use std::collections::HashMap;
 
 mod cardinality;
