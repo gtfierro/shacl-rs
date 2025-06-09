@@ -98,6 +98,12 @@ pub struct DatatypeConstraintComponent {
     datatype: Term,
 }
 
+impl DatatypeConstraintComponent {
+    pub fn new(datatype: Term) -> Self {
+        DatatypeConstraintComponent { datatype }
+    }
+}
+
 impl ValidateComponent for DatatypeConstraintComponent {
     fn validate(
         &self,
@@ -154,6 +160,12 @@ impl GraphvizOutput for DatatypeConstraintComponent {
 #[derive(Debug)]
 pub struct NodeKindConstraintComponent {
     node_kind: Term,
+}
+
+impl NodeKindConstraintComponent {
+    pub fn new(node_kind: Term) -> Self {
+        NodeKindConstraintComponent { node_kind }
+    }
 }
 
 impl ValidateComponent for NodeKindConstraintComponent {

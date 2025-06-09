@@ -10,6 +10,12 @@ pub struct EqualsConstraintComponent {
     property: Term, // Should be an IRI
 }
 
+impl EqualsConstraintComponent {
+    pub fn new(property: Term) -> Self {
+        EqualsConstraintComponent { property }
+    }
+}
+
 impl GraphvizOutput for EqualsConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -28,6 +34,12 @@ impl GraphvizOutput for EqualsConstraintComponent {
 #[derive(Debug)]
 pub struct DisjointConstraintComponent {
     property: Term, // Should be an IRI
+}
+
+impl DisjointConstraintComponent {
+    pub fn new(property: Term) -> Self {
+        DisjointConstraintComponent { property }
+    }
 }
 
 impl GraphvizOutput for DisjointConstraintComponent {
@@ -50,6 +62,12 @@ pub struct LessThanConstraintComponent {
     property: Term, // Should be an IRI
 }
 
+impl LessThanConstraintComponent {
+    pub fn new(property: Term) -> Self {
+        LessThanConstraintComponent { property }
+    }
+}
+
 impl GraphvizOutput for LessThanConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -68,6 +86,12 @@ impl GraphvizOutput for LessThanConstraintComponent {
 #[derive(Debug)]
 pub struct LessThanOrEqualsConstraintComponent {
     property: Term, // Should be an IRI
+}
+
+impl LessThanOrEqualsConstraintComponent {
+    pub fn new(property: Term) -> Self {
+        LessThanOrEqualsConstraintComponent { property }
+    }
 }
 
 impl GraphvizOutput for LessThanOrEqualsConstraintComponent {

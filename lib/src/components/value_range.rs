@@ -10,6 +10,12 @@ pub struct MinExclusiveConstraintComponent {
     min_exclusive: Term,
 }
 
+impl MinExclusiveConstraintComponent {
+    pub fn new(min_exclusive: Term) -> Self {
+        MinExclusiveConstraintComponent { min_exclusive }
+    }
+}
+
 impl GraphvizOutput for MinExclusiveConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -27,6 +33,12 @@ impl GraphvizOutput for MinExclusiveConstraintComponent {
 #[derive(Debug)]
 pub struct MinInclusiveConstraintComponent {
     min_inclusive: Term,
+}
+
+impl MinInclusiveConstraintComponent {
+    pub fn new(min_inclusive: Term) -> Self {
+        MinInclusiveConstraintComponent { min_inclusive }
+    }
 }
 
 impl GraphvizOutput for MinInclusiveConstraintComponent {
@@ -48,6 +60,12 @@ pub struct MaxExclusiveConstraintComponent {
     max_exclusive: Term,
 }
 
+impl MaxExclusiveConstraintComponent {
+    pub fn new(max_exclusive: Term) -> Self {
+        MaxExclusiveConstraintComponent { max_exclusive }
+    }
+}
+
 impl GraphvizOutput for MaxExclusiveConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -65,6 +83,12 @@ impl GraphvizOutput for MaxExclusiveConstraintComponent {
 #[derive(Debug)]
 pub struct MaxInclusiveConstraintComponent {
     max_inclusive: Term,
+}
+
+impl MaxInclusiveConstraintComponent {
+    pub fn new(max_inclusive: Term) -> Self {
+        MaxInclusiveConstraintComponent { max_inclusive }
+    }
 }
 
 impl GraphvizOutput for MaxInclusiveConstraintComponent {

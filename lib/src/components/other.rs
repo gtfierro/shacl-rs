@@ -55,6 +55,15 @@ pub struct ClosedConstraintComponent {
     ignored_properties: Option<Vec<Term>>,
 }
 
+impl ClosedConstraintComponent {
+    pub fn new(closed: bool, ignored_properties: Option<Vec<Term>>) -> Self {
+        ClosedConstraintComponent {
+            closed,
+            ignored_properties,
+        }
+    }
+}
+
 impl GraphvizOutput for ClosedConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -83,6 +92,12 @@ impl GraphvizOutput for ClosedConstraintComponent {
 #[derive(Debug)]
 pub struct HasValueConstraintComponent {
     value: Term,
+}
+
+impl HasValueConstraintComponent {
+    pub fn new(value: Term) -> Self {
+        HasValueConstraintComponent { value }
+    }
 }
 
 impl GraphvizOutput for HasValueConstraintComponent {
@@ -133,6 +148,12 @@ impl ValidateComponent for HasValueConstraintComponent {
 #[derive(Debug)]
 pub struct InConstraintComponent {
     values: Vec<Term>,
+}
+
+impl InConstraintComponent {
+    pub fn new(values: Vec<Term>) -> Self {
+        InConstraintComponent { values }
+    }
 }
 
 impl GraphvizOutput for InConstraintComponent {

@@ -8,6 +8,12 @@ pub struct MinCountConstraintComponent {
     min_count: u64,
 }
 
+impl MinCountConstraintComponent {
+    pub fn new(min_count: u64) -> Self {
+        MinCountConstraintComponent { min_count }
+    }
+}
+
 impl GraphvizOutput for MinCountConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -43,6 +49,12 @@ impl ValidateComponent for MinCountConstraintComponent {
 #[derive(Debug)]
 pub struct MaxCountConstraintComponent {
     max_count: u64,
+}
+
+impl MaxCountConstraintComponent {
+    pub fn new(max_count: u64) -> Self {
+        MaxCountConstraintComponent { max_count }
+    }
 }
 
 impl GraphvizOutput for MaxCountConstraintComponent {

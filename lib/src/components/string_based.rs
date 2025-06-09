@@ -9,6 +9,12 @@ pub struct MinLengthConstraintComponent {
     min_length: u64,
 }
 
+impl MinLengthConstraintComponent {
+    pub fn new(min_length: u64) -> Self {
+        MinLengthConstraintComponent { min_length }
+    }
+}
+
 impl GraphvizOutput for MinLengthConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -26,6 +32,12 @@ impl GraphvizOutput for MinLengthConstraintComponent {
 #[derive(Debug)]
 pub struct MaxLengthConstraintComponent {
     max_length: u64,
+}
+
+impl MaxLengthConstraintComponent {
+    pub fn new(max_length: u64) -> Self {
+        MaxLengthConstraintComponent { max_length }
+    }
 }
 
 impl GraphvizOutput for MaxLengthConstraintComponent {
@@ -46,6 +58,12 @@ impl GraphvizOutput for MaxLengthConstraintComponent {
 pub struct PatternConstraintComponent {
     pattern: String,
     flags: Option<String>,
+}
+
+impl PatternConstraintComponent {
+    pub fn new(pattern: String, flags: Option<String>) -> Self {
+        PatternConstraintComponent { pattern, flags }
+    }
 }
 
 impl GraphvizOutput for PatternConstraintComponent {
@@ -69,6 +87,12 @@ pub struct LanguageInConstraintComponent {
     languages: Vec<String>,
 }
 
+impl LanguageInConstraintComponent {
+    pub fn new(languages: Vec<String>) -> Self {
+        LanguageInConstraintComponent { languages }
+    }
+}
+
 impl GraphvizOutput for LanguageInConstraintComponent {
     fn to_graphviz_string(
         &self,
@@ -86,6 +110,12 @@ impl GraphvizOutput for LanguageInConstraintComponent {
 #[derive(Debug)]
 pub struct UniqueLangConstraintComponent {
     unique_lang: bool,
+}
+
+impl UniqueLangConstraintComponent {
+    pub fn new(unique_lang: bool) -> Self {
+        UniqueLangConstraintComponent { unique_lang }
+    }
 }
 
 impl GraphvizOutput for UniqueLangConstraintComponent {

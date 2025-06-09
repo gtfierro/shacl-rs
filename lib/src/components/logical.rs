@@ -9,6 +9,12 @@ pub struct NotConstraintComponent {
     shape: ID, // NodeShape ID
 }
 
+impl NotConstraintComponent {
+    pub fn new(shape: ID) -> Self {
+        NotConstraintComponent { shape }
+    }
+}
+
 impl GraphvizOutput for NotConstraintComponent {
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shape_term_str = context
@@ -91,6 +97,12 @@ pub struct AndConstraintComponent {
     shapes: Vec<ID>, // List of NodeShape IDs
 }
 
+impl AndConstraintComponent {
+    pub fn new(shapes: Vec<ID>) -> Self {
+        AndConstraintComponent { shapes }
+    }
+}
+
 impl GraphvizOutput for AndConstraintComponent {
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let mut edges = String::new();
@@ -167,6 +179,12 @@ impl ValidateComponent for AndConstraintComponent {
 #[derive(Debug)]
 pub struct OrConstraintComponent {
     shapes: Vec<ID>, // List of NodeShape IDs
+}
+
+impl OrConstraintComponent {
+    pub fn new(shapes: Vec<ID>) -> Self {
+        OrConstraintComponent { shapes }
+    }
 }
 
 impl GraphvizOutput for OrConstraintComponent {
@@ -260,6 +278,12 @@ impl ValidateComponent for OrConstraintComponent {
 #[derive(Debug)]
 pub struct XoneConstraintComponent {
     shapes: Vec<ID>, // List of NodeShape IDs
+}
+
+impl XoneConstraintComponent {
+    pub fn new(shapes: Vec<ID>) -> Self {
+        XoneConstraintComponent { shapes }
+    }
 }
 
 impl GraphvizOutput for XoneConstraintComponent {

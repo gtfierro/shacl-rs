@@ -95,9 +95,9 @@ pub fn parse_components(
     if let Some(datatype_terms) = pred_obj_pairs.get(&shacl.datatype.into_owned()) {
         for datatype_term in datatype_terms {
             // datatype_term is &Term
-            let component = Component::DatatypeConstraint(DatatypeConstraintComponent {
-                datatype: datatype_term.clone(),
-            });
+            let component = Component::DatatypeConstraint(DatatypeConstraintComponent::new(
+                datatype_term.clone(),
+            ));
             let component_id = context.get_or_create_component_id(datatype_term.clone());
             new_components.insert(component_id, component);
         }
@@ -106,9 +106,9 @@ pub fn parse_components(
     if let Some(node_kind_terms) = pred_obj_pairs.get(&shacl.node_kind.into_owned()) {
         for node_kind_term in node_kind_terms {
             // node_kind_term is &Term
-            let component = Component::NodeKindConstraint(NodeKindConstraintComponent {
-                node_kind: node_kind_term.clone(),
-            });
+            let component = Component::NodeKindConstraint(NodeKindConstraintComponent::new(
+                node_kind_term.clone(),
+            ));
             let component_id = context.get_or_create_component_id(node_kind_term.clone());
             new_components.insert(component_id, component);
         }
@@ -119,9 +119,8 @@ pub fn parse_components(
         for node_term in node_terms {
             // node_term is &Term
             let target_shape_id = context.get_or_create_node_id(node_term.clone());
-            let component = Component::NodeConstraint(NodeConstraintComponent {
-                shape: target_shape_id,
-            });
+            let component =
+                Component::NodeConstraint(NodeConstraintComponent::new(target_shape_id));
             let component_id = context.get_or_create_component_id(node_term.clone());
             new_components.insert(component_id, component);
         }
@@ -132,9 +131,9 @@ pub fn parse_components(
         for property_term in property_terms {
             // property_term is &Term
             let target_shape_id = context.get_or_create_prop_id(property_term.clone());
-            let component = Component::PropertyConstraint(PropertyConstraintComponent {
-                shape: target_shape_id,
-            });
+            let component = Component::PropertyConstraint(PropertyConstraintComponent::new(
+                target_shape_id,
+            ));
             let component_id = context.get_or_create_component_id(property_term.clone());
             new_components.insert(component_id, component);
         }
@@ -146,9 +145,8 @@ pub fn parse_components(
             // min_count_term is &Term
             if let Term::Literal(lit) = min_count_term {
                 if let Ok(min_count_val) = lit.value().parse::<u64>() {
-                    let component = Component::MinCount(MinCountConstraintComponent {
-                        min_count: min_count_val,
-                    });
+                    let component =
+                        Component::MinCount(MinCountConstraintComponent::new(min_count_val));
                     let component_id = context.get_or_create_component_id(min_count_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -161,9 +159,8 @@ pub fn parse_components(
             // max_count_term is &Term
             if let Term::Literal(lit) = max_count_term {
                 if let Ok(max_count_val) = lit.value().parse::<u64>() {
-                    let component = Component::MaxCount(MaxCountConstraintComponent {
-                        max_count: max_count_val,
-                    });
+                    let component =
+                        Component::MaxCount(MaxCountConstraintComponent::new(max_count_val));
                     let component_id = context.get_or_create_component_id(max_count_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -176,10 +173,9 @@ pub fn parse_components(
         for min_exclusive_term in min_exclusive_terms {
             // min_exclusive_term is &Term
             if let Term::Literal(_lit) = min_exclusive_term {
-                let component =
-                    Component::MinExclusiveConstraint(MinExclusiveConstraintComponent {
-                        min_exclusive: min_exclusive_term.clone(),
-                    });
+                let component = Component::MinExclusiveConstraint(
+                    MinExclusiveConstraintComponent::new(min_exclusive_term.clone()),
+                );
                 let component_id = context.get_or_create_component_id(min_exclusive_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -190,10 +186,9 @@ pub fn parse_components(
         for min_inclusive_term in min_inclusive_terms {
             // min_inclusive_term is &Term
             if let Term::Literal(_lit) = min_inclusive_term {
-                let component =
-                    Component::MinInclusiveConstraint(MinInclusiveConstraintComponent {
-                        min_inclusive: min_inclusive_term.clone(),
-                    });
+                let component = Component::MinInclusiveConstraint(
+                    MinInclusiveConstraintComponent::new(min_inclusive_term.clone()),
+                );
                 let component_id = context.get_or_create_component_id(min_inclusive_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -204,10 +199,9 @@ pub fn parse_components(
         for max_exclusive_term in max_exclusive_terms {
             // max_exclusive_term is &Term
             if let Term::Literal(_lit) = max_exclusive_term {
-                let component =
-                    Component::MaxExclusiveConstraint(MaxExclusiveConstraintComponent {
-                        max_exclusive: max_exclusive_term.clone(),
-                    });
+                let component = Component::MaxExclusiveConstraint(
+                    MaxExclusiveConstraintComponent::new(max_exclusive_term.clone()),
+                );
                 let component_id = context.get_or_create_component_id(max_exclusive_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -218,10 +212,9 @@ pub fn parse_components(
         for max_inclusive_term in max_inclusive_terms {
             // max_inclusive_term is &Term
             if let Term::Literal(_lit) = max_inclusive_term {
-                let component =
-                    Component::MaxInclusiveConstraint(MaxInclusiveConstraintComponent {
-                        max_inclusive: max_inclusive_term.clone(),
-                    });
+                let component = Component::MaxInclusiveConstraint(
+                    MaxInclusiveConstraintComponent::new(max_inclusive_term.clone()),
+                );
                 let component_id = context.get_or_create_component_id(max_inclusive_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -234,9 +227,9 @@ pub fn parse_components(
             // min_length_term is &Term
             if let Term::Literal(lit) = min_length_term {
                 if let Ok(min_length_val) = lit.value().parse::<u64>() {
-                    let component = Component::MinLengthConstraint(MinLengthConstraintComponent {
-                        min_length: min_length_val,
-                    });
+                    let component = Component::MinLengthConstraint(
+                        MinLengthConstraintComponent::new(min_length_val),
+                    );
                     let component_id = context.get_or_create_component_id(min_length_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -249,9 +242,9 @@ pub fn parse_components(
             // max_length_term is &Term
             if let Term::Literal(lit) = max_length_term {
                 if let Ok(max_length_val) = lit.value().parse::<u64>() {
-                    let component = Component::MaxLengthConstraint(MaxLengthConstraintComponent {
-                        max_length: max_length_val,
-                    });
+                    let component = Component::MaxLengthConstraint(
+                        MaxLengthConstraintComponent::new(max_length_val),
+                    );
                     let component_id = context.get_or_create_component_id(max_length_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -274,10 +267,10 @@ pub fn parse_components(
                         None
                     }
                 });
-            let component = Component::PatternConstraint(PatternConstraintComponent {
-                pattern: pattern_str,
-                flags: flags_str,
-            });
+            let component = Component::PatternConstraint(PatternConstraintComponent::new(
+                pattern_str,
+                flags_str,
+            ));
             let component_id = context.get_or_create_component_id(pattern_term.clone());
             new_components.insert(component_id, component);
         }
@@ -299,8 +292,9 @@ pub fn parse_components(
                 })
                 .collect();
 
-            let component =
-                Component::LanguageInConstraint(LanguageInConstraintComponent { languages });
+            let component = Component::LanguageInConstraint(LanguageInConstraintComponent::new(
+                languages,
+            ));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
@@ -311,10 +305,9 @@ pub fn parse_components(
             // unique_lang_term is &Term
             if let Term::Literal(lit) = unique_lang_term {
                 if let Ok(unique_lang_val) = lit.value().parse::<bool>() {
-                    let component =
-                        Component::UniqueLangConstraint(UniqueLangConstraintComponent {
-                            unique_lang: unique_lang_val,
-                        });
+                    let component = Component::UniqueLangConstraint(
+                        UniqueLangConstraintComponent::new(unique_lang_val),
+                    );
                     let component_id = context.get_or_create_component_id(unique_lang_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -327,9 +320,9 @@ pub fn parse_components(
         for equals_term in equals_terms {
             // equals_term is &Term
             if let Term::NamedNode(_nn) = equals_term {
-                let component = Component::EqualsConstraint(EqualsConstraintComponent {
-                    property: equals_term.clone(),
-                });
+                let component = Component::EqualsConstraint(EqualsConstraintComponent::new(
+                    equals_term.clone(),
+                ));
                 let component_id = context.get_or_create_component_id(equals_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -340,9 +333,9 @@ pub fn parse_components(
         for disjoint_term in disjoint_terms {
             // disjoint_term is &Term
             if let Term::NamedNode(_nn) = disjoint_term {
-                let component = Component::DisjointConstraint(DisjointConstraintComponent {
-                    property: disjoint_term.clone(),
-                });
+                let component = Component::DisjointConstraint(DisjointConstraintComponent::new(
+                    disjoint_term.clone(),
+                ));
                 let component_id = context.get_or_create_component_id(disjoint_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -353,9 +346,9 @@ pub fn parse_components(
         for less_than_term in less_than_terms {
             // less_than_term is &Term
             if let Term::NamedNode(_nn) = less_than_term {
-                let component = Component::LessThanConstraint(LessThanConstraintComponent {
-                    property: less_than_term.clone(),
-                });
+                let component = Component::LessThanConstraint(LessThanConstraintComponent::new(
+                    less_than_term.clone(),
+                ));
                 let component_id = context.get_or_create_component_id(less_than_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -368,10 +361,9 @@ pub fn parse_components(
         for less_than_or_equals_term in less_than_or_equals_terms {
             // less_than_or_equals_term is &Term
             if let Term::NamedNode(_nn) = less_than_or_equals_term {
-                let component =
-                    Component::LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent {
-                        property: less_than_or_equals_term.clone(),
-                    });
+                let component = Component::LessThanOrEqualsConstraint(
+                    LessThanOrEqualsConstraintComponent::new(less_than_or_equals_term.clone()),
+                );
                 let component_id =
                     context.get_or_create_component_id(less_than_or_equals_term.clone());
                 new_components.insert(component_id, component);
@@ -384,9 +376,8 @@ pub fn parse_components(
         for not_term in not_terms {
             // not_term is &Term
             let negated_shape_id = context.get_or_create_node_id(not_term.clone());
-            let component = Component::NotConstraint(NotConstraintComponent {
-                shape: negated_shape_id,
-            });
+            let component =
+                Component::NotConstraint(NotConstraintComponent::new(negated_shape_id));
             let component_id = context.get_or_create_component_id(not_term.clone());
             new_components.insert(component_id, component);
         }
@@ -400,7 +391,7 @@ pub fn parse_components(
                 .iter() // Iterates over &Term
                 .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
-            let component = Component::AndConstraint(AndConstraintComponent { shapes: shape_ids });
+            let component = Component::AndConstraint(AndConstraintComponent::new(shape_ids));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
@@ -414,7 +405,7 @@ pub fn parse_components(
                 .iter()
                 .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
-            let component = Component::OrConstraint(OrConstraintComponent { shapes: shape_ids });
+            let component = Component::OrConstraint(OrConstraintComponent::new(shape_ids));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
@@ -428,8 +419,7 @@ pub fn parse_components(
                 .iter()
                 .map(|term| context.get_or_create_node_id(term.clone()))
                 .collect();
-            let component =
-                Component::XoneConstraint(XoneConstraintComponent { shapes: shape_ids });
+            let component = Component::XoneConstraint(XoneConstraintComponent::new(shape_ids));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
@@ -479,12 +469,12 @@ pub fn parse_components(
             });
 
         let shape_id = context.get_or_create_node_id(qvs_term.clone());
-        let component = Component::QualifiedValueShape(QualifiedValueShapeComponent {
-            shape: shape_id,
-            min_count: q_min_count_opt,
-            max_count: q_max_count_opt,
-            disjoint: q_disjoint_opt,
-        });
+        let component = Component::QualifiedValueShape(QualifiedValueShapeComponent::new(
+            shape_id,
+            q_min_count_opt,
+            q_max_count_opt,
+            q_disjoint_opt,
+        ));
         let component_id = context.get_or_create_component_id(qvs_term); // qvs_term is Term
         new_components.insert(component_id, component);
     }
@@ -513,14 +503,14 @@ pub fn parse_components(
                             Vec::new()
                         };
 
-                    let component = Component::ClosedConstraint(ClosedConstraintComponent {
-                        closed: closed_val,
-                        ignored_properties: if ignored_properties_terms.is_empty() {
+                    let component = Component::ClosedConstraint(ClosedConstraintComponent::new(
+                        closed_val,
+                        if ignored_properties_terms.is_empty() {
                             None
                         } else {
                             Some(ignored_properties_terms)
                         },
-                    });
+                    ));
                     let component_id = context.get_or_create_component_id(closed_term.clone());
                     new_components.insert(component_id, component);
                 }
@@ -532,9 +522,9 @@ pub fn parse_components(
     if let Some(has_value_terms) = pred_obj_pairs.get(&shacl.has_value.into_owned()) {
         for has_value_term in has_value_terms {
             // has_value_term is &Term
-            let component = Component::HasValueConstraint(HasValueConstraintComponent {
-                value: has_value_term.clone(),
-            });
+            let component = Component::HasValueConstraint(HasValueConstraintComponent::new(
+                has_value_term.clone(),
+            ));
             let component_id = context.get_or_create_component_id(has_value_term.clone());
             new_components.insert(component_id, component);
         }
@@ -547,7 +537,7 @@ pub fn parse_components(
             let list_items = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
             let values: Vec<Term> = list_items.into_iter().collect(); // Already Vec<Term>
 
-            let component = Component::InConstraint(InConstraintComponent { values });
+            let component = Component::InConstraint(InConstraintComponent::new(values));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }

@@ -9,6 +9,12 @@ pub struct NodeConstraintComponent {
     shape: ID,
 }
 
+impl NodeConstraintComponent {
+    pub fn new(shape: ID) -> Self {
+        NodeConstraintComponent { shape }
+    }
+}
+
 impl GraphvizOutput for NodeConstraintComponent {
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shape_term_str = context
@@ -96,6 +102,10 @@ pub struct PropertyConstraintComponent {
 }
 
 impl PropertyConstraintComponent {
+    pub fn new(shape: PropShapeID) -> Self {
+        PropertyConstraintComponent { shape }
+    }
+
     pub fn shape(&self) -> &PropShapeID {
         &self.shape
     }
@@ -149,6 +159,22 @@ pub struct QualifiedValueShapeComponent {
     min_count: Option<u64>,
     max_count: Option<u64>,
     disjoint: Option<bool>,
+}
+
+impl QualifiedValueShapeComponent {
+    pub fn new(
+        shape: ID,
+        min_count: Option<u64>,
+        max_count: Option<u64>,
+        disjoint: Option<bool>,
+    ) -> Self {
+        QualifiedValueShapeComponent {
+            shape,
+            min_count,
+            max_count,
+            disjoint,
+        }
+    }
 }
 
 impl GraphvizOutput for QualifiedValueShapeComponent {
