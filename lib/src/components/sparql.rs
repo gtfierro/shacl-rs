@@ -6,7 +6,7 @@ use crate::named_nodes::SHACL;
 use crate::types::ComponentID;
 use oxigraph::model::vocab::xsd;
 use oxigraph::model::{Literal, Term};
-use oxigraph::sparql::{Query, QueryOptions, QueryResults, QuerySolution, Variable};
+use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 
 #[derive(Debug, Clone)]
 pub struct SPARQLConstraintComponent {
@@ -137,17 +137,21 @@ impl ValidateComponent for SPARQLConstraintComponent {
         })?;
 
         // 5. Pre-bind variables
-        let mut initial_bindings = QuerySolution::new();
-        initial_bindings.set(Variable::new_unchecked("this"), c.focus_node().clone());
-        let options = QueryOptions::default().with_initial_bindings(initial_bindings);
+        let substitutions = vec![(
+            Variable::new_unchecked("this"),
+            c.focus_node().clone(),
+        )];
 
         // 6. Execute query
-        let results = context.store().query_opt(query, options).map_err(|e| {
-            format!(
-                "Failed to execute SPARQL constraint query for {:?}: {}",
-                self.constraint_node, e
-            )
-        })?;
+        let results = context
+            .store()
+            .query_opt_with_substituted_variables(query, QueryOptions::default(), substitutions)
+            .map_err(|e| {
+                format!(
+                    "Failed to execute SPARQL constraint query for {:?}: {}",
+                    self.constraint_node, e
+                )
+            })?;
 
         // 7. Process results
         if let QueryResults::Solutions(solutions) = results {

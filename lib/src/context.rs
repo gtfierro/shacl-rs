@@ -1,11 +1,12 @@
 use crate::components::{parse_components, Component, ToSubjectRef}; // Added Component
-use crate::named_nodes::{RDF, SHACL, RDFS, OWL};
+use crate::named_nodes::{OWL, RDFS, RDF, SHACL};
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID, TermID, Severity};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, TermID, ID};
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{GraphName, GraphNameRef, NamedNode, SubjectRef, Term, TermRef, QuadRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
+use oxigraph::model::{GraphName, GraphNameRef, NamedNode, QuadRef, SubjectRef, Term, TermRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
 use oxigraph::store::Store; // Added Store
+use papaya::HashMap as FastMap;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -13,9 +14,7 @@ use std::fs::File;
 use std::hash::Hash;
 use std::io::BufReader;
 use std::path::Path;
-use papaya::HashMap as FastMap;
 use xxhash_rust::xxh3::xxh3_64;
-
 
 const SHAPE_GRAPH_IRI: &str = "urn:shape_graph";
 const DATA_GRAPH_IRI: &str = "urn:data_graph";
@@ -51,7 +50,7 @@ pub(crate) fn format_term_for_label(term: &Term) -> String {
         }
         Term::BlankNode(_bn) => "bnode".to_string(),
         Term::Literal(lit) => lit.value().to_string().replace('"', "\\\""), // Escape quotes for DOT language
-        Term::Triple(_t) => "rdf_triple".to_string(),                       // Handle Triple case
+        Term::Triple(_t) => "rdf_triple".to_string(), // Handle Triple case
     }
 }
 
@@ -195,7 +194,9 @@ impl ValidationContext {
                 .borrow()
                 .id_to_term
                 .get(pshape.identifier())
-                .ok_or_else(|| format!("Missing term for propshape ID: {:?}", pshape.identifier()))?
+                .ok_or_else(|| {
+                    format!("Missing term for propshape ID: {:?}", pshape.identifier())
+                })?
                 .clone();
             // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above)
             // is not used for the label. We use the path term for the label as it's generally more informative.
@@ -323,10 +324,12 @@ impl ValidationContext {
         }
 
         // - ? sh:property <pshape>
-        for quad_res in
-            self.store
-                .quads_for_pattern(None, Some(sh.property), None, Some(shape_graph_name_ref))
-        {
+        for quad_res in self.store.quads_for_pattern(
+            None,
+            Some(sh.property),
+            None,
+            Some(shape_graph_name_ref),
+        ) {
             if let Ok(quad) = quad_res {
                 prop_shapes.insert(quad.object); // quad.object is Term
             }
@@ -364,10 +367,12 @@ impl ValidationContext {
         }
 
         // ? sh:node <shape>
-        for quad_res in
-            self.store
-                .quads_for_pattern(None, Some(shacl.node), None, Some(shape_graph_name_ref))
-        {
+        for quad_res in self.store.quads_for_pattern(
+            None,
+            Some(shacl.node),
+            None,
+            Some(shape_graph_name_ref),
+        ) {
             if let Ok(quad) = quad_res {
                 node_shapes.insert(quad.object);
             }
@@ -449,12 +454,15 @@ impl ValidationContext {
         let shape_graph_name = GraphName::NamedNode(self.shape_graph_iri.clone());
 
         // get the targets
-        let mut targets: Vec<Target> = self
+        let mut targets: Vec<crate::types::Target> = self
             .store
             .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name.as_ref()))
             .filter_map(Result::ok)
             .filter_map(|quad| {
-                Target::from_predicate_object(quad.predicate.as_ref(), quad.object.as_ref())
+                crate::types::Target::from_predicate_object(
+                    quad.predicate.as_ref(),
+                    quad.object.as_ref(),
+                )
             })
             .collect();
 
@@ -464,28 +472,27 @@ impl ValidationContext {
         let rdf = RDF::new();
         let rdfs = RDFS::new();
         let owl = OWL::new();
-        let is_rdfs_class = self.store.contains(
-            QuadRef::new(
+        let is_rdfs_class = self
+            .store
+            .contains(QuadRef::new(
                 subject,
                 rdf.type_,
                 rdfs.class,
                 shape_graph_name.as_ref(),
-            ),
-        ).map_err(|e| e.to_string())?;
-        let is_owl_class = self.store.contains(
-            QuadRef::new(
+            ))
+            .map_err(|e| e.to_string())?;
+        let is_owl_class = self
+            .store
+            .contains(QuadRef::new(
                 subject,
                 rdf.type_,
                 owl.class,
                 shape_graph_name.as_ref(),
-            ),
-        ).map_err(|e| e.to_string())?;
+            ))
+            .map_err(|e| e.to_string())?;
         if is_rdfs_class || is_owl_class {
-            targets.push(Target::Class(subject.into()));
+            targets.push(crate::types::Target::Class(subject.into()));
         }
-
-
-
 
         // get constraint components
         // parse_components will internally use context.store() and context.shape_graph_iri_ref()
@@ -509,12 +516,17 @@ impl ValidationContext {
             .collect();
         // TODO: property_shapes are collected but not used in NodeShape::new. This might be an existing oversight or for future use.
 
-        let severity_term_opt = self.store.quads_for_pattern(
-            Some(subject),
-            Some(sh.severity),
-            None,
-            Some(shape_graph_name.as_ref())
-        ).filter_map(Result::ok).map(|q| q.object).next();
+        let severity_term_opt = self
+            .store
+            .quads_for_pattern(
+                Some(subject),
+                Some(sh.severity),
+                None,
+                Some(shape_graph_name.as_ref()),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .next();
 
         let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
 
@@ -553,12 +565,17 @@ impl ValidationContext {
             self.components.insert(component_id, component);
         }
 
-        let severity_term_opt = self.store.quads_for_pattern(
-            Some(subject),
-            Some(shacl.severity),
-            None,
-            Some(ps_shape_graph_name.as_ref()),
-        ).filter_map(Result::ok).map(|q| q.object).next();
+        let severity_term_opt = self
+            .store
+            .quads_for_pattern(
+                Some(subject),
+                Some(shacl.severity),
+                None,
+                Some(ps_shape_graph_name.as_ref()),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .next();
 
         let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
 
@@ -570,7 +587,7 @@ impl ValidationContext {
     // Helper function to recursively parse SHACL paths
     fn parse_shacl_path_recursive(&self, path_term_ref: TermRef) -> Result<PShapePath, String> {
         let shacl = SHACL::new();
-        let rdf = RDF::new();
+        let _rdf = RDF::new();
         let shape_graph_name_ref = self.shape_graph_iri_ref();
 
         // Check for sh:inversePath
@@ -663,14 +680,13 @@ impl ValidationContext {
         }
 
         let seq_paths_terms = self.parse_rdf_list(path_term_ref.into_owned());
-        if seq_paths_terms.len() > 0 {
+        if !seq_paths_terms.is_empty() {
             let seq_paths: Result<Vec<PShapePath>, String> = seq_paths_terms
                 .iter()
                 .map(|term| self.parse_shacl_path_recursive(term.as_ref()))
                 .collect();
             return Ok(PShapePath::Sequence(seq_paths?));
         }
-        
 
         // If it's not a complex path node, it must be a simple path (an IRI)
         match path_term_ref {
@@ -678,7 +694,6 @@ impl ValidationContext {
             _ => Err(format!("Expected an IRI for a simple path or a blank node for a complex path, found: {:?}", path_term_ref)),
         }
     }
-
 
     // Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
     pub fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
@@ -748,16 +763,22 @@ impl ValidationContext {
 
     /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
     pub fn get_or_create_node_id(&self, term: Term) -> ID {
-        self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
+        self.nodeshape_id_lookup
+            .borrow_mut()
+            .get_or_create_id(term)
     }
 
     pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
-        self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
+        self.propshape_id_lookup
+            .borrow_mut()
+            .get_or_create_id(term)
     }
 
     /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
     pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
-        self.component_id_lookup.borrow_mut().get_or_create_id(term)
+        self.component_id_lookup
+            .borrow_mut()
+            .get_or_create_id(term)
     }
 
     // Getter methods for ID lookup tables
@@ -791,21 +812,33 @@ impl ValidationContext {
     pub fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
         match item {
             TraceItem::NodeShape(id) => {
-                let label = self.nodeshape_id_lookup.borrow().get_term(*id)
-                    .map_or_else(|| format!("Unknown NodeShape ID: {:?}", id), |term| format_term_for_label(term));
+                let label = self
+                    .nodeshape_id_lookup
+                    .borrow()
+                    .get_term(*id)
+                    .map_or_else(
+                        || format!("Unknown NodeShape ID: {:?}", id),
+                        |term| format_term_for_label(term),
+                    );
                 (label, "NodeShape".to_string())
             }
             TraceItem::PropertyShape(id) => {
-                let label = self.get_prop_shape_by_id(id)
-                    .map_or_else(|| format!("Unknown PropertyShape ID: {:?}", id), |ps| ps.sparql_path());
+                let label = self.get_prop_shape_by_id(id).map_or_else(
+                    || format!("Unknown PropertyShape ID: {:?}", id),
+                    |ps| ps.sparql_path(),
+                );
                 // If you prefer the PropertyShape's own identifier term as label:
                 // let label = self.propshape_id_lookup.borrow().get_term(*id)
                 //     .map_or_else(|| format!("Unknown PropertyShape ID: {:?}", id), |term| format_term_for_label(term));
                 (label, "PropertyShape".to_string())
             }
             TraceItem::Component(id) => {
-                let label = self.get_component_by_id(id)
-                    .map_or_else(|| format!("Unknown Component ID: {:?}", id), |comp| comp.label());
+                let label = self
+                    .get_component_by_id(id)
+                    .map_or_else(
+                        || format!("Unknown Component ID: {:?}", id),
+                        |comp| comp.label(),
+                    );
                 (label, "Component".to_string())
             }
         }
@@ -839,7 +872,12 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(focus_node: Term, path: Option<PShapePath>, value_nodes: Option<Vec<Term>>, source_shape: ID) -> Self {
+    pub fn new(
+        focus_node: Term,
+        path: Option<PShapePath>,
+        value_nodes: Option<Vec<Term>>,
+        source_shape: ID,
+    ) -> Self {
         Context {
             focus_node,
             path,
@@ -861,6 +899,10 @@ impl Context {
         &self.focus_node
     }
 
+    pub fn path(&self) -> Option<&PShapePath> {
+        self.path.as_ref()
+    }
+
     pub fn value_nodes(&self) -> Option<&Vec<Term>> {
         self.value_nodes.as_ref()
     }
@@ -874,7 +916,8 @@ impl Context {
     }
 
     pub fn record_property_shape_visit(&mut self, shape_id: PropShapeID) {
-        self.execution_trace.push(TraceItem::PropertyShape(shape_id));
+        self.execution_trace
+            .push(TraceItem::PropertyShape(shape_id));
     }
 
     pub fn record_component_visit(&mut self, component_id: ComponentID) {

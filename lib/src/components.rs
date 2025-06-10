@@ -4,7 +4,6 @@ use crate::report::ValidationReportBuilder;
 use crate::shape::NodeShape; // Removed PropertyShape
 use crate::types::{ComponentID, ID}; // Removed PropShapeID
 use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef};
-use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 use std::collections::HashMap;
 
 mod cardinality;

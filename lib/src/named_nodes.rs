@@ -64,6 +64,12 @@ pub struct SHACL {
     pub info: NamedNodeRef<'static>,
     pub warning: NamedNodeRef<'static>,
     pub violation: NamedNodeRef<'static>,
+
+    // SPARQL
+    pub select: NamedNodeRef<'static>,
+    pub deactivated: NamedNodeRef<'static>,
+    pub message: NamedNodeRef<'static>,
+    pub sparql: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -106,11 +112,15 @@ impl SHACL {
             xone: NamedNodeRef::new("http://www.w3.org/ns/shacl#xone").unwrap(),
             path: NamedNodeRef::new("http://www.w3.org/ns/shacl#path").unwrap(),
             inverse_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#inversePath").unwrap(),
-            alternative_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#alternativePath").unwrap(),
+            alternative_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#alternativePath")
+                .unwrap(),
             sequence_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#sequencePath").unwrap(),
-            zero_or_more_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#zeroOrMorePath").unwrap(),
-            one_or_more_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#oneOrMorePath").unwrap(),
-            zero_or_one_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#zeroOrOnePath").unwrap(),
+            zero_or_more_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#zeroOrMorePath")
+                .unwrap(),
+            one_or_more_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#oneOrMorePath")
+                .unwrap(),
+            zero_or_one_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#zeroOrOnePath")
+                .unwrap(),
 
             target_class: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetClass").unwrap(),
             target_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetNode").unwrap(),
@@ -135,8 +145,12 @@ impl SHACL {
             iri: NamedNodeRef::new("http://www.w3.org/ns/shacl#IRI").unwrap(),
             literal: NamedNodeRef::new("http://www.w3.org/ns/shacl#Literal").unwrap(),
             blank_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNode").unwrap(),
-            blank_node_or_iri: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrIRI").unwrap(),
-            blank_node_or_literal: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrLiteral").unwrap(),
+            blank_node_or_iri: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrIRI")
+                .unwrap(),
+            blank_node_or_literal: NamedNodeRef::new(
+                "http://www.w3.org/ns/shacl#BlankNodeOrLiteral",
+            )
+            .unwrap(),
             iri_or_literal: NamedNodeRef::new("http://www.w3.org/ns/shacl#IRIOrLiteral").unwrap(),
 
             // Severities
@@ -144,6 +158,12 @@ impl SHACL {
             info: NamedNodeRef::new("http://www.w3.org/ns/shacl#Info").unwrap(),
             warning: NamedNodeRef::new("http://www.w3.org/ns/shacl#Warning").unwrap(),
             violation: NamedNodeRef::new("http://www.w3.org/ns/shacl#Violation").unwrap(),
+
+            // SPARQL
+            select: NamedNodeRef::new("http://www.w3.org/ns/shacl#select").unwrap(),
+            deactivated: NamedNodeRef::new("http://www.w3.org/ns/shacl#deactivated").unwrap(),
+            message: NamedNodeRef::new("http://www.w3.org/ns/shacl#message").unwrap(),
+            sparql: NamedNodeRef::new("http://www.w3.org/ns/shacl#sparql").unwrap(),
         }
     }
 }
