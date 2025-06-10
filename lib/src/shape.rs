@@ -1,6 +1,6 @@
 use crate::context::ValidationContext;
 use crate::report::ValidationReportBuilder;
-use crate::types::{ComponentID, PropShapeID, ID};
+use crate::types::{ComponentID, PropShapeID, ID, Severity};
 use crate::types::{Path, Target};
 // SHACL, Term, NamedNode, TermRef were unused
 
@@ -23,16 +23,17 @@ pub struct NodeShape {
     identifier: ID,
     targets: Vec<Target>,
     constraints: Vec<ComponentID>,
-    // TODO severity
+    severity: Severity,
     // TODO message
 }
 
 impl NodeShape {
-    pub fn new(identifier: ID, targets: Vec<Target>, constraints: Vec<ComponentID>) -> Self {
+    pub fn new(identifier: ID, targets: Vec<Target>, constraints: Vec<ComponentID>, severity: Option<Severity>) -> Self {
         NodeShape {
             identifier,
             targets,
             constraints,
+            severity: severity.unwrap_or_default(),
         }
     }
 
@@ -47,6 +48,10 @@ impl NodeShape {
     pub fn targets(&self) -> &[Target] {
         &self.targets
     }
+
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
 }
 
 #[derive(Debug)]
@@ -54,16 +59,17 @@ pub struct PropertyShape {
     identifier: PropShapeID,
     path: Path,
     constraints: Vec<ComponentID>,
-    // TODO severity
+    severity: Severity,
     // TODO message
 }
 
 impl PropertyShape {
-    pub fn new(identifier: PropShapeID, path: Path, constraints: Vec<ComponentID>) -> Self {
+    pub fn new(identifier: PropShapeID, path: Path, constraints: Vec<ComponentID>, severity: Option<Severity>) -> Self {
         PropertyShape {
             identifier,
             path,
             constraints,
+            severity: severity.unwrap_or_default(),
         }
     }
     pub fn identifier(&self) -> &PropShapeID {
@@ -79,5 +85,9 @@ impl PropertyShape {
 
     pub fn constraints(&self) -> &[ComponentID] {
         &self.constraints
+    }
+
+    pub fn severity(&self) -> Severity {
+        self.severity
     }
 }

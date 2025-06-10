@@ -158,6 +158,19 @@ pub enum Target {
     ObjectsOf(Term),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Severity {
+    Info,
+    Warning,
+    Violation,
+}
+
+impl Default for Severity {
+    fn default() -> Self {
+        Severity::Violation
+    }
+}
+
 impl Target {
     pub fn from_predicate_object(predicate: NamedNodeRef, object: TermRef) -> Option<Self> {
         let shacl = SHACL::new();
