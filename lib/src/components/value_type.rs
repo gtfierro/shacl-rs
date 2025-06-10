@@ -182,19 +182,19 @@ impl ValidateComponent for NodeKindConstraintComponent {
             for value_node in value_nodes {
                 let matches = match value_node.as_ref() {
                     TermRef::NamedNode(_) => {
-                        expected_node_kind_term == sh.IRI.into()
-                            || expected_node_kind_term == sh.BlankNodeOrIRI.into()
-                            || expected_node_kind_term == sh.IRIOrLiteral.into()
+                        expected_node_kind_term == sh.iri.into()
+                            || expected_node_kind_term == sh.blank_node_or_iri.into()
+                            || expected_node_kind_term == sh.iri_or_literal.into()
                     }
                     TermRef::BlankNode(_) => {
-                        expected_node_kind_term == sh.BlankNode.into()
-                            || expected_node_kind_term == sh.BlankNodeOrIRI.into()
-                            || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
+                        expected_node_kind_term == sh.blank_node.into()
+                            || expected_node_kind_term == sh.blank_node_or_iri.into()
+                            || expected_node_kind_term == sh.blank_node_or_literal.into()
                     }
                     TermRef::Literal(_) => {
-                        expected_node_kind_term == sh.Literal.into()
-                            || expected_node_kind_term == sh.BlankNodeOrLiteral.into()
-                            || expected_node_kind_term == sh.IRIOrLiteral.into()
+                        expected_node_kind_term == sh.literal.into()
+                            || expected_node_kind_term == sh.blank_node_or_literal.into()
+                            || expected_node_kind_term == sh.iri_or_literal.into()
                     }
                     _ => false, // Triple, GraphName - should not occur as value nodes
                 };
