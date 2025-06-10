@@ -1,6 +1,7 @@
 use crate::context::{Context, ValidationContext};
 use crate::report::ValidationReportBuilder;
 
+use crate::types::ID;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
