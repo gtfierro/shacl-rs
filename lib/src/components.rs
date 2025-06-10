@@ -4,7 +4,7 @@ use crate::report::ValidationReportBuilder;
 use crate::shape::NodeShape; // Removed PropertyShape
 use crate::types::{ComponentID, ID}; // Removed PropShapeID
 use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef};
-// Removed Query, QueryOptions, QueryResults, Variable from oxigraph::sparql
+use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 use std::collections::HashMap;
 
 mod cardinality;
@@ -12,6 +12,7 @@ mod logical;
 mod other;
 mod property_pair;
 mod shape_based;
+mod sparql;
 mod string_based;
 mod value_range;
 mod value_type;
@@ -21,6 +22,7 @@ pub use logical::*;
 pub use other::*;
 pub use property_pair::*;
 pub use shape_based::*;
+pub use sparql::*;
 pub use string_based::*;
 pub use value_range::*;
 pub use value_type::*;
@@ -30,8 +32,7 @@ pub enum ComponentValidationResult {
     Fail(ComponentID, ValidationFailReason),
 }
 
-pub enum ValidationFailReason {
-}
+pub enum ValidationFailReason {}
 
 pub trait ToSubjectRef {
     fn to_subject_ref(&self) -> SubjectRef;
@@ -86,7 +87,8 @@ pub fn parse_components(
     if let Some(class_terms) = pred_obj_pairs.get(&shacl.class.into_owned()) {
         for class_term in class_terms {
             // class_term is &Term
-            let component = Component::ClassConstraint(ClassConstraintComponent::new(class_term.clone()));
+            let component =
+                Component::ClassConstraint(ClassConstraintComponent::new(class_term.clone()));
             let component_id = context.get_or_create_component_id(class_term.clone());
             new_components.insert(component_id, component);
         }
@@ -131,9 +133,8 @@ pub fn parse_components(
         for property_term in property_terms {
             // property_term is &Term
             let target_shape_id = context.get_or_create_prop_id(property_term.clone());
-            let component = Component::PropertyConstraint(PropertyConstraintComponent::new(
-                target_shape_id,
-            ));
+            let component =
+                Component::PropertyConstraint(PropertyConstraintComponent::new(target_shape_id));
             let component_id = context.get_or_create_component_id(property_term.clone());
             new_components.insert(component_id, component);
         }
@@ -267,10 +268,8 @@ pub fn parse_components(
                         None
                     }
                 });
-            let component = Component::PatternConstraint(PatternConstraintComponent::new(
-                pattern_str,
-                flags_str,
-            ));
+            let component =
+                Component::PatternConstraint(PatternConstraintComponent::new(pattern_str, flags_str));
             let component_id = context.get_or_create_component_id(pattern_term.clone());
             new_components.insert(component_id, component);
         }
@@ -292,9 +291,8 @@ pub fn parse_components(
                 })
                 .collect();
 
-            let component = Component::LanguageInConstraint(LanguageInConstraintComponent::new(
-                languages,
-            ));
+            let component =
+                Component::LanguageInConstraint(LanguageInConstraintComponent::new(languages));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
             new_components.insert(component_id, component);
         }
@@ -308,7 +306,8 @@ pub fn parse_components(
                     let component = Component::UniqueLangConstraint(
                         UniqueLangConstraintComponent::new(unique_lang_val),
                     );
-                    let component_id = context.get_or_create_component_id(unique_lang_term.clone());
+                    let component_id =
+                        context.get_or_create_component_id(unique_lang_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
@@ -320,9 +319,8 @@ pub fn parse_components(
         for equals_term in equals_terms {
             // equals_term is &Term
             if let Term::NamedNode(_nn) = equals_term {
-                let component = Component::EqualsConstraint(EqualsConstraintComponent::new(
-                    equals_term.clone(),
-                ));
+                let component =
+                    Component::EqualsConstraint(EqualsConstraintComponent::new(equals_term.clone()));
                 let component_id = context.get_or_create_component_id(equals_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -376,8 +374,7 @@ pub fn parse_components(
         for not_term in not_terms {
             // not_term is &Term
             let negated_shape_id = context.get_or_create_node_id(not_term.clone());
-            let component =
-                Component::NotConstraint(NotConstraintComponent::new(negated_shape_id));
+            let component = Component::NotConstraint(NotConstraintComponent::new(negated_shape_id));
             let component_id = context.get_or_create_component_id(not_term.clone());
             new_components.insert(component_id, component);
         }
@@ -522,9 +519,8 @@ pub fn parse_components(
     if let Some(has_value_terms) = pred_obj_pairs.get(&shacl.has_value.into_owned()) {
         for has_value_term in has_value_terms {
             // has_value_term is &Term
-            let component = Component::HasValueConstraint(HasValueConstraintComponent::new(
-                has_value_term.clone(),
-            ));
+            let component =
+                Component::HasValueConstraint(HasValueConstraintComponent::new(has_value_term.clone()));
             let component_id = context.get_or_create_component_id(has_value_term.clone());
             new_components.insert(component_id, component);
         }
@@ -539,6 +535,17 @@ pub fn parse_components(
 
             let component = Component::InConstraint(InConstraintComponent::new(values));
             let component_id = context.get_or_create_component_id(list_head_term.clone());
+            new_components.insert(component_id, component);
+        }
+    }
+
+    // sh:sparql
+    if let Some(sparql_terms) = pred_obj_pairs.get(&shacl.sparql.into_owned()) {
+        for sparql_term in sparql_terms {
+            // sparql_term is &Term, which is the constraint details node.
+            let component =
+                Component::SPARQLConstraint(SPARQLConstraintComponent::new(sparql_term.clone()));
+            let component_id = context.get_or_create_component_id(sparql_term.clone());
             new_components.insert(component_id, component);
         }
     }
@@ -603,6 +610,7 @@ pub enum Component {
     ClosedConstraint(ClosedConstraintComponent),
     HasValueConstraint(HasValueConstraintComponent),
     InConstraint(InConstraintComponent),
+    SPARQLConstraint(SPARQLConstraintComponent),
 }
 
 impl Component {
@@ -643,6 +651,7 @@ impl Component {
             Component::ClosedConstraint(_) => "ClosedConstraint".to_string(),
             Component::HasValueConstraint(_) => "HasValueConstraint".to_string(),
             Component::InConstraint(_) => "InConstraint".to_string(),
+            Component::SPARQLConstraint(_) => "SPARQLConstraint".to_string(),
         }
     }
 
@@ -672,7 +681,9 @@ impl Component {
             Component::EqualsConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::DisjointConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::LessThanConstraint(c) => c.to_graphviz_string(component_id, context),
-            Component::LessThanOrEqualsConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::LessThanOrEqualsConstraint(c) => {
+                c.to_graphviz_string(component_id, context)
+            }
             Component::NotConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::AndConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::OrConstraint(c) => c.to_graphviz_string(component_id, context),
@@ -680,6 +691,7 @@ impl Component {
             Component::ClosedConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::HasValueConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::InConstraint(c) => c.to_graphviz_string(component_id, context),
+            Component::SPARQLConstraint(c) => c.to_graphviz_string(component_id, context),
         }
     }
 
@@ -718,10 +730,11 @@ impl Component {
             Component::XoneConstraint(comp) => comp.validate(component_id, c, context),
             Component::HasValueConstraint(comp) => comp.validate(component_id, c, context),
             Component::InConstraint(comp) => comp.validate(component_id, c, context),
+            Component::SPARQLConstraint(comp) => comp.validate(component_id, c, context),
             //Component::ClosedConstraint(_) |
-                // Other components that do not have validate method
-                // For components without specific validation logic, or structural ones, consider them as passing.
-                _ => Ok(ComponentValidationResult::Pass(component_id)),
+            // Other components that do not have validate method
+            // For components without specific validation logic, or structural ones, consider them as passing.
+            _ => Ok(ComponentValidationResult::Pass(component_id)),
         }
     }
 }
@@ -753,14 +766,20 @@ pub(super) fn check_conformance_for_node(
                                 pc_comp.shape()
                             )
                         })?;
-                    
+
                     // PropertyShape::validate is an inherent method in lib/src/validate.rs
                     // It now takes &mut Context.
                     let mut temp_rb = ValidationReportBuilder::new();
                     // Pass node_as_context mutably.
-                    if let Err(e) = prop_shape.validate(node_as_context, main_validation_context, &mut temp_rb) {
+                    if let Err(e) =
+                        prop_shape.validate(node_as_context, main_validation_context, &mut temp_rb)
+                    {
                         // Error during property shape validation itself (e.g., query parse error)
-                        return Err(format!("Logical check: Error validating property shape {}: {}", pc_comp.shape(), e));
+                        return Err(format!(
+                            "Logical check: Error validating property shape {}: {}",
+                            pc_comp.shape(),
+                            e
+                        ));
                     }
                     if !temp_rb.results.is_empty() {
                         // The property shape validation produced errors for the node_as_context.
