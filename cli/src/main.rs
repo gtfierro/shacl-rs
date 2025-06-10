@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .ok_or_else(|| "Invalid data file path")?,
             )
             .map_err(|e| format!("Error loading files: {}", e))?;
-            let dot_string = ctx.graphviz();
+            let dot_string = ctx.graphviz()?;
             println!("{}", dot_string);
         }
         Commands::Pdf(args) => {
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .ok_or_else(|| "Invalid data file path")?,
             )
             .map_err(|e| format!("Error loading files: {}", e))?;
-            let dot_string = ctx.graphviz();
+            let dot_string = ctx.graphviz()?;
 
             let output_format = Format::Pdf;
             let output_file_path_str = args
