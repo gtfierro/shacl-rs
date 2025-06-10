@@ -494,7 +494,16 @@ impl ValidationContext {
             .collect();
         // TODO: property_shapes are collected but not used in NodeShape::new. This might be an existing oversight or for future use.
 
-        let node_shape = NodeShape::new(id, targets, component_ids);
+        let severity_term_opt = self.store.quads_for_pattern(
+            Some(subject),
+            Some(sh.severity),
+            None,
+            Some(shape_graph_name.as_ref())
+        ).filter_map(Result::ok).map(|q| q.object).next();
+
+        let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
+
+        let node_shape = NodeShape::new(id, targets, component_ids, severity);
         self.node_shapes.insert(id, node_shape);
         id
     }
@@ -529,7 +538,17 @@ impl ValidationContext {
             // add the component to our context.components map
             self.components.insert(component_id, component);
         }
-        let prop_shape = PropertyShape::new(id, path, component_ids);
+
+        let severity_term_opt = self.store.quads_for_pattern(
+            Some(subject),
+            Some(shacl.severity),
+            None,
+            Some(shape_graph_name_ref)
+        ).filter_map(Result::ok).map(|q| q.object).next();
+
+        let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
+
+        let prop_shape = PropertyShape::new(id, path, component_ids, severity);
         self.prop_shapes.insert(id, prop_shape);
         id
     }
