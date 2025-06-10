@@ -207,55 +207,65 @@ impl Target {
         }
     }
 
-    pub fn get_target_nodes(&self, context: &ValidationContext, source_shape_id: ID) -> Vec<Context> {
+    pub fn get_target_nodes(
+        &self,
+        context: &ValidationContext,
+        source_shape_id: ID,
+    ) -> Result<Vec<Context>, String> {
         match self {
-            Target::Node(t) => vec![Context::new(t.clone(), None, Some(vec![t.clone()]), source_shape_id)],
+            Target::Node(t) => Ok(vec![Context::new(
+                t.clone(),
+                None,
+                Some(vec![t.clone()]),
+                source_shape_id,
+            )]),
             Target::Class(c) => {
                 let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
                     SELECT DISTINCT ?inst ?target_class WHERE { ?inst rdf:type ?c . ?c rdfs:subClassOf* ?target_class }";
-                let target_class_var = Variable::new_unchecked("target_class");
+                let target_class_var =
+                    Variable::new("target_class").map_err(|e| e.to_string())?;
 
-                match Query::parse(query_str, None) {
-                    Ok(mut parsed_query) => {
-                        parsed_query.dataset_mut().set_default_graph_as_union();
-                        match context.store().query_opt_with_substituted_variables(
-                            parsed_query,
-                            QueryOptions::default(), // Base options, assuming dataset config is from parsed_query
-                            [(target_class_var, c.clone())],
-                        ) {
-                            Ok(QueryResults::Solutions(solutions)) => solutions
-                                .filter_map(|solution_result| {
-                                    solution_result.ok().and_then(|solution| {
-                                        solution.get("inst").map(|term_ref| {
-                                            Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]), source_shape_id)
-                                        })
-                                    })
+                let mut parsed_query = Query::parse(query_str, None).map_err(|e| {
+                    format!("SPARQL parse error for Target::Class: {} {:?}", query_str, e)
+                })?;
+                parsed_query.dataset_mut().set_default_graph_as_union();
+
+                let results = context
+                    .store()
+                    .query_opt_with_substituted_variables(
+                        parsed_query,
+                        QueryOptions::default(),
+                        [(target_class_var, c.clone())],
+                    )
+                    .map_err(|e| {
+                        format!("SPARQL query error for Target::Class: {} {:?}", query_str, e)
+                    })?;
+
+                match results {
+                    QueryResults::Solutions(solutions) => solutions
+                        .map(|solution_result| {
+                            let solution = solution_result.map_err(|e| e.to_string())?;
+                            solution
+                                .get("inst")
+                                .map(|term_ref| {
+                                    Context::new(
+                                        term_ref.to_owned(),
+                                        None,
+                                        Some(vec![term_ref.clone()]),
+                                        source_shape_id,
+                                    )
                                 })
-                                .collect(),
-                            Err(e) => {
-                                eprintln!(
-                                    "SPARQL query error for Target::Class: {} {:?}",
-                                    query_str, e
-                                ); // Optional: log error
-                                vec![] // Handle query error
-                            }
-                            _ => {
-                                eprintln!(
-                                    "Unexpected result type for Target::Class: {}",
-                                    query_str
-                                ); // Optional: log unexpected result type
-                                vec![] // Handle unexpected result type
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!(
-                            "SPARQL parse error for Target::Class: {} {:?}",
-                            query_str, e
-                        ); // Optional: log error
-                        vec![] // Handle SPARQL parse error
-                    }
+                                .ok_or_else(|| {
+                                    "Variable 'inst' not found in Target::Class query solution"
+                                        .to_string()
+                                })
+                        })
+                        .collect(),
+                    _ => Err(format!(
+                        "Unexpected result type for Target::Class: {}",
+                        query_str
+                    )),
                 }
             }
             Target::SubjectsOf(p) => {
@@ -264,32 +274,43 @@ impl Target {
                         "SELECT DISTINCT ?s WHERE {{ ?s <{}> ?any . }}",
                         predicate_node.as_str()
                     );
-                    match Query::parse(&query_str, None) {
-                        Ok(mut parsed_query) => {
-                            parsed_query.dataset_mut().set_default_graph_as_union();
-                            match context
-                                .store()
-                                .query_opt(parsed_query, QueryOptions::default())
-                            {
-                                Ok(QueryResults::Solutions(solutions)) => solutions
-                                    .filter_map(|solution_result| {
-                                        solution_result.ok().and_then(|solution| {
-                                            solution.get("s").map(|term_ref| {
-                                                Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]), source_shape_id)
-                                            })
-                                        })
+                    let mut parsed_query = Query::parse(&query_str, None).map_err(|e| {
+                        format!(
+                            "SPARQL parse error for Target::SubjectsOf: {} {:?}",
+                            query_str, e
+                        )
+                    })?;
+                    parsed_query.dataset_mut().set_default_graph_as_union();
+
+                    let results = context
+                        .store()
+                        .query_opt(parsed_query, QueryOptions::default())
+                        .map_err(|e| e.to_string())?;
+
+                    match results {
+                        QueryResults::Solutions(solutions) => solutions
+                            .map(|solution_result| {
+                                let solution = solution_result.map_err(|e| e.to_string())?;
+                                solution
+                                    .get("s")
+                                    .map(|term_ref| {
+                                        Context::new(
+                                            term_ref.to_owned(),
+                                            None,
+                                            Some(vec![term_ref.clone()]),
+                                            source_shape_id,
+                                        )
                                     })
-                                    .collect(),
-                                _ => vec![], // Handles query errors or unexpected result types
-                            }
-                        }
-                        Err(_) => {
-                            eprintln!("SPARQL parse error for Target::SubjectsOf: {}", query_str); // Optional: log error
-                            vec![] // Handle SPARQL parse error
-                        }
+                                    .ok_or_else(|| {
+                                        "Variable 's' not found in Target::SubjectsOf query solution"
+                                            .to_string()
+                                    })
+                            })
+                            .collect(),
+                        _ => Err("Unexpected result type for Target::SubjectsOf query".to_string()),
                     }
                 } else {
-                    vec![] // Predicate for SubjectsOf must be an IRI
+                    Ok(vec![]) // Predicate for SubjectsOf must be an IRI
                 }
             }
             Target::ObjectsOf(p) => {
@@ -298,32 +319,43 @@ impl Target {
                         "SELECT DISTINCT ?o WHERE {{ ?any <{}> ?o . }}",
                         predicate_node.as_str()
                     );
-                    match Query::parse(&query_str, None) {
-                        Ok(mut parsed_query) => {
-                            parsed_query.dataset_mut().set_default_graph_as_union();
-                            match context
-                                .store()
-                                .query_opt(parsed_query, QueryOptions::default())
-                            {
-                                Ok(QueryResults::Solutions(solutions)) => solutions
-                                    .filter_map(|solution_result| {
-                                        solution_result.ok().and_then(|solution| {
-                                            solution.get("o").map(|term_ref| {
-                                                Context::new(term_ref.to_owned(), None, Some(vec![term_ref.clone()]), source_shape_id)
-                                            })
-                                        })
+                    let mut parsed_query = Query::parse(&query_str, None).map_err(|e| {
+                        format!(
+                            "SPARQL parse error for Target::ObjectsOf: {} {:?}",
+                            query_str, e
+                        )
+                    })?;
+                    parsed_query.dataset_mut().set_default_graph_as_union();
+
+                    let results = context
+                        .store()
+                        .query_opt(parsed_query, QueryOptions::default())
+                        .map_err(|e| e.to_string())?;
+
+                    match results {
+                        QueryResults::Solutions(solutions) => solutions
+                            .map(|solution_result| {
+                                let solution = solution_result.map_err(|e| e.to_string())?;
+                                solution
+                                    .get("o")
+                                    .map(|term_ref| {
+                                        Context::new(
+                                            term_ref.to_owned(),
+                                            None,
+                                            Some(vec![term_ref.clone()]),
+                                            source_shape_id,
+                                        )
                                     })
-                                    .collect(),
-                                _ => vec![], // Handles query errors or unexpected result types
-                            }
-                        }
-                        Err(_) => {
-                            eprintln!("SPARQL parse error for Target::ObjectsOf: {}", query_str); // Optional: log error
-                            vec![] // Handle SPARQL parse error
-                        }
+                                    .ok_or_else(|| {
+                                        "Variable 'o' not found in Target::ObjectsOf query solution"
+                                            .to_string()
+                                    })
+                            })
+                            .collect(),
+                        _ => Err("Unexpected result type for Target::ObjectsOf query".to_string()),
                     }
                 } else {
-                    vec![] // Predicate for ObjectsOf must be an IRI
+                    Ok(vec![]) // Predicate for ObjectsOf must be an IRI
                 }
             }
         }
