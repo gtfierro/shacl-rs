@@ -29,22 +29,20 @@ impl ValidationReportBuilder {
         println!("Validation Report:");
         println!("------------------");
 
-        let mut grouped_errors: HashMap<Term, Vec<String>> = HashMap::new();
+        let mut grouped_errors: HashMap<Term, Vec<(&Context, &String)>> = HashMap::new();
 
         for (context, error_message) in &self.results {
             grouped_errors
                 .entry(context.focus_node().clone())
                 .or_default()
-                .push(error_message.clone());
+                .push((context, error_message));
         }
 
-        for (focus_node, errors) in grouped_errors {
+        for (focus_node, context_error_pairs) in grouped_errors {
             println!("\nFocus Node: {}", focus_node);
-            for error in errors {
+            for (context, error) in context_error_pairs {
                 println!("  - Error: {}", error);
-                // Optionally, print more context details if needed
-                // e.g., println!("    Path: {:?}", context.path());
-                // e.g., println!("    Value Nodes: {:?}", context.value_nodes());
+                println!("    Context: {:?}", context);
             }
         }
         println!("\n------------------");
