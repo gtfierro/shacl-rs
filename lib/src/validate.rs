@@ -18,14 +18,15 @@ impl ValidateShape for NodeShape {
             .iter()
             .map(|t| t.get_target_nodes(context, *self.identifier()))
             .flatten();
-        let target_contexts: Vec<_> = target_contexts.collect();
+        let mut target_contexts: Vec<_> = target_contexts.collect(); // Made mutable
 
         if target_contexts.len() > 0 {
             println!("Validating NodeShape with identifier: {}", self.identifier());
             println!("Targets: {:?}", target_contexts.len());
         }
 
-        for target_context in target_contexts { 
+        for target_context in target_contexts.iter_mut() { // Iterate mutably
+            target_context.record_node_shape_visit(*self.identifier()); // Record NodeShape visit
             // for each target, validate the constraints
             for constraint_id in self.constraints() { // constraint_id is &ComponentID
                 let comp = context
@@ -33,9 +34,9 @@ impl ValidateShape for NodeShape {
                     .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
 
                 // Call the component's own validation logic.
-                // It now takes component_id, &Context, &ValidationContext
+                // It now takes component_id, &mut Context, &ValidationContext
                 // and returns Result<ComponentValidationResult, String>
-                match comp.validate(*constraint_id, &target_context, context) {
+                match comp.validate(*constraint_id, target_context, context) { // Pass mutably
                     Ok(_validation_result) => {
                         // If the component is a PropertyConstraint, then we need to
                         // trigger the validation of the referenced PropertyShape.
@@ -48,11 +49,11 @@ impl ValidateShape for NodeShape {
                                     format!("Property shape not found for ID: {}", pc_comp.shape()) // Use accessor
                                 })?;
                             
-                            // PropertyShape::validate takes &Context, &ValidationContext, &mut ValidationReportBuilder
-                            // target_context is the correct context to pass here.
-                            if let Err(e) = prop_shape.validate(&target_context, context, rb) {
+                            // PropertyShape::validate now takes &mut Context, &ValidationContext, &mut ValidationReportBuilder
+                            // target_context is the correct context to pass here, mutably.
+                            if let Err(e) = prop_shape.validate(target_context, context, rb) { // Pass mutably
                                 // Errors from PropertyShape::validate itself (e.g. query parsing, or its own components failing)
-                                rb.add_error(&target_context, e);
+                                rb.add_error(target_context, e);
                             }
                         }
                         // For other component types, if their .validate passed, no further action here.
@@ -61,7 +62,7 @@ impl ValidateShape for NodeShape {
                     Err(e) => {
                         // This error 'e' comes from the component's own validate method.
                         // NodeShape is responsible for adding this to the report builder.
-                        rb.add_error(&target_context, e);
+                        rb.add_error(target_context, e);
                     }
                 }
             }
@@ -73,11 +74,12 @@ impl ValidateShape for NodeShape {
 impl PropertyShape {
     pub fn validate(
         &self,
-        // Changed to a single Context reference
-        focus_context: &Context,
+        // Changed to a single mutable Context reference
+        focus_context: &mut Context, // Changed to &mut Context
         context: &ValidationContext,
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
+        focus_context.record_property_shape_visit(*self.identifier()); // Record PropertyShape visit
         // The loop is removed as we now operate on a single focus_context.
         // to get the set of value nodes.
 
@@ -144,7 +146,7 @@ impl PropertyShape {
             Some(value_nodes_vec)
         };
 
-        let value_node_context = Context::new(
+        let mut value_node_context = Context::new( // Made mutable
             focus_node_term.clone(),
             Some(self.path().clone()), // PShapePath from self.path()
             value_nodes_opt, // Use the renamed Option<Vec<Term>>
@@ -157,9 +159,9 @@ impl PropertyShape {
                 .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
             
             // Call the component's own validation logic.
-            // It now takes component_id, &Context, &ValidationContext
+            // It now takes component_id, &mut Context, &ValidationContext
             // and returns Result<ComponentValidationResult, String>
-            match component.validate(*constraint_id, &value_node_context, context) {
+            match component.validate(*constraint_id, &mut value_node_context, context) { // Pass mutably
                 Ok(_validation_result) => {
                     // If a component's validate passes, no direct error to add to rb here by PropertyShape.
                     // The component itself passed. If it were to cause a validation failure
