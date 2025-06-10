@@ -161,3 +161,34 @@ impl RDF {
         }
     }
 }
+
+pub struct RDFS {
+    pub sub_class_of: NamedNodeRef<'static>,
+    pub label: NamedNodeRef<'static>,
+    pub comment: NamedNodeRef<'static>,
+    pub class: NamedNodeRef<'static>,
+}
+
+impl RDFS {
+    pub fn new() -> Self {
+        RDFS {
+            sub_class_of: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#subClassOf")
+                .unwrap(),
+            label: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#label").unwrap(),
+            comment: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#comment").unwrap(),
+            class: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#Class").unwrap(),
+        }
+    }
+}
+
+pub struct OWL {
+    pub class: NamedNodeRef<'static>,
+}
+
+impl OWL {
+    pub fn new() -> Self {
+        OWL {
+            class: NamedNodeRef::new("http://www.w3.org/2002/07/owl#Class").unwrap(),
+        }
+    }
+}

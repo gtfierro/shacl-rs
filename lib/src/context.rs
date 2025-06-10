@@ -1,10 +1,10 @@
 use crate::components::{parse_components, Component, ToSubjectRef}; // Added Component
-use crate::named_nodes::{RDF, SHACL};
+use crate::named_nodes::{RDF, SHACL, RDFS, OWL};
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID, TermID};
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{GraphName, GraphNameRef, NamedNode, SubjectRef, Term, TermRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
+use oxigraph::model::{GraphName, GraphNameRef, NamedNode, SubjectRef, Term, TermRef, QuadRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
 use oxigraph::store::Store; // Added Store
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -436,7 +436,7 @@ impl ValidationContext {
         let shape_graph_name = GraphName::NamedNode(self.shape_graph_iri.clone());
 
         // get the targets
-        let targets: Vec<Target> = self
+        let mut targets: Vec<Target> = self
             .store
             .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name.as_ref()))
             .filter_map(Result::ok)
@@ -444,6 +444,33 @@ impl ValidationContext {
                 Target::from_predicate_object(quad.predicate.as_ref(), quad.object.as_ref())
             })
             .collect();
+
+        // check for implicit classes. If 'shape' is also a class (rdfs:Class or owl:Class)
+        // then add a Target::Class for it.
+        // use store.contains(quad) to check
+        let rdf = RDF::new();
+        let rdfs = RDFS::new();
+        let owl = OWL::new();
+        if self.store.contains(
+            QuadRef::new(
+                subject,
+                rdf.type_,
+                rdfs.class,
+                shape_graph_name.as_ref(),
+            ),
+        ).unwrap() || self.store.contains(
+            QuadRef::new(
+                subject,
+                rdf.type_,
+                owl.class,
+                shape_graph_name.as_ref(),
+            ),
+        ).unwrap() {
+            targets.push(Target::Class(subject.into()));
+        }
+
+
+
 
         // get constraint components
         // parse_components will internally use context.store() and context.shape_graph_iri_ref()
