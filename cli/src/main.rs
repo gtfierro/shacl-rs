@@ -1,7 +1,8 @@
 use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
-use shacl::context::ValidationContext;
+use shacl::context::{TraceItem, ValidationContext};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -48,12 +49,25 @@ struct ValidateArgs {
     data_file: PathBuf,
 }
 
+#[derive(Parser)]
+struct HeatArgs {
+    /// Path to the shapes file
+    #[arg(short, long, value_name = "FILE")]
+    shapes_file: PathBuf,
+
+    /// Path to the data file
+    #[arg(short, long, value_name = "FILE")]
+    data_file: PathBuf,
+}
+
 #[derive(clap::Subcommand)]
 enum Commands {
     /// Output the Graphviz DOT string of the shape graph
     Graphviz(GraphvizArgs),
     /// Generate a PDF of the shape graph using Graphviz
     Pdf(PdfArgs),
+    /// Validate the data against the shapes and output a heatmap of component invocations
+    Heat(HeatArgs),
     /// Validate the data against the shapes
     Validate(ValidateArgs),
 }
@@ -116,6 +130,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let b = ctx.validate();
             println!("Validation completed successfully.");
             b.dump();
+        }
+        Commands::Heat(args) => {
+            let ctx = ValidationContext::from_files(
+                args.shapes_file
+                    .to_str()
+                    .ok_or_else(|| "Invalid shapes file path")?,
+                args.data_file
+                    .to_str()
+                    .ok_or_else(|| "Invalid data file path")?,
+            )
+            .map_err(|e| format!("Error loading files: {}", e))?;
+
+            let report_builder = ctx.validate();
+
+            let mut frequencies: HashMap<TraceItem, usize> = HashMap::new();
+            for (context, _) in report_builder.results() {
+                for item in context.execution_trace() {
+                    *frequencies.entry(item.clone()).or_insert(0) += 1;
+                }
+            }
+
+            let mut sorted_frequencies: Vec<(TraceItem, usize)> = frequencies.into_iter().collect();
+            sorted_frequencies.sort_by(|a, b| b.1.cmp(&a.1));
+
+            println!("Label\tType\tInvocations");
+            for (item, count) in sorted_frequencies {
+                let (label, item_type) = ctx.get_trace_item_label_and_type(&item);
+                println!("{}\t{}\t{}", label, item_type, count);
+            }
         }
     }
     Ok(())

@@ -727,6 +727,29 @@ impl ValidationContext {
     pub fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
         &self.node_shapes
     }
+
+    pub fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
+        match item {
+            TraceItem::NodeShape(id) => {
+                let label = self.nodeshape_id_lookup.borrow().get_term(*id)
+                    .map_or_else(|| format!("Unknown NodeShape ID: {:?}", id), |term| format_term_for_label(term));
+                (label, "NodeShape".to_string())
+            }
+            TraceItem::PropertyShape(id) => {
+                let label = self.get_prop_shape_by_id(id)
+                    .map_or_else(|| format!("Unknown PropertyShape ID: {:?}", id), |ps| ps.sparql_path());
+                // If you prefer the PropertyShape's own identifier term as label:
+                // let label = self.propshape_id_lookup.borrow().get_term(*id)
+                //     .map_or_else(|| format!("Unknown PropertyShape ID: {:?}", id), |term| format_term_for_label(term));
+                (label, "PropertyShape".to_string())
+            }
+            TraceItem::Component(id) => {
+                let label = self.get_component_by_id(id)
+                    .map_or_else(|| format!("Unknown Component ID: {:?}", id), |comp| comp.label());
+                (label, "Component".to_string())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
