@@ -162,7 +162,7 @@ impl ValidationContext {
         }
     }
 
-    pub fn graphviz(&self) -> String {
+    pub fn graphviz(&self) -> Result<String, String> {
         let mut dot_string = String::new();
         // print all node shapes
         dot_string.push_str("digraph {\n");
@@ -172,7 +172,7 @@ impl ValidationContext {
                 .borrow()
                 .id_to_term
                 .get(shape.identifier())
-                .unwrap()
+                .ok_or_else(|| format!("Missing term for nodeshape ID: {:?}", shape.identifier()))?
                 .clone();
             // 'name' here is the Term identifier of the NodeShape
             let name_label = format_term_for_label(&name);
@@ -190,12 +190,12 @@ impl ValidationContext {
             }
         }
         for pshape in self.prop_shapes.values() {
-            let name = self
+            let _name = self
                 .propshape_id_lookup
                 .borrow()
                 .id_to_term
                 .get(pshape.identifier())
-                .unwrap()
+                .ok_or_else(|| format!("Missing term for propshape ID: {:?}", pshape.identifier()))?
                 .clone();
             // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above)
             // is not used for the label. We use the path term for the label as it's generally more informative.
@@ -220,7 +220,7 @@ impl ValidationContext {
                 .for_each(|line| dot_string.push_str(&format!("    {}\n", line)));
         }
         dot_string.push_str("}\n");
-        dot_string
+        Ok(dot_string)
     }
 
     // Loads triples from a file into the specified named graph of the given store.
@@ -295,7 +295,12 @@ impl ValidationContext {
         })?;
 
         let mut ctx = Self::new(store, shape_graph_named_node, data_graph_named_node);
-        ctx.parse();
+        ctx.parse().map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Error parsing shapes: {}", e),
+            ))
+        })?;
         Ok(ctx)
     }
 
@@ -420,20 +425,21 @@ impl ValidationContext {
         node_shapes.into_iter().collect()
     }
 
-    pub fn parse(&mut self) {
+    pub fn parse(&mut self) -> Result<(), String> {
         // parses the shape graph to get all of the shapes and components defined within
         let shapes = self.get_node_shapes();
         for shape in shapes {
-            self.parse_node_shape(shape.as_ref());
+            self.parse_node_shape(shape.as_ref())?;
         }
 
         let pshapes = self.get_property_shapes();
         for pshape in pshapes {
-            self.parse_property_shape(pshape.as_ref());
+            self.parse_property_shape(pshape.as_ref())?;
         }
+        Ok(())
     }
 
-    pub fn parse_node_shape(&mut self, shape: TermRef) -> ID {
+    pub fn parse_node_shape(&mut self, shape: TermRef) -> Result<ID, String> {
         // Parses a shape from the shape graph and returns its ID.
         // Adds the shape to the node_shapes map.
         let id = self.get_or_create_node_id(shape.into());
@@ -458,21 +464,23 @@ impl ValidationContext {
         let rdf = RDF::new();
         let rdfs = RDFS::new();
         let owl = OWL::new();
-        if self.store.contains(
+        let is_rdfs_class = self.store.contains(
             QuadRef::new(
                 subject,
                 rdf.type_,
                 rdfs.class,
                 shape_graph_name.as_ref(),
             ),
-        ).unwrap() || self.store.contains(
+        ).map_err(|e| e.to_string())?;
+        let is_owl_class = self.store.contains(
             QuadRef::new(
                 subject,
                 rdf.type_,
                 owl.class,
                 shape_graph_name.as_ref(),
             ),
-        ).unwrap() {
+        ).map_err(|e| e.to_string())?;
+        if is_rdfs_class || is_owl_class {
             targets.push(Target::Class(subject.into()));
         }
 
@@ -512,10 +520,10 @@ impl ValidationContext {
 
         let node_shape = NodeShape::new(id, targets, component_ids, severity);
         self.node_shapes.insert(id, node_shape);
-        id
+        Ok(id)
     }
 
-    pub fn parse_property_shape(&mut self, pshape: TermRef) -> PropShapeID {
+    pub fn parse_property_shape(&mut self, pshape: TermRef) -> Result<PropShapeID, String> {
         let id = self.get_or_create_prop_id(pshape.into_owned());
         let shacl = SHACL::new();
         let subject: SubjectRef = pshape.to_subject_ref();
@@ -532,10 +540,9 @@ impl ValidationContext {
             .filter_map(Result::ok)
             .map(|quad| quad.object)
             .next()
-            .expect("Property shape must have a sh:path"); // Expect path to be present
+            .ok_or_else(|| format!("Property shape {:?} must have a sh:path", pshape))?;
 
-        let path = self.parse_shacl_path_recursive(path_object_term.as_ref())
-            .expect("Failed to parse sh:path");
+        let path = self.parse_shacl_path_recursive(path_object_term.as_ref())?;
 
         // get constraint components
         // parse_components will internally use context.store() and context.shape_graph_iri_ref()
@@ -557,7 +564,7 @@ impl ValidationContext {
 
         let prop_shape = PropertyShape::new(id, path, component_ids, severity);
         self.prop_shapes.insert(id, prop_shape);
-        id
+        Ok(id)
     }
 
     // Helper function to recursively parse SHACL paths
