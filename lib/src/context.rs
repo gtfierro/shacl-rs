@@ -2,7 +2,7 @@ use crate::components::{parse_components, Component, ToSubjectRef}; // Added Com
 use crate::named_nodes::{RDF, SHACL, RDFS, OWL};
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID, TermID};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Target, ID, TermID, Severity};
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{GraphName, GraphNameRef, NamedNode, SubjectRef, Term, TermRef, QuadRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
 use oxigraph::store::Store; // Added Store

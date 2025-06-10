@@ -58,6 +58,12 @@ pub struct SHACL {
     pub BlankNodeOrIRI: NamedNodeRef<'static>,
     pub BlankNodeOrLiteral: NamedNodeRef<'static>,
     pub IRIOrLiteral: NamedNodeRef<'static>,
+
+    // Severities
+    pub severity: NamedNodeRef<'static>,
+    pub info: NamedNodeRef<'static>,
+    pub warning: NamedNodeRef<'static>,
+    pub violation: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -132,6 +138,12 @@ impl SHACL {
             BlankNodeOrIRI: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrIRI").unwrap(),
             BlankNodeOrLiteral: NamedNodeRef::new("http://www.w3.org/ns/shacl#BlankNodeOrLiteral").unwrap(),
             IRIOrLiteral: NamedNodeRef::new("http://www.w3.org/ns/shacl#IRIOrLiteral").unwrap(),
+
+            // Severities
+            severity: NamedNodeRef::new("http://www.w3.org/ns/shacl#severity").unwrap(),
+            info: NamedNodeRef::new("http://www.w3.org/ns/shacl#Info").unwrap(),
+            warning: NamedNodeRef::new("http://www.w3.org/ns/shacl#Warning").unwrap(),
+            violation: NamedNodeRef::new("http://www.w3.org/ns/shacl#Violation").unwrap(),
         }
     }
 }
