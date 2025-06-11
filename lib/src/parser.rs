@@ -1,6 +1,6 @@
 use crate::components::{parse_components, ToSubjectRef};
 use crate::context::ValidationContext;
-use crate::named_nodes::{OWL, RDFS, RDF, SHACL};
+use crate::named_nodes::{OWL, RDF, RDFS, SHACL};
 use crate::shape::{NodeShape, PropertyShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, ID};
 use oxigraph::model::{GraphName, GraphNameRef, QuadRef, SubjectRef, Term, TermRef};
@@ -39,12 +39,11 @@ fn get_property_shapes(context: &ValidationContext) -> Vec<Term> {
     }
 
     // - ? sh:property <pshape>
-    for quad_res in context.store().quads_for_pattern(
-        None,
-        Some(sh.property),
-        None,
-        Some(shape_graph_name_ref),
-    ) {
+    for quad_res in
+        context
+            .store()
+            .quads_for_pattern(None, Some(sh.property), None, Some(shape_graph_name_ref))
+    {
         if let Ok(quad) = quad_res {
             prop_shapes.insert(quad.object); // quad.object is Term
         }
@@ -82,12 +81,11 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     }
 
     // ? sh:node <shape>
-    for quad_res in context.store().quads_for_pattern(
-        None,
-        Some(shacl.node),
-        None,
-        Some(shape_graph_name_ref),
-    ) {
+    for quad_res in
+        context
+            .store()
+            .quads_for_pattern(None, Some(shacl.node), None, Some(shape_graph_name_ref))
+    {
         if let Ok(quad) = quad_res {
             node_shapes.insert(quad.object);
         }
@@ -399,7 +397,10 @@ fn parse_shacl_path_recursive(
     // If it's not a complex path node, it must be a simple path (an IRI)
     match path_term_ref {
         TermRef::NamedNode(_) => Ok(PShapePath::Simple(path_term_ref.into_owned())),
-        _ => Err(format!("Expected an IRI for a simple path or a blank node for a complex path, found: {:?}", path_term_ref)),
+        _ => Err(format!(
+            "Expected an IRI for a simple path or a blank node for a complex path, found: {:?}",
+            path_term_ref
+        )),
     }
 }
 

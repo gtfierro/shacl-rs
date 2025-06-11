@@ -4,6 +4,9 @@ use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, TermID, ID};
+use ontoenv::api::OntoEnv;
+use ontoenv::config::Config;
+use ontoenv::ontology::OntologyLocation;
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{GraphName, GraphNameRef, NamedNode, Term, TermRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
 use oxigraph::store::Store; // Added Store
@@ -16,9 +19,6 @@ use std::hash::Hash;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use xxhash_rust::xxh3::xxh3_64;
-use ontoenv::api::OntoEnv;
-use ontoenv::config::Config;
-use ontoenv::ontology::OntologyLocation;
 
 const SHAPE_GRAPH_IRI: &str = "urn:shape_graph";
 const DATA_GRAPH_IRI: &str = "urn:data_graph";
@@ -54,7 +54,7 @@ pub(crate) fn format_term_for_label(term: &Term) -> String {
         }
         Term::BlankNode(_bn) => "bnode".to_string(),
         Term::Literal(lit) => lit.value().to_string().replace('"', "\\\""), // Escape quotes for DOT language
-        Term::Triple(_t) => "rdf_triple".to_string(), // Handle Triple case
+        Term::Triple(_t) => "rdf_triple".to_string(),                       // Handle Triple case
     }
 }
 
@@ -112,7 +112,12 @@ pub struct ValidationContext {
 }
 
 impl ValidationContext {
-    pub fn new(store: Store, env: OntoEnv, shape_graph_iri: NamedNode, data_graph_iri: NamedNode) -> Self {
+    pub fn new(
+        store: Store,
+        env: OntoEnv,
+        shape_graph_iri: NamedNode,
+        data_graph_iri: NamedNode,
+    ) -> Self {
         ValidationContext {
             nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
             propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
@@ -200,9 +205,7 @@ impl ValidationContext {
                 .borrow()
                 .id_to_term
                 .get(pshape.identifier())
-                .ok_or_else(|| {
-                    format!("Missing term for propshape ID: {:?}", pshape.identifier())
-                })?
+                .ok_or_else(|| format!("Missing term for propshape ID: {:?}", pshape.identifier()))?
                 .clone();
             // The 'name' variable (PropertyShape's own identifier, which is 'pshape_identifier_term' above)
             // is not used for the label. We use the path term for the label as it's generally more informative.
@@ -259,14 +262,19 @@ impl ValidationContext {
     ) -> Result<Self, Box<dyn Error>> {
         let store = Store::new().map_err(|e| Box::new(e) as Box<dyn Error>)?;
         let locations: Option<Vec<PathBuf>> = None;
-        let mut env = OntoEnv::init(Config::new_with_default_matches(
+        let mut env = OntoEnv::init(
+            Config::new_with_default_matches(
                 PathBuf::from("."), // root
-                locations, // no locations
-                true, // require ontology names
-                false, // strict parsing
-                false, // not offline
-                true, // in-memory
-        ).unwrap(), false).expect("Failed to create OntoEnv with default configuration");
+                locations,          // no locations
+                true,               // require ontology names
+                false,              // strict parsing
+                false,              // not offline
+                true,               // in-memory
+            )
+            .unwrap(),
+            false,
+        )
+        .expect("Failed to create OntoEnv with default configuration");
 
         let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
         println!("Added shape graph: {}", shape_graph_location);
@@ -276,7 +284,6 @@ impl ValidationContext {
         println!("Added data graph: {}", data_graph_location);
         let data_id = env.add(data_graph_location, true)?;
         let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
-
 
         Self::load_graph_into_store(
             &store,
@@ -308,7 +315,6 @@ impl ValidationContext {
             ))
         })?;
 
-        
         store.optimize().map_err(|e| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -349,22 +355,16 @@ impl ValidationContext {
 
     /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
     pub fn get_or_create_node_id(&self, term: Term) -> ID {
-        self.nodeshape_id_lookup
-            .borrow_mut()
-            .get_or_create_id(term)
+        self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
-        self.propshape_id_lookup
-            .borrow_mut()
-            .get_or_create_id(term)
+        self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
     pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
-        self.component_id_lookup
-            .borrow_mut()
-            .get_or_create_id(term)
+        self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     // Getter methods for ID lookup tables
@@ -398,14 +398,10 @@ impl ValidationContext {
     pub fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
         match item {
             TraceItem::NodeShape(id) => {
-                let label = self
-                    .nodeshape_id_lookup
-                    .borrow()
-                    .get_term(*id)
-                    .map_or_else(
-                        || format!("Unknown NodeShape ID: {:?}", id),
-                        |term| format_term_for_label(term),
-                    );
+                let label = self.nodeshape_id_lookup.borrow().get_term(*id).map_or_else(
+                    || format!("Unknown NodeShape ID: {:?}", id),
+                    |term| format_term_for_label(term),
+                );
                 (label, "NodeShape".to_string())
             }
             TraceItem::PropertyShape(id) => {
@@ -419,12 +415,10 @@ impl ValidationContext {
                 (label, "PropertyShape".to_string())
             }
             TraceItem::Component(id) => {
-                let label = self
-                    .get_component_by_id(id)
-                    .map_or_else(
-                        || format!("Unknown Component ID: {:?}", id),
-                        |comp| comp.label(),
-                    );
+                let label = self.get_component_by_id(id).map_or_else(
+                    || format!("Unknown Component ID: {:?}", id),
+                    |comp| comp.label(),
+                );
                 (label, "Component".to_string())
             }
         }
@@ -507,7 +501,8 @@ impl Context {
     }
 
     pub fn record_component_visit(&mut self, component_id: ComponentID) {
-        self.execution_trace.push(TraceItem::Component(component_id));
+        self.execution_trace
+            .push(TraceItem::Component(component_id));
     }
 
     pub fn execution_trace(&self) -> &Vec<TraceItem> {

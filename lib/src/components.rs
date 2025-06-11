@@ -267,8 +267,10 @@ pub fn parse_components(
                         None
                     }
                 });
-            let component =
-                Component::PatternConstraint(PatternConstraintComponent::new(pattern_str, flags_str));
+            let component = Component::PatternConstraint(PatternConstraintComponent::new(
+                pattern_str,
+                flags_str,
+            ));
             let component_id = context.get_or_create_component_id(pattern_term.clone());
             new_components.insert(component_id, component);
         }
@@ -305,8 +307,7 @@ pub fn parse_components(
                     let component = Component::UniqueLangConstraint(
                         UniqueLangConstraintComponent::new(unique_lang_val),
                     );
-                    let component_id =
-                        context.get_or_create_component_id(unique_lang_term.clone());
+                    let component_id = context.get_or_create_component_id(unique_lang_term.clone());
                     new_components.insert(component_id, component);
                 }
             }
@@ -318,8 +319,9 @@ pub fn parse_components(
         for equals_term in equals_terms {
             // equals_term is &Term
             if let Term::NamedNode(_nn) = equals_term {
-                let component =
-                    Component::EqualsConstraint(EqualsConstraintComponent::new(equals_term.clone()));
+                let component = Component::EqualsConstraint(EqualsConstraintComponent::new(
+                    equals_term.clone(),
+                ));
                 let component_id = context.get_or_create_component_id(equals_term.clone());
                 new_components.insert(component_id, component);
             }
@@ -518,8 +520,9 @@ pub fn parse_components(
     if let Some(has_value_terms) = pred_obj_pairs.get(&shacl.has_value.into_owned()) {
         for has_value_term in has_value_terms {
             // has_value_term is &Term
-            let component =
-                Component::HasValueConstraint(HasValueConstraintComponent::new(has_value_term.clone()));
+            let component = Component::HasValueConstraint(HasValueConstraintComponent::new(
+                has_value_term.clone(),
+            ));
             let component_id = context.get_or_create_component_id(has_value_term.clone());
             new_components.insert(component_id, component);
         }
@@ -680,9 +683,7 @@ impl Component {
             Component::EqualsConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::DisjointConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::LessThanConstraint(c) => c.to_graphviz_string(component_id, context),
-            Component::LessThanOrEqualsConstraint(c) => {
-                c.to_graphviz_string(component_id, context)
-            }
+            Component::LessThanOrEqualsConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::NotConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::AndConstraint(c) => c.to_graphviz_string(component_id, context),
             Component::OrConstraint(c) => c.to_graphviz_string(component_id, context),

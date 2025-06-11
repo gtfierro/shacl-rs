@@ -1,7 +1,9 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::types::{ComponentID, ID};
 
-use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult, check_conformance_for_node};
+use super::{
+    check_conformance_for_node, ComponentValidationResult, GraphvizOutput, ValidateComponent,
+};
 
 // logical constraints
 #[derive(Debug)]
@@ -55,11 +57,12 @@ impl ValidateComponent for NotConstraintComponent {
 
         for value_node_to_check in value_nodes {
             // Create a new context where the current value_node is the focus node.
-            let mut value_node_as_context = Context::new( // Made mutable
+            let mut value_node_as_context = Context::new(
+                // Made mutable
                 value_node_to_check.clone(),
                 None, // Path is not directly relevant for this sub-check's context
                 Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
-                *negated_node_shape.identifier() // Source shape is the one being checked against
+                *negated_node_shape.identifier(), // Source shape is the one being checked against
             );
 
             match check_conformance_for_node(
@@ -137,13 +140,16 @@ impl ValidateComponent for AndConstraintComponent {
             // The source_shape for the context used in check_conformance_for_node
             // will be set to the specific conjunct_node_shape's ID.
             for conjunct_shape_id in &self.shapes {
-                let mut value_node_as_context = Context::new( // Made mutable
+                let mut value_node_as_context = Context::new(
+                    // Made mutable
                     value_node_to_check.clone(),
                     None,
                     Some(vec![value_node_to_check.clone()]),
-                    *conjunct_shape_id // Source shape is the conjunct being checked
+                    *conjunct_shape_id, // Source shape is the conjunct being checked
                 );
-                let Some(conjunct_node_shape) = validation_context.get_node_shape_by_id(conjunct_shape_id) else {
+                let Some(conjunct_node_shape) =
+                    validation_context.get_node_shape_by_id(conjunct_shape_id)
+                else {
                     return Err(format!(
                         "sh:and referenced shape {:?} not found",
                         conjunct_shape_id
@@ -226,7 +232,10 @@ impl ValidateComponent for OrConstraintComponent {
             return if value_nodes.is_empty() {
                 Ok(ComponentValidationResult::Pass(component_id))
             } else {
-                Err("sh:or with an empty list of shapes cannot be satisfied by any value node.".to_string())
+                Err(
+                    "sh:or with an empty list of shapes cannot be satisfied by any value node."
+                        .to_string(),
+                )
             };
         }
 
@@ -235,13 +244,16 @@ impl ValidateComponent for OrConstraintComponent {
             // The source_shape for the context used in check_conformance_for_node
             // will be set to the specific disjunct_node_shape's ID.
             for disjunct_shape_id in &self.shapes {
-                let mut value_node_as_context = Context::new( // Made mutable
+                let mut value_node_as_context = Context::new(
+                    // Made mutable
                     value_node_to_check.clone(),
                     None,
                     Some(vec![value_node_to_check.clone()]),
-                    *disjunct_shape_id // Source shape is the disjunct being checked
+                    *disjunct_shape_id, // Source shape is the disjunct being checked
                 );
-                let Some(disjunct_node_shape) = validation_context.get_node_shape_by_id(disjunct_shape_id) else {
+                let Some(disjunct_node_shape) =
+                    validation_context.get_node_shape_by_id(disjunct_shape_id)
+                else {
                     return Err(format!(
                         "sh:or referenced shape {:?} not found",
                         disjunct_shape_id
@@ -329,7 +341,10 @@ impl ValidateComponent for XoneConstraintComponent {
             return if value_nodes.is_empty() {
                 Ok(ComponentValidationResult::Pass(component_id))
             } else {
-                Err("sh:xone with an empty list of shapes cannot be satisfied by any value node.".to_string())
+                Err(
+                    "sh:xone with an empty list of shapes cannot be satisfied by any value node."
+                        .to_string(),
+                )
             };
         }
 
@@ -338,13 +353,15 @@ impl ValidateComponent for XoneConstraintComponent {
             // The source_shape for the context used in check_conformance_for_node
             // will be set to the specific xone_node_shape's ID.
             for xone_shape_id in &self.shapes {
-                let mut value_node_as_context = Context::new( // Made mutable
+                let mut value_node_as_context = Context::new(
+                    // Made mutable
                     value_node_to_check.clone(),
                     None,
                     Some(vec![value_node_to_check.clone()]),
-                    *xone_shape_id // Source shape is the xone option being checked
+                    *xone_shape_id, // Source shape is the xone option being checked
                 );
-                let Some(xone_node_shape) = validation_context.get_node_shape_by_id(xone_shape_id) else {
+                let Some(xone_node_shape) = validation_context.get_node_shape_by_id(xone_shape_id)
+                else {
                     return Err(format!(
                         "sh:xone referenced shape {:?} not found",
                         xone_shape_id

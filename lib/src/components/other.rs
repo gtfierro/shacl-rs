@@ -3,7 +3,7 @@ use crate::types::ComponentID;
 use oxigraph::model::Term;
 use std::vec::Vec;
 
-use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult};
+use super::{ComponentValidationResult, GraphvizOutput, ValidateComponent};
 
 impl ValidateComponent for InConstraintComponent {
     fn validate(

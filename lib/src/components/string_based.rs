@@ -1,7 +1,7 @@
 use crate::context::{sanitize_graphviz_string, Context, ValidationContext};
 use crate::types::ComponentID;
 use oxigraph::model::TermRef;
-// Removed: use regex::Regex; 
+// Removed: use regex::Regex;
 use std::collections::HashSet;
 
 use super::{ComponentValidationResult, GraphvizOutput, ValidateComponent};
@@ -112,7 +112,7 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                     }
                     TermRef::NamedNode(nn) => nn.as_str().chars().count(),
                     TermRef::Literal(literal) => literal.value().chars().count(),
-                     _ => {
+                    _ => {
                         return Err(format!(
                             "Unexpected term type for maxLength check: {:?}",
                             vn
@@ -259,7 +259,11 @@ fn lang_matches(tag: &str, range: &str) -> bool {
 
     // Check if range is a prefix of tag, separated by '-'
     // e.g., tag "en-us-calif", range "en-us"
-    if range_lower.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') { // Basic check for valid lang-range prefix
+    if range_lower
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-')
+    {
+        // Basic check for valid lang-range prefix
         if tag_lower.starts_with(&format!("{}-", range_lower)) {
             return true;
         }

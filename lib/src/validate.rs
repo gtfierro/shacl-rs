@@ -21,7 +21,7 @@ impl ValidateShape for NodeShape {
         for mut target_context in target_contexts.into_iter() {
             // Iterate mutably
             target_context.record_node_shape_visit(*self.identifier()); // Record NodeShape visit
-                                                                       // for each target, validate the constraints
+                                                                        // for each target, validate the constraints
             for constraint_id in self.constraints() {
                 // constraint_id is &ComponentID
                 let comp = context
@@ -42,7 +42,8 @@ impl ValidateShape for NodeShape {
                                 .get_prop_shape_by_id(pc_comp.shape()) // Use accessor
                                 .ok_or_else(|| {
                                     // This case should ideally be caught by pc_comp.validate if it checks existence
-                                    format!("Property shape not found for ID: {}", pc_comp.shape()) // Use accessor
+                                    format!("Property shape not found for ID: {}", pc_comp.shape())
+                                    // Use accessor
                                 })?;
 
                             // PropertyShape::validate now takes &mut Context, &ValidationContext, &mut ValidationReportBuilder
@@ -155,9 +156,9 @@ impl PropertyShape {
         let mut value_node_context = Context::new(
             // Made mutable
             focus_node_term.clone(),
-            Some(self.path().clone()),   // PShapePath from self.path()
-            value_nodes_opt,             // Use the renamed Option<Vec<Term>>
-            ID(self.identifier().0), // Source shape is this PropertyShape
+            Some(self.path().clone()), // PShapePath from self.path()
+            value_nodes_opt,           // Use the renamed Option<Vec<Term>>
+            ID(self.identifier().0),   // Source shape is this PropertyShape
         );
 
         for constraint_id in self.constraints() {

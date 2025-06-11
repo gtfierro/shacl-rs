@@ -1,6 +1,6 @@
 use crate::context::ValidationContext;
 use crate::report::ValidationReportBuilder;
-use crate::types::{ComponentID, PropShapeID, ID, Severity};
+use crate::types::{ComponentID, PropShapeID, Severity, ID};
 use crate::types::{Path, Target};
 // SHACL, Term, NamedNode, TermRef were unused
 
@@ -28,7 +28,12 @@ pub struct NodeShape {
 }
 
 impl NodeShape {
-    pub fn new(identifier: ID, targets: Vec<Target>, constraints: Vec<ComponentID>, severity: Option<Severity>) -> Self {
+    pub fn new(
+        identifier: ID,
+        targets: Vec<Target>,
+        constraints: Vec<ComponentID>,
+        severity: Option<Severity>,
+    ) -> Self {
         NodeShape {
             identifier,
             targets,
@@ -64,7 +69,12 @@ pub struct PropertyShape {
 }
 
 impl PropertyShape {
-    pub fn new(identifier: PropShapeID, path: Path, constraints: Vec<ComponentID>, severity: Option<Severity>) -> Self {
+    pub fn new(
+        identifier: PropShapeID,
+        path: Path,
+        constraints: Vec<ComponentID>,
+        severity: Option<Severity>,
+    ) -> Self {
         PropertyShape {
             identifier,
             path,

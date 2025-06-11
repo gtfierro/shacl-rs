@@ -1,23 +1,24 @@
-use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::components::ToSubjectRef;
+use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::ComponentID;
 use oxigraph::model::{Term, TermRef};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 
-use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult};
+use super::{ComponentValidationResult, GraphvizOutput, ValidateComponent};
 
 // value type
 #[derive(Debug)]
 pub struct ClassConstraintComponent {
     class: Term,
-    query: Query, 
+    query: Query,
 }
 
 impl ClassConstraintComponent {
     pub fn new(class: Term) -> Self {
         let class_term = class.to_subject_ref();
-        let query_str = format!("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        let query_str = format!(
+            "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         ASK {{
             ?value_node rdf:type/rdfs:subClassOf* {} .
@@ -27,10 +28,7 @@ impl ClassConstraintComponent {
         match Query::parse(&query_str, None) {
             Ok(mut query) => {
                 query.dataset_mut().set_default_graph_as_union();
-                ClassConstraintComponent {
-                    class,
-                    query,
-                }
+                ClassConstraintComponent { class, query }
             }
             Err(e) => panic!("Failed to parse SPARQL query: {}", e),
         }
@@ -77,16 +75,13 @@ impl ValidateComponent for ClassConstraintComponent {
                             vn, self.class
                         ));
                     }
-                },
+                }
                 Ok(_) => {
                     return Err("Expected a boolean result for class constraint query".to_string());
-                },
+                }
                 Err(e) => {
-                    return Err(format!(
-                        "Failed to execute class constraint query: {}",
-                        e
-                    ));
-                },
+                    return Err(format!("Failed to execute class constraint query: {}", e));
+                }
             }
         }
         Ok(ComponentValidationResult::Pass(component_id))

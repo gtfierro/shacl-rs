@@ -223,11 +223,13 @@ impl Target {
                 let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
                     SELECT DISTINCT ?inst ?target_class WHERE { ?inst rdf:type ?c . ?c rdfs:subClassOf* ?target_class }";
-                let target_class_var =
-                    Variable::new("target_class").map_err(|e| e.to_string())?;
+                let target_class_var = Variable::new("target_class").map_err(|e| e.to_string())?;
 
                 let mut parsed_query = Query::parse(query_str, None).map_err(|e| {
-                    format!("SPARQL parse error for Target::Class: {} {:?}", query_str, e)
+                    format!(
+                        "SPARQL parse error for Target::Class: {} {:?}",
+                        query_str, e
+                    )
                 })?;
                 parsed_query.dataset_mut().set_default_graph_as_union();
 
@@ -239,7 +241,10 @@ impl Target {
                         [(target_class_var, c.clone())],
                     )
                     .map_err(|e| {
-                        format!("SPARQL query error for Target::Class: {} {:?}", query_str, e)
+                        format!(
+                            "SPARQL query error for Target::Class: {} {:?}",
+                            query_str, e
+                        )
                     })?;
 
                 match results {

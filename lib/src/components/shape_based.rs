@@ -1,8 +1,10 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::types::{ComponentID, PropShapeID, ID};
-// Removed: use oxigraph::model::Term; 
+// Removed: use oxigraph::model::Term;
 
-use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult, check_conformance_for_node};
+use super::{
+    check_conformance_for_node, ComponentValidationResult, GraphvizOutput, ValidateComponent,
+};
 
 #[derive(Debug)]
 pub struct NodeConstraintComponent {
@@ -59,24 +61,29 @@ impl ValidateComponent for QualifiedValueShapeComponent {
             }
         };
 
-        let Some(target_node_shape_for_self) = validation_context.get_node_shape_by_id(&self.shape) else {
+        let Some(target_node_shape_for_self) = validation_context.get_node_shape_by_id(&self.shape)
+        else {
             return Err(format!(
                 "QualifiedValueShape: Referenced node shape {:?} for sh:qualifiedValueShape not found",
                 self.shape
             ));
         };
 
-        let mut sibling_target_node_shape_ids: std::collections::HashSet<ID> = std::collections::HashSet::new();
+        let mut sibling_target_node_shape_ids: std::collections::HashSet<ID> =
+            std::collections::HashSet::new();
         if self.disjoint.unwrap_or(false) {
             // c.source_shape() now returns ID, which is the ID of the containing PropertyShape.
             let source_property_shape_id = PropShapeID(c.source_shape().0);
 
-            let mut all_qvs_targets_from_relevant_parents: std::collections::HashSet<ID> = std::collections::HashSet::new();
+            let mut all_qvs_targets_from_relevant_parents: std::collections::HashSet<ID> =
+                std::collections::HashSet::new();
 
             for (_parent_node_shape_id, parent_node_shape) in validation_context.node_shapes() {
                 let mut is_parent_of_current_prop_shape = false;
                 for constraint_id_on_parent in parent_node_shape.constraints() {
-                    if let Some(super::Component::PropertyConstraint(pc)) = validation_context.get_component_by_id(constraint_id_on_parent) {
+                    if let Some(super::Component::PropertyConstraint(pc)) =
+                        validation_context.get_component_by_id(constraint_id_on_parent)
+                    {
                         if pc.shape() == &source_property_shape_id {
                             is_parent_of_current_prop_shape = true;
                             break;
@@ -88,11 +95,22 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                     // This parent_node_shape is one of the shapes `ps` from the spec.
                     // Collect all sh:property / sh:qualifiedValueShape target IDs from this parent.
                     for constraint_id_on_parent in parent_node_shape.constraints() {
-                        if let Some(super::Component::PropertyConstraint(any_pc_on_parent)) = validation_context.get_component_by_id(constraint_id_on_parent) {
-                            if let Some(any_prop_shape_on_parent) = validation_context.get_prop_shape_by_id(any_pc_on_parent.shape()) {
-                                for qvs_constraint_id_on_any_prop in any_prop_shape_on_parent.constraints() {
-                                    if let Some(super::Component::QualifiedValueShape(qvs_comp_on_any_prop)) = validation_context.get_component_by_id(qvs_constraint_id_on_any_prop) {
-                                        all_qvs_targets_from_relevant_parents.insert(qvs_comp_on_any_prop.shape);
+                        if let Some(super::Component::PropertyConstraint(any_pc_on_parent)) =
+                            validation_context.get_component_by_id(constraint_id_on_parent)
+                        {
+                            if let Some(any_prop_shape_on_parent) =
+                                validation_context.get_prop_shape_by_id(any_pc_on_parent.shape())
+                            {
+                                for qvs_constraint_id_on_any_prop in
+                                    any_prop_shape_on_parent.constraints()
+                                {
+                                    if let Some(super::Component::QualifiedValueShape(
+                                        qvs_comp_on_any_prop,
+                                    )) = validation_context
+                                        .get_component_by_id(qvs_constraint_id_on_any_prop)
+                                    {
+                                        all_qvs_targets_from_relevant_parents
+                                            .insert(qvs_comp_on_any_prop.shape);
                                     }
                                 }
                             }
@@ -107,11 +125,12 @@ impl ValidateComponent for QualifiedValueShapeComponent {
 
         let mut conforming_value_node_count = 0;
         for value_node_to_check in value_nodes {
-            let mut value_node_as_context = Context::new( // Made mutable
+            let mut value_node_as_context = Context::new(
+                // Made mutable
                 value_node_to_check.clone(),
                 None, // Path is not directly relevant for this sub-check's context
                 Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
-                self.shape // Source shape is the target_node_shape_for_self (self.shape)
+                self.shape, // Source shape is the target_node_shape_for_self (self.shape)
             );
 
             match check_conformance_for_node(
@@ -119,32 +138,40 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                 target_node_shape_for_self,
                 validation_context,
             ) {
-                Ok(true) => { // Conforms to self.shape
+                Ok(true) => {
+                    // Conforms to self.shape
                     let mut conforms_to_a_sibling = false;
                     if self.disjoint.unwrap_or(false) && !sibling_target_node_shape_ids.is_empty() {
                         for sibling_shape_id in &sibling_target_node_shape_ids {
-                            if let Some(sibling_node_shape) = validation_context.get_node_shape_by_id(sibling_shape_id) {
+                            if let Some(sibling_node_shape) =
+                                validation_context.get_node_shape_by_id(sibling_shape_id)
+                            {
                                 // Create a new context for checking against the sibling, with sibling's ID as source_shape
-                                let mut sibling_check_context = Context::new( // Made mutable
+                                let mut sibling_check_context = Context::new(
+                                    // Made mutable
                                     value_node_to_check.clone(),
                                     None,
                                     Some(vec![value_node_to_check.clone()]),
-                                    *sibling_shape_id // Source shape is the sibling shape
+                                    *sibling_shape_id, // Source shape is the sibling shape
                                 );
                                 match check_conformance_for_node(
                                     &mut sibling_check_context, // Pass mutably
                                     sibling_node_shape,
                                     validation_context,
                                 ) {
-                                    Ok(true) => { // Conforms to this sibling shape
+                                    Ok(true) => {
+                                        // Conforms to this sibling shape
                                         conforms_to_a_sibling = true;
                                         break;
                                     }
                                     Ok(false) => {} // Does not conform to this sibling, continue
-                                    Err(e) => return Err(format!("Error checking conformance against sibling shape {:?}: {}", sibling_shape_id, e)),
+                                    Err(e) => return Err(format!(
+                                        "Error checking conformance against sibling shape {:?}: {}",
+                                        sibling_shape_id, e
+                                    )),
                                 }
                             } else {
-                                 return Err(format!("QualifiedValueShape: Sibling node shape {:?} for disjoint check not found", sibling_shape_id));
+                                return Err(format!("QualifiedValueShape: Sibling node shape {:?} for disjoint check not found", sibling_shape_id));
                             }
                         }
                     }
@@ -154,7 +181,10 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                     }
                 }
                 Ok(false) => {} // Does not conform to self.shape, so don't count.
-                Err(e) => return Err(format!("Error checking conformance for sh:qualifiedValueShape target shape {:?}: {}", self.shape, e)),
+                Err(e) => return Err(format!(
+                    "Error checking conformance for sh:qualifiedValueShape target shape {:?}: {}",
+                    self.shape, e
+                )),
             }
         }
 
@@ -203,11 +233,12 @@ impl ValidateComponent for NodeConstraintComponent {
             // Create a new context where the current value_node is the focus node.
             // The path and other aspects of the original context 'c' are not directly relevant
             // for this specific conformance check of the value_node against target_node_shape.
-            let mut value_node_as_context = Context::new( // Made mutable
+            let mut value_node_as_context = Context::new(
+                // Made mutable
                 value_node_to_check.clone(),
                 None, // Path is not directly relevant for this sub-check's context
                 Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
-                *target_node_shape.identifier() // Source shape is the one being checked against
+                *target_node_shape.identifier(), // Source shape is the one being checked against
             );
 
             match check_conformance_for_node(
@@ -281,7 +312,7 @@ impl ValidateComponent for PropertyConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        _c: &mut Context, // Changed to &mut Context
+        _c: &mut Context,            // Changed to &mut Context
         context: &ValidationContext, // May be used to check existence of self.shape
     ) -> Result<ComponentValidationResult, String> {
         // Ensure the referenced property shape exists.

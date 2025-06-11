@@ -4,10 +4,10 @@ use crate::components::{
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::ComponentID;
+use ontoenv::api::ResolveTarget;
 use oxigraph::model::vocab::xsd;
 use oxigraph::model::{Literal, Term};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
-use ontoenv::api::ResolveTarget;
 
 #[derive(Debug, Clone)]
 pub struct SPARQLConstraintComponent {
@@ -18,19 +18,19 @@ impl SPARQLConstraintComponent {
     pub fn new(constraint_node: Term) -> Self {
         SPARQLConstraintComponent { constraint_node }
     }
-    fn get_sparql_prefixes(
-        &self,
-        context: &ValidationContext,
-    ) -> Result<String, String> {
+    fn get_sparql_prefixes(&self, context: &ValidationContext) -> Result<String, String> {
         // call context.env()
-        let graphid = context.env().resolve(ResolveTarget::Graph(
-            context.shape_graph_iri.clone()
-        )).unwrap();
-        let ont = context.env().get_ontology(&graphid)
+        let graphid = context
+            .env()
+            .resolve(ResolveTarget::Graph(context.shape_graph_iri.clone()))
+            .unwrap();
+        let ont = context
+            .env()
+            .get_ontology(&graphid)
             .expect("Failed to get ontology for SPARQL constraint prefixes");
         let namespaces = ont.namespace_map();
         // format the namespaces into a String
-        // PREFIX pfx: <iri> \n 
+        // PREFIX pfx: <iri> \n
         // etc...
 
         let prefix_strs: Vec<String> = namespaces
@@ -42,11 +42,7 @@ impl SPARQLConstraintComponent {
 }
 
 impl GraphvizOutput for SPARQLConstraintComponent {
-    fn to_graphviz_string(
-        &self,
-        component_id: ComponentID,
-        context: &ValidationContext,
-    ) -> String {
+    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shacl = SHACL::new();
         let subject = self.constraint_node.to_subject_ref();
         let select_query_opt = context
@@ -160,10 +156,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
         })?;
 
         // 5. Pre-bind variables
-        let substitutions = vec![(
-            Variable::new_unchecked("this"),
-            c.focus_node().clone(),
-        )];
+        let substitutions = vec![(Variable::new_unchecked("this"), c.focus_node().clone())];
 
         // 6. Execute query
         let results = context

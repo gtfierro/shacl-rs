@@ -1,7 +1,7 @@
 use crate::context::{Context, ValidationContext};
 use crate::types::ComponentID;
 
-use super::{GraphvizOutput, ValidateComponent, ComponentValidationResult};
+use super::{ComponentValidationResult, GraphvizOutput, ValidateComponent};
 
 #[derive(Debug)]
 pub struct MinCountConstraintComponent {
@@ -32,7 +32,7 @@ impl ValidateComponent for MinCountConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,              // Changed to &mut Context
         _context: &ValidationContext, // context is not used
     ) -> Result<ComponentValidationResult, String> {
         if c.value_nodes().map_or(0, |v| v.len()) < self.min_count as usize {
@@ -75,7 +75,7 @@ impl ValidateComponent for MaxCountConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,              // Changed to &mut Context
         _context: &ValidationContext, // context is not used
     ) -> Result<ComponentValidationResult, String> {
         if c.value_nodes().map_or(0, |v| v.len()) > self.max_count as usize {

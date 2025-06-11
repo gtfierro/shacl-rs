@@ -1,6 +1,6 @@
 use crate::context::Context;
-use std::collections::HashMap;
-use oxigraph::model::Term; // For using Term as a HashMap key
+use oxigraph::model::Term;
+use std::collections::HashMap; // For using Term as a HashMap key
 
 pub struct ValidationReportBuilder {
     pub(crate) results: Vec<(Context, String)>, // Made pub(crate)
