@@ -20,7 +20,5 @@ regex = "1"
 log = "0.4"
 env_logger = "0.11"
 
-[workspace.dev-dependencies]
-
 [profile.release]
 debug = true
