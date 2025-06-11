@@ -2,10 +2,11 @@
 mod components;
 pub mod context;
 mod named_nodes;
+pub mod parser;
 mod report;
-mod validate;
 mod shape;
 mod types;
+mod validate;
 
 use components::Component;
 use shape::Shape;

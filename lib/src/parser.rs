@@ -1,0 +1,458 @@
+use crate::components::{parse_components, ToSubjectRef};
+use crate::context::ValidationContext;
+use crate::named_nodes::{OWL, RDFS, RDF, SHACL};
+use crate::shape::{NodeShape, PropertyShape};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, ID};
+use oxigraph::model::{GraphName, GraphNameRef, QuadRef, SubjectRef, Term, TermRef};
+use std::collections::HashSet;
+
+pub fn run_parser(context: &mut ValidationContext) -> Result<(), String> {
+    // parses the shape graph to get all of the shapes and components defined within
+    let shapes = get_node_shapes(context);
+    for shape in shapes {
+        parse_node_shape(context, shape.as_ref())?;
+    }
+
+    let pshapes = get_property_shapes(context);
+    for pshape in pshapes {
+        parse_property_shape(context, pshape.as_ref())?;
+    }
+    Ok(())
+}
+
+fn get_property_shapes(context: &ValidationContext) -> Vec<Term> {
+    let rdf = RDF::new();
+    let sh = SHACL::new();
+    let mut prop_shapes = HashSet::new();
+    let shape_graph_name_ref = GraphNameRef::NamedNode(context.shape_graph_iri.as_ref());
+
+    // - <pshape> a sh:PropertyShape
+    for quad_res in context.store().quads_for_pattern(
+        None,
+        Some(rdf.type_),
+        Some(sh.property_shape.into()),
+        Some(shape_graph_name_ref),
+    ) {
+        if let Ok(quad) = quad_res {
+            prop_shapes.insert(quad.subject.into()); // quad.subject is Subject, .into() converts to Term
+        }
+    }
+
+    // - ? sh:property <pshape>
+    for quad_res in context.store().quads_for_pattern(
+        None,
+        Some(sh.property),
+        None,
+        Some(shape_graph_name_ref),
+    ) {
+        if let Ok(quad) = quad_res {
+            prop_shapes.insert(quad.object); // quad.object is Term
+        }
+    }
+
+    prop_shapes.into_iter().collect()
+}
+
+fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
+    // here are all the ways to get a node shape:
+    // - <shape> rdf:type sh:NodeShape
+    // - ? sh:node <shape>
+    // - ? sh:qualifiedValueShape <shape>
+    // - ? sh:not <shape>
+    // - ? sh:or (list of <shape>)
+    // - ? sh:and (list of <shape>)
+    // - ? sh:xone (list of <shape>)
+    let rdf = RDF::new();
+    let shacl = SHACL::new();
+    let shape_graph_name_ref = GraphNameRef::NamedNode(context.shape_graph_iri.as_ref());
+
+    // parse these out of the shape graph and return a vector of IDs
+    let mut node_shapes = HashSet::new();
+
+    // <shape> rdf:type sh:NodeShape
+    for quad_res in context.store().quads_for_pattern(
+        None,
+        Some(rdf.type_),
+        Some(shacl.node_shape.into()),
+        Some(shape_graph_name_ref),
+    ) {
+        if let Ok(quad) = quad_res {
+            node_shapes.insert(quad.subject.into());
+        }
+    }
+
+    // ? sh:node <shape>
+    for quad_res in context.store().quads_for_pattern(
+        None,
+        Some(shacl.node),
+        None,
+        Some(shape_graph_name_ref),
+    ) {
+        if let Ok(quad) = quad_res {
+            node_shapes.insert(quad.object);
+        }
+    }
+
+    // ? sh:qualifiedValueShape <shape>
+    for quad_res in context.store().quads_for_pattern(
+        None,
+        Some(shacl.qualified_value_shape),
+        None,
+        Some(shape_graph_name_ref),
+    ) {
+        if let Ok(quad) = quad_res {
+            node_shapes.insert(quad.object);
+        }
+    }
+
+    // ? sh:not <shape>
+    for quad_res in
+        context
+            .store()
+            .quads_for_pattern(None, Some(shacl.not), None, Some(shape_graph_name_ref))
+    {
+        if let Ok(quad) = quad_res {
+            node_shapes.insert(quad.object);
+        }
+    }
+
+    // Helper to process lists for logical constraints
+    let mut process_list_constraint = |predicate_ref| {
+        for quad_res in context.store().quads_for_pattern(
+            None,
+            Some(predicate_ref),
+            None,
+            Some(shape_graph_name_ref),
+        ) {
+            if let Ok(quad) = quad_res {
+                let list_head_term = quad.object; // This is Term
+                                                  // parse_rdf_list will also use shape_graph_name_ref internally
+                for item_term in parse_rdf_list(context, list_head_term) {
+                    node_shapes.insert(item_term);
+                }
+            }
+        }
+    };
+
+    // ? sh:or (list of <shape>)
+    process_list_constraint(shacl.or_);
+
+    // ? sh:and (list of <shape>)
+    process_list_constraint(shacl.and_);
+
+    // ? sh:xone (list of <shape>)
+    process_list_constraint(shacl.xone);
+
+    node_shapes.into_iter().collect()
+}
+
+fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<ID, String> {
+    // Parses a shape from the shape graph and returns its ID.
+    // Adds the shape to the node_shapes map.
+    let id = context.get_or_create_node_id(shape.into());
+    let sh = SHACL::new();
+
+    let subject: SubjectRef = shape.to_subject_ref();
+    let shape_graph_name = GraphName::NamedNode(context.shape_graph_iri.clone());
+
+    // get the targets
+    let mut targets: Vec<crate::types::Target> = context
+        .store()
+        .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name.as_ref()))
+        .filter_map(Result::ok)
+        .filter_map(|quad| {
+            crate::types::Target::from_predicate_object(
+                quad.predicate.as_ref(),
+                quad.object.as_ref(),
+            )
+        })
+        .collect();
+
+    // check for implicit classes. If 'shape' is also a class (rdfs:Class or owl:Class)
+    // then add a Target::Class for it.
+    // use store.contains(quad) to check
+    let rdf = RDF::new();
+    let rdfs = RDFS::new();
+    let owl = OWL::new();
+    let is_rdfs_class = context
+        .store()
+        .contains(QuadRef::new(
+            subject,
+            rdf.type_,
+            rdfs.class,
+            shape_graph_name.as_ref(),
+        ))
+        .map_err(|e| e.to_string())?;
+    let is_owl_class = context
+        .store()
+        .contains(QuadRef::new(
+            subject,
+            rdf.type_,
+            owl.class,
+            shape_graph_name.as_ref(),
+        ))
+        .map_err(|e| e.to_string())?;
+    if is_rdfs_class || is_owl_class {
+        targets.push(crate::types::Target::Class(subject.into()));
+    }
+
+    // get constraint components
+    // parse_components will internally use context.store() and context.shape_graph_iri_ref()
+    let constraints = parse_components(shape, context);
+    let component_ids: Vec<ComponentID> = constraints.keys().cloned().collect();
+    for (component_id, component) in constraints {
+        // add the component to our context.components map
+        context.components.insert(component_id, component);
+    }
+
+    let _property_shapes: Vec<PropShapeID> = context // This seems to be about sh:property linking to PropertyShapes.
+        .store() // It was collected but not used in NodeShape::new.
+        .quads_for_pattern(
+            Some(subject),
+            Some(sh.property),
+            None,
+            Some(shape_graph_name.as_ref()),
+        )
+        .filter_map(Result::ok)
+        .filter_map(|quad| context.propshape_id_lookup.borrow().get(&quad.object))
+        .collect();
+    // TODO: property_shapes are collected but not used in NodeShape::new. This might be an existing oversight or for future use.
+
+    let severity_term_opt = context
+        .store()
+        .quads_for_pattern(
+            Some(subject),
+            Some(sh.severity),
+            None,
+            Some(shape_graph_name.as_ref()),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next();
+
+    let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
+
+    let node_shape = NodeShape::new(id, targets, component_ids, severity);
+    context.node_shapes.insert(id, node_shape);
+    Ok(id)
+}
+
+fn parse_property_shape(
+    context: &mut ValidationContext,
+    pshape: TermRef,
+) -> Result<PropShapeID, String> {
+    let id = context.get_or_create_prop_id(pshape.into_owned());
+    let shacl = SHACL::new();
+    let subject: SubjectRef = pshape.to_subject_ref();
+    let ps_shape_graph_name = GraphName::NamedNode(context.shape_graph_iri.clone());
+
+    let path_object_term: Term = context
+        .store()
+        .quads_for_pattern(
+            Some(subject),
+            Some(shacl.path),
+            None,
+            Some(ps_shape_graph_name.as_ref()),
+        )
+        .filter_map(Result::ok)
+        .map(|quad| quad.object)
+        .next()
+        .ok_or_else(|| format!("Property shape {:?} must have a sh:path", pshape))?;
+
+    let path = parse_shacl_path_recursive(context, path_object_term.as_ref())?;
+
+    // get constraint components
+    // parse_components will internally use context.store() and context.shape_graph_iri_ref()
+    let constraints = parse_components(pshape, context);
+    let component_ids: Vec<ComponentID> = constraints.keys().cloned().collect();
+    for (component_id, component) in constraints {
+        // add the component to our context.components map
+        context.components.insert(component_id, component);
+    }
+
+    let severity_term_opt = context
+        .store()
+        .quads_for_pattern(
+            Some(subject),
+            Some(shacl.severity),
+            None,
+            Some(ps_shape_graph_name.as_ref()),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next();
+
+    let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
+
+    let prop_shape = PropertyShape::new(id, path, component_ids, severity);
+    context.prop_shapes.insert(id, prop_shape);
+    Ok(id)
+}
+
+// Helper function to recursively parse SHACL paths
+fn parse_shacl_path_recursive(
+    context: &ValidationContext,
+    path_term_ref: TermRef,
+) -> Result<PShapePath, String> {
+    let shacl = SHACL::new();
+    let _rdf = RDF::new();
+    let shape_graph_name_ref = context.shape_graph_iri_ref();
+
+    // Check for sh:inversePath
+    if let Some(inverse_path_obj) = context
+        .store()
+        .quads_for_pattern(
+            Some(path_term_ref.to_subject_ref()),
+            Some(shacl.inverse_path),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next()
+    {
+        let inner_path = parse_shacl_path_recursive(context, inverse_path_obj.as_ref())?;
+        return Ok(PShapePath::Inverse(Box::new(inner_path)));
+    }
+
+    // Check for sh:alternativePath (RDF list)
+    if let Some(alt_list_head) = context
+        .store()
+        .quads_for_pattern(
+            Some(path_term_ref.to_subject_ref()),
+            Some(shacl.alternative_path),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next()
+    {
+        let alt_paths_terms = parse_rdf_list(context, alt_list_head);
+        let alt_paths: Result<Vec<PShapePath>, String> = alt_paths_terms
+            .iter()
+            .map(|term| parse_shacl_path_recursive(context, term.as_ref()))
+            .collect();
+        return Ok(PShapePath::Alternative(alt_paths?));
+    }
+
+    // Check for sh:zeroOrMorePath
+    if let Some(zom_path_obj) = context
+        .store()
+        .quads_for_pattern(
+            Some(path_term_ref.to_subject_ref()),
+            Some(shacl.zero_or_more_path),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next()
+    {
+        let inner_path = parse_shacl_path_recursive(context, zom_path_obj.as_ref())?;
+        return Ok(PShapePath::ZeroOrMore(Box::new(inner_path)));
+    }
+
+    // Check for sh:oneOrMorePath
+    if let Some(oom_path_obj) = context
+        .store()
+        .quads_for_pattern(
+            Some(path_term_ref.to_subject_ref()),
+            Some(shacl.one_or_more_path),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next()
+    {
+        let inner_path = parse_shacl_path_recursive(context, oom_path_obj.as_ref())?;
+        return Ok(PShapePath::OneOrMore(Box::new(inner_path)));
+    }
+
+    // Check for sh:zeroOrOnePath
+    if let Some(zoo_path_obj) = context
+        .store()
+        .quads_for_pattern(
+            Some(path_term_ref.to_subject_ref()),
+            Some(shacl.zero_or_one_path),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .map(|q| q.object)
+        .next()
+    {
+        let inner_path = parse_shacl_path_recursive(context, zoo_path_obj.as_ref())?;
+        return Ok(PShapePath::ZeroOrOne(Box::new(inner_path)));
+    }
+
+    let seq_paths_terms = parse_rdf_list(context, path_term_ref.into_owned());
+    if !seq_paths_terms.is_empty() {
+        let seq_paths: Result<Vec<PShapePath>, String> = seq_paths_terms
+            .iter()
+            .map(|term| parse_shacl_path_recursive(context, term.as_ref()))
+            .collect();
+        return Ok(PShapePath::Sequence(seq_paths?));
+    }
+
+    // If it's not a complex path node, it must be a simple path (an IRI)
+    match path_term_ref {
+        TermRef::NamedNode(_) => Ok(PShapePath::Simple(path_term_ref.into_owned())),
+        _ => Err(format!("Expected an IRI for a simple path or a blank node for a complex path, found: {:?}", path_term_ref)),
+    }
+}
+
+// Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
+pub fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) -> Vec<Term> {
+    let mut items: Vec<Term> = Vec::new();
+    let rdf = RDF::new();
+    let mut current_term = list_head_term;
+    let nil_term: Term = rdf.nil.into_owned().into(); // Convert NamedNodeRef to Term
+    let shape_graph_name_ref = GraphNameRef::NamedNode(context.shape_graph_iri.as_ref());
+
+    while current_term != nil_term {
+        let subject_ref = match current_term.as_ref() {
+            TermRef::NamedNode(nn) => SubjectRef::NamedNode(nn),
+            TermRef::BlankNode(bn) => SubjectRef::BlankNode(bn),
+            _ => return items, // Or handle error: list node not an IRI/BlankNode
+        };
+
+        let first_val_opt: Option<Term> = context
+            .store()
+            .quads_for_pattern(
+                Some(subject_ref),
+                Some(rdf.first),
+                None,
+                Some(shape_graph_name_ref),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .next();
+
+        if let Some(val) = first_val_opt {
+            items.push(val);
+        } else {
+            break; // Malformed list (no rdf:first)
+        }
+
+        let rest_node_opt: Option<Term> = context
+            .store()
+            .quads_for_pattern(
+                Some(subject_ref),
+                Some(rdf.rest),
+                None,
+                Some(shape_graph_name_ref),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .next();
+
+        if let Some(rest_term) = rest_node_opt {
+            current_term = rest_term;
+        } else {
+            break; // Malformed list (no rdf:rest)
+        }
+    }
+    items
+}
