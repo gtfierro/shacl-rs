@@ -175,6 +175,10 @@ fn run_w3c_shacl_test_suite() {
     let sht = SHT::new();
 
     let manifest_paths = find_manifest_files("tests/test-suite");
+    println!(
+        "Found {} W3C SHACL test suite manifest files.",
+        manifest_paths.len()
+    );
     if manifest_paths.is_empty() {
         println!("Warning: No W3C SHACL test suite files found in 'tests/test-suite'. Skipping tests.");
         return;
