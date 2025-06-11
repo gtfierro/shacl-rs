@@ -5,10 +5,9 @@ use oxigraph::model::vocab::{rdf, sh};
 use oxigraph::model::*;
 use oxigraph::store::Store;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 // Vocabulary for SHACL Test Suite
 struct SHT {
@@ -70,15 +69,31 @@ impl MF {
     }
 }
 
+fn find_manifest_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            find_manifest_files_recursive(&path, files)?;
+        } else if path.is_file() && path.extension().map_or(false, |ext| ext == "ttl") {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
 fn find_manifest_files(base_dir: &str) -> Vec<PathBuf> {
-    WalkDir::new(base_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.file_type().is_file() && e.path().extension().map_or(false, |ext| ext == "ttl")
-        })
-        .map(|e| e.into_path())
-        .collect()
+    let mut files = Vec::new();
+    let base_path = Path::new(base_dir);
+    if base_path.is_dir() {
+        if let Err(e) = find_manifest_files_recursive(base_path, &mut files) {
+            eprintln!(
+                "Error while searching for manifest files in '{}': {}",
+                base_dir, e
+            );
+        }
+    }
+    files
 }
 
 fn load_graph_from_path(
