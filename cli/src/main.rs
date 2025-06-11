@@ -1,4 +1,5 @@
 use clap::{Parser, ValueEnum};
+use env_logger;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use oxigraph::io::RdfFormat;
@@ -87,6 +88,7 @@ enum Commands {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let cli = Cli::parse();
 
     match cli.command {

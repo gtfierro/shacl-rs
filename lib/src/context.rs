@@ -3,6 +3,7 @@ use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TermID, ID};
+use log::{debug, error, info};
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
@@ -154,7 +155,7 @@ impl ValidationContext {
         for node_shape in self.node_shapes.values() {
             // Validate each NodeShape
             if let Err(e) = node_shape.validate(self, &mut b) {
-                eprintln!(
+                error!(
                     "Error validating NodeShape {}: {}",
                     node_shape.identifier(),
                     e
@@ -167,7 +168,7 @@ impl ValidationContext {
     pub fn dump(&self) {
         // print all of the shapes
         for shape in self.node_shapes.values() {
-            println!("{:?}", shape);
+            debug!("{:?}", shape);
         }
     }
 
@@ -276,11 +277,11 @@ impl ValidationContext {
         .expect("Failed to create OntoEnv with default configuration");
 
         let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
-        println!("Added shape graph: {}", shape_graph_location);
+        info!("Added shape graph: {}", shape_graph_location);
         let shape_id = env.add(shape_graph_location, true)?;
         let shape_graph_iri = env.get_ontology(&shape_id).unwrap().name().clone();
         let data_graph_location = OntologyLocation::from_str(data_graph_path)?;
-        println!("Added data graph: {}", data_graph_location);
+        info!("Added data graph: {}", data_graph_location);
         let data_id = env.add(data_graph_location, true)?;
         let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
 
@@ -315,7 +316,7 @@ impl ValidationContext {
         //    ))
         //})?;
 
-        println!(
+        info!(
             "Optimizing store with shape graph <{}> and data graph <{}>",
             shape_graph_iri, data_graph_iri
         );
@@ -327,7 +328,7 @@ impl ValidationContext {
         })?;
 
         let mut ctx = Self::new(store, env, shape_graph_iri, data_graph_iri);
-        println!(
+        info!(
             "Parsing shapes from graph <{}> into context",
             ctx.shape_graph_iri_ref()
         );

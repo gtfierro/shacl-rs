@@ -15,3 +15,5 @@ clap.workspace = true
 graphviz-rust.workspace = true
 shacl.workspace = true
 oxigraph.workspace = true
+log = { workspace = true }
+env_logger = { workspace = true }
