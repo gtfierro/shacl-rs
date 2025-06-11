@@ -1,6 +1,7 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
+use oxigraph::io::RdfFormat;
 use shacl::context::{TraceItem, ValidationContext};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -38,6 +39,15 @@ struct PdfArgs {
     output_file: PathBuf,
 }
 
+#[derive(ValueEnum, Clone, Debug, Default)]
+enum ValidateOutputFormat {
+    #[default]
+    Turtle,
+    Dump,
+    RdfXml,
+    NTriples,
+}
+
 #[derive(Parser)]
 struct ValidateArgs {
     /// Path to the shapes file
@@ -47,6 +57,10 @@ struct ValidateArgs {
     /// Path to the data file
     #[arg(short, long, value_name = "FILE")]
     data_file: PathBuf,
+
+    /// The output format for the validation report
+    #[arg(long, value_enum, default_value_t = ValidateOutputFormat::Turtle)]
+    format: ValidateOutputFormat,
 }
 
 #[derive(Parser)]
@@ -128,8 +142,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .map_err(|e| format!("Error loading files: {}", e))?;
             let report_builder = ctx.validate();
-            let turtle_report = report_builder.to_turtle(&ctx)?;
-            println!("{}", turtle_report);
+
+            match args.format {
+                ValidateOutputFormat::Turtle => {
+                    let report = report_builder.to_turtle(&ctx)?;
+                    println!("{}", report);
+                }
+                ValidateOutputFormat::Dump => {
+                    report_builder.dump();
+                }
+                ValidateOutputFormat::RdfXml => {
+                    let report = report_builder.to_rdf(&ctx, RdfFormat::RdfXml)?;
+                    println!("{}", report);
+                }
+                ValidateOutputFormat::NTriples => {
+                    let report = report_builder.to_rdf(&ctx, RdfFormat::NTriples)?;
+                    println!("{}", report);
+                }
+            }
         }
         Commands::Heat(args) => {
             let ctx = ValidationContext::from_files(

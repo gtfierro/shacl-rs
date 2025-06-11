@@ -154,13 +154,14 @@ impl ValidationReportBuilder {
         graph
     }
 
-    pub fn to_turtle(
+    pub fn to_rdf(
         &self,
         validation_context: &ValidationContext,
+        format: RdfFormat,
     ) -> Result<String, Box<dyn Error>> {
         let graph = self.to_graph(validation_context);
         let mut writer = Vec::new();
-        let mut serializer = RdfSerializer::from_format(RdfFormat::Turtle)
+        let mut serializer = RdfSerializer::from_format(format)
             .with_prefix("sh", "http://www.w3.org/ns/shacl#")?
             .with_prefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")?
             .with_prefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")?
@@ -171,6 +172,13 @@ impl ValidationReportBuilder {
         }
         serializer.finish()?;
         Ok(String::from_utf8(writer)?)
+    }
+
+    pub fn to_turtle(
+        &self,
+        validation_context: &ValidationContext,
+    ) -> Result<String, Box<dyn Error>> {
+        self.to_rdf(validation_context, RdfFormat::Turtle)
     }
 
     pub fn dump(&self) {
