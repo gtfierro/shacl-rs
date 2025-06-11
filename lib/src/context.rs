@@ -14,8 +14,11 @@ use std::error::Error;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use xxhash_rust::xxh3::xxh3_64;
+use ontoenv::api::OntoEnv;
+use ontoenv::config::Config;
+use ontoenv::ontology::OntologyLocation;
 
 const SHAPE_GRAPH_IRI: &str = "urn:shape_graph";
 const DATA_GRAPH_IRI: &str = "urn:data_graph";
@@ -105,10 +108,11 @@ pub struct ValidationContext {
     pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     pub(crate) components: HashMap<ComponentID, Component>,
     term_to_hash: FastMap<TermID, Term>,
+    env: OntoEnv,
 }
 
 impl ValidationContext {
-    pub fn new(store: Store, shape_graph_iri: NamedNode, data_graph_iri: NamedNode) -> Self {
+    pub fn new(store: Store, env: OntoEnv, shape_graph_iri: NamedNode, data_graph_iri: NamedNode) -> Self {
         ValidationContext {
             nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
             propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
@@ -120,6 +124,7 @@ impl ValidationContext {
             prop_shapes: HashMap::new(),
             components: HashMap::new(),
             term_to_hash: FastMap::default(),
+            env,
         }
     }
 
@@ -253,16 +258,30 @@ impl ValidationContext {
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
         let store = Store::new().map_err(|e| Box::new(e) as Box<dyn Error>)?;
+        let locations: Option<Vec<PathBuf>> = None;
+        let mut env = OntoEnv::init(Config::new_with_default_matches(
+                PathBuf::from("."), // root
+                locations, // no locations
+                true, // require ontology names
+                false, // strict parsing
+                false, // not offline
+                true, // in-memory
+        ).unwrap(), false).expect("Failed to create OntoEnv with default configuration");
 
-        let shape_graph_named_node = NamedNode::new(SHAPE_GRAPH_IRI)
-            .map_err(|e| format!("Invalid shape graph IRI: {}", e))?;
-        let data_graph_named_node =
-            NamedNode::new(DATA_GRAPH_IRI).map_err(|e| format!("Invalid data graph IRI: {}", e))?;
+        let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
+        println!("Added shape graph: {}", shape_graph_location);
+        let shape_id = env.add(shape_graph_location, true)?;
+        let shape_graph_iri = env.get_ontology(&shape_id).unwrap().name().clone();
+        let data_graph_location = OntologyLocation::from_str(data_graph_path)?;
+        println!("Added data graph: {}", data_graph_location);
+        let data_id = env.add(data_graph_location, true)?;
+        let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
+
 
         Self::load_graph_into_store(
             &store,
             shape_graph_path,
-            shape_graph_named_node.as_ref().into(),
+            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
         )
         .map_err(|e| {
             Box::new(std::io::Error::new(
@@ -277,7 +296,7 @@ impl ValidationContext {
         Self::load_graph_into_store(
             &store,
             data_graph_path,
-            data_graph_named_node.as_ref().into(),
+            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
         )
         .map_err(|e| {
             Box::new(std::io::Error::new(
@@ -289,6 +308,7 @@ impl ValidationContext {
             ))
         })?;
 
+        
         store.optimize().map_err(|e| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -296,7 +316,7 @@ impl ValidationContext {
             ))
         })?;
 
-        let mut ctx = Self::new(store, shape_graph_named_node, data_graph_named_node);
+        let mut ctx = Self::new(store, env, shape_graph_iri, data_graph_iri);
         parser::run_parser(&mut ctx).map_err(|e| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -313,6 +333,10 @@ impl ValidationContext {
 
     pub fn store(&self) -> &Store {
         &self.store
+    }
+
+    pub fn env(&self) -> &OntoEnv {
+        &self.env
     }
 
     pub fn shape_graph_iri_ref(&self) -> GraphNameRef {

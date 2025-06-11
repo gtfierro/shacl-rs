@@ -705,7 +705,7 @@ impl Component {
             Component::ClassConstraint(comp) => comp.validate(component_id, c, context),
             Component::NodeConstraint(comp) => comp.validate(component_id, c, context),
             Component::PropertyConstraint(comp) => comp.validate(component_id, c, context),
-            //Component::QualifiedValueShape(c) => c.validate(component_id, c, context),
+            Component::QualifiedValueShape(comp) => comp.validate(component_id, c, context),
             Component::DatatypeConstraint(comp) => comp.validate(component_id, c, context),
             Component::NodeKindConstraint(comp) => comp.validate(component_id, c, context),
             Component::MinCount(comp) => comp.validate(component_id, c, context),

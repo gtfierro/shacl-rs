@@ -7,6 +7,7 @@ use crate::types::ComponentID;
 use oxigraph::model::vocab::xsd;
 use oxigraph::model::{Literal, Term};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
+use ontoenv::api::ResolveTarget;
 
 #[derive(Debug, Clone)]
 pub struct SPARQLConstraintComponent {
@@ -16,6 +17,27 @@ pub struct SPARQLConstraintComponent {
 impl SPARQLConstraintComponent {
     pub fn new(constraint_node: Term) -> Self {
         SPARQLConstraintComponent { constraint_node }
+    }
+    fn get_sparql_prefixes(
+        &self,
+        context: &ValidationContext,
+    ) -> Result<String, String> {
+        // call context.env()
+        let graphid = context.env().resolve(ResolveTarget::Graph(
+            context.shape_graph_iri.clone()
+        )).unwrap();
+        let ont = context.env().get_ontology(&graphid)
+            .expect("Failed to get ontology for SPARQL constraint prefixes");
+        let namespaces = ont.namespace_map();
+        // format the namespaces into a String
+        // PREFIX pfx: <iri> \n 
+        // etc...
+
+        let prefix_strs: Vec<String> = namespaces
+            .iter()
+            .map(|(prefix, iri)| format!("PREFIX {}: <{}>", prefix, iri))
+            .collect();
+        Ok(prefix_strs.join("\n"))
     }
 }
 
@@ -86,7 +108,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
         }
 
         // 2. Get SELECT query
-        let query_str = if let Some(quad_res) = context
+        let mut query_str = if let Some(quad_res) = context
             .store()
             .quads_for_pattern(
                 Some(subject),
@@ -118,7 +140,8 @@ impl ValidateComponent for SPARQLConstraintComponent {
             ));
         };
 
-        // TODO: Handle sh:prefixes. For now, assuming prefixes are in the query string.
+        // Handle sh:prefixes. For now, assuming prefixes are in the query string.
+        query_str.insert_str(0, &self.get_sparql_prefixes(context)?);
 
         // 3. Substitute $PATH for property shapes
         let final_query_str = if let Some(path) = c.path() {
