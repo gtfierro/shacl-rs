@@ -1,15 +1,14 @@
-use crate::components::{Component, ToSubjectRef};
-use crate::named_nodes::{RDF, SHACL};
+use crate::components::Component;
 use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, TermID, ID};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TermID, ID};
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{GraphName, GraphNameRef, NamedNode, Term, TermRef}; // Removed TripleRef, Added NamedNode, GraphName, GraphNameRef
-use oxigraph::store::Store; // Added Store
+use oxigraph::model::{GraphNameRef, NamedNode, Term};
+use oxigraph::store::Store;
 use papaya::HashMap as FastMap;
 use std::cell::RefCell;
 use std::collections::HashMap;

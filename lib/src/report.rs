@@ -1,7 +1,7 @@
 use crate::context::{Context, TraceItem, ValidationContext};
 use crate::types::Path;
+use oxigraph::model::vocab::{rdf, sh};
 use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term, Triple};
-use oxigraph::vocab::{rdf, sh};
 use std::collections::HashMap; // For using Term as a HashMap key
 
 pub struct ValidationReportBuilder {
@@ -30,59 +30,47 @@ impl ValidationReportBuilder {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
 
-        graph
-            .insert(&Triple::new(
-                report_node.clone(),
-                rdf::TYPE,
-                sh::VALIDATION_REPORT.into(),
-            ))
-            .unwrap();
+        graph.insert(&Triple::new(
+            report_node.clone(),
+            rdf::TYPE,
+            sh::VALIDATION_REPORT.into(),
+        ));
 
         let conforms = self.results.is_empty();
-        graph
-            .insert(&Triple::new(
-                report_node.clone(),
-                sh::CONFORMS,
-                Literal::from(conforms).into(),
-            ))
-            .unwrap();
+        graph.insert(&Triple::new(
+            report_node.clone(),
+            sh::CONFORMS,
+            Literal::from(conforms).into(),
+        ));
 
         if !conforms {
             for (context, error_message) in &self.results {
                 let result_node: Subject = BlankNode::default().into();
-                graph
-                    .insert(&Triple::new(
-                        report_node.clone(),
-                        sh::RESULT,
-                        result_node.clone().into(),
-                    ))
-                    .unwrap();
+                graph.insert(&Triple::new(
+                    report_node.clone(),
+                    sh::RESULT,
+                    result_node.clone().into(),
+                ));
 
-                graph
-                    .insert(&Triple::new(
-                        result_node.clone(),
-                        rdf::TYPE,
-                        sh::VALIDATION_RESULT.into(),
-                    ))
-                    .unwrap();
+                graph.insert(&Triple::new(
+                    result_node.clone(),
+                    rdf::TYPE,
+                    sh::VALIDATION_RESULT.into(),
+                ));
 
                 // sh:focusNode
-                graph
-                    .insert(&Triple::new(
-                        result_node.clone(),
-                        sh::FOCUS_NODE,
-                        context.focus_node().clone(),
-                    ))
-                    .unwrap();
+                graph.insert(&Triple::new(
+                    result_node.clone(),
+                    sh::FOCUS_NODE,
+                    context.focus_node().clone(),
+                ));
 
                 // sh:resultMessage
-                graph
-                    .insert(&Triple::new(
-                        result_node.clone(),
-                        sh::RESULT_MESSAGE,
-                        Literal::new_simple_literal(error_message).into(),
-                    ))
-                    .unwrap();
+                graph.insert(&Triple::new(
+                    result_node.clone(),
+                    sh::RESULT_MESSAGE,
+                    Literal::new_simple_literal(error_message).into(),
+                ));
 
                 // Extract info from trace
                 let mut source_shape_term = None;
@@ -94,7 +82,7 @@ impl ValidationReportBuilder {
                         TraceItem::NodeShape(id) => {
                             if source_shape_term.is_none() {
                                 source_shape_term = validation_context
-                                    .nodeshape_id_lookup()
+                                    .nodeshape_id_lookup
                                     .borrow()
                                     .get_term(*id)
                                     .cloned();
@@ -103,13 +91,14 @@ impl ValidationReportBuilder {
                         TraceItem::PropertyShape(id) => {
                             if source_shape_term.is_none() {
                                 source_shape_term = validation_context
-                                    .propshape_id_lookup()
+                                    .propshape_id_lookup
                                     .borrow()
                                     .get_term(*id)
                                     .cloned();
                                 if let Some(shape) = validation_context.get_prop_shape_by_id(id) {
                                     if result_path_term.is_none() {
-                                        result_path_term = Some(path_to_rdf(shape.path(), &mut graph));
+                                        result_path_term =
+                                            Some(path_to_rdf(shape.path(), &mut graph));
                                     }
                                 }
                             }
@@ -117,7 +106,7 @@ impl ValidationReportBuilder {
                         TraceItem::Component(id) => {
                             if source_constraint_component_term.is_none() {
                                 source_constraint_component_term = validation_context
-                                    .component_id_lookup()
+                                    .component_id_lookup
                                     .borrow()
                                     .get_term(*id)
                                     .cloned();
@@ -127,41 +116,33 @@ impl ValidationReportBuilder {
                 }
 
                 if let Some(term) = source_shape_term {
-                    graph
-                        .insert(&Triple::new(
-                            result_node.clone(),
-                            sh::SOURCE_SHAPE,
-                            term,
-                        ))
-                        .unwrap();
+                    graph.insert(&Triple::new(
+                        result_node.clone(),
+                        sh::SOURCE_SHAPE,
+                        term,
+                    ));
                 }
 
                 if let Some(term) = result_path_term {
-                    graph
-                        .insert(&Triple::new(
-                            result_node.clone(),
-                            sh::RESULT_PATH,
-                            term,
-                        ))
-                        .unwrap();
+                    graph.insert(&Triple::new(
+                        result_node.clone(),
+                        sh::RESULT_PATH,
+                        term,
+                    ));
                 }
 
-                graph
-                    .insert(&Triple::new(
-                        result_node.clone(),
-                        sh::RESULT_SEVERITY,
-                        sh::VIOLATION.into(),
-                    ))
-                    .unwrap();
+                graph.insert(&Triple::new(
+                    result_node.clone(),
+                    sh::RESULT_SEVERITY,
+                    sh::VIOLATION.into(),
+                ));
 
                 if let Some(term) = source_constraint_component_term {
-                    graph
-                        .insert(&Triple::new(
-                            result_node.clone(),
-                            sh::SOURCE_CONSTRAINT_COMPONENT,
-                            term,
-                        ))
-                        .unwrap();
+                    graph.insert(&Triple::new(
+                        result_node.clone(),
+                        sh::SOURCE_CONSTRAINT_COMPONENT,
+                        term,
+                    ));
                 }
             }
         }
@@ -205,10 +186,8 @@ fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
         Path::Inverse(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph
-                .insert(&Triple::new(bn.clone(), sh::INVERSE_PATH, inner_term))
-                .unwrap();
-            bn.into_term()
+            graph.insert(&Triple::new(bn.clone(), sh::INVERSE_PATH, inner_term));
+            bn.into()
         }
         Path::Sequence(paths) => {
             let items: Vec<Term> = paths.iter().map(|p| path_to_rdf(p, graph)).collect();
@@ -218,62 +197,56 @@ fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
             let bn: Subject = BlankNode::default().into();
             let items: Vec<Term> = paths.iter().map(|p| path_to_rdf(p, graph)).collect();
             let list_head = build_rdf_list(items, graph);
-            graph
-                .insert(&Triple::new(bn.clone(), sh::ALTERNATIVE_PATH, list_head))
-                .unwrap();
-            bn.into_term()
+            graph.insert(&Triple::new(bn.clone(), sh::ALTERNATIVE_PATH, list_head));
+            bn.into()
         }
         Path::ZeroOrMore(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph
-                .insert(&Triple::new(bn.clone(), sh::ZERO_OR_MORE_PATH, inner_term))
-                .unwrap();
-            bn.into_term()
+            graph.insert(&Triple::new(
+                bn.clone(),
+                sh::ZERO_OR_MORE_PATH,
+                inner_term,
+            ));
+            bn.into()
         }
         Path::OneOrMore(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph
-                .insert(&Triple::new(bn.clone(), sh::ONE_OR_MORE_PATH, inner_term))
-                .unwrap();
-            bn.into_term()
+            graph.insert(&Triple::new(bn.clone(), sh::ONE_OR_MORE_PATH, inner_term));
+            bn.into()
         }
         Path::ZeroOrOne(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph
-                .insert(&Triple::new(bn.clone(), sh::ZERO_OR_ONE_PATH, inner_term))
-                .unwrap();
-            bn.into_term()
+            graph.insert(&Triple::new(bn.clone(), sh::ZERO_OR_ONE_PATH, inner_term));
+            bn.into()
         }
     }
 }
 
 fn build_rdf_list(items: impl IntoIterator<Item = Term>, graph: &mut Graph) -> Term {
-    let mut head: Subject = rdf::NIL.into();
-    let mut tail = head.clone();
+    let head: Subject = rdf::NIL.into();
 
     let items: Vec<Term> = items.into_iter().collect();
     if items.is_empty() {
-        return head.into_term();
+        return head.into();
     }
 
-    let bnodes: Vec<NamedOrBlankNode> =
-        (0..items.len()).map(|_| BlankNode::default().into()).collect();
-    head = bnodes[0].clone().into();
+    let bnodes: Vec<NamedOrBlankNode> = (0..items.len())
+        .map(|_| BlankNode::default().into())
+        .collect();
+    let head = bnodes[0].clone().into();
 
     for (i, item) in items.iter().enumerate() {
         let subject: Subject = bnodes[i].clone().into();
-        graph
-            .insert(&Triple::new(subject.clone(), rdf::FIRST, item.clone()))
-            .unwrap();
+        graph.insert(&Triple::new(subject.clone(), rdf::FIRST, item.clone()));
         let rest: Term = if i == items.len() - 1 {
             rdf::NIL.into()
         } else {
             bnodes[i + 1].clone().into()
         };
-        graph.insert(&Triple::new(subject, rdf::REST, rest)).unwrap();
+        graph.insert(&Triple::new(subject, rdf::REST, rest));
     }
-    head.into_term()
+    head.into()
 }
