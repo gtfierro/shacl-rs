@@ -13,12 +13,18 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT DISTINCT ?type WHERE { ?s rdf:type/rdfs:subClassOf* ?type . }";
 
 impl Optimizer {
-    pub fn optimize(ctx: ValidationContext) -> Self {
+    pub fn new(ctx: ValidationContext) -> Self {
         Optimizer { ctx }
     }
 
-    pub fn validation_context(&self) -> &ValidationContext {
-        &self.ctx
+    pub fn optimize(&mut self) -> Result<(), String> {
+        // Remove unreachable targets from node shapes
+        self.remove_unreachable_targets()?;
+        Ok(())
+    }
+
+    pub fn finish(self) -> ValidationContext {
+        self.ctx
     }
 
     // Add methods for optimization logic here
@@ -55,7 +61,7 @@ impl Optimizer {
 
         for shape in self.ctx.node_shapes.values_mut() {
             shape.targets.retain(|target| match target {
-                Target::Class(class_term) => types.contains(class_term),
+                Target::Class(class_term) => types.contains(&class_term),
                 _ => true, // Keep other target types
             });
         }
