@@ -284,36 +284,41 @@ impl ValidationContext {
         let data_id = env.add(data_graph_location, true)?;
         let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
 
-        Self::load_graph_into_store(
-            &store,
-            shape_graph_path,
-            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
-        )
-        .map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Error loading shape graph from '{}' into <{}>: {}",
-                    shape_graph_path, SHAPE_GRAPH_IRI, e
-                ),
-            ))
-        })?;
+        let store = env.io().store().clone();
+        //Self::load_graph_into_store(
+        //    &store,
+        //    shape_graph_path,
+        //    GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
+        //)
+        //.map_err(|e| {
+        //    Box::new(std::io::Error::new(
+        //        std::io::ErrorKind::Other,
+        //        format!(
+        //            "Error loading shape graph from '{}' into <{}>: {}",
+        //            shape_graph_path, SHAPE_GRAPH_IRI, e
+        //        ),
+        //    ))
+        //})?;
 
-        Self::load_graph_into_store(
-            &store,
-            data_graph_path,
-            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
-        )
-        .map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Error loading data graph from '{}' into <{}>: {}",
-                    data_graph_path, DATA_GRAPH_IRI, e
-                ),
-            ))
-        })?;
+        //Self::load_graph_into_store(
+        //    &store,
+        //    data_graph_path,
+        //    GraphNameRef::NamedNode(data_graph_iri.as_ref()),
+        //)
+        //.map_err(|e| {
+        //    Box::new(std::io::Error::new(
+        //        std::io::ErrorKind::Other,
+        //        format!(
+        //            "Error loading data graph from '{}' into <{}>: {}",
+        //            data_graph_path, DATA_GRAPH_IRI, e
+        //        ),
+        //    ))
+        //})?;
 
+        println!(
+            "Optimizing store with shape graph <{}> and data graph <{}>",
+            shape_graph_iri, data_graph_iri
+        );
         store.optimize().map_err(|e| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -322,6 +327,10 @@ impl ValidationContext {
         })?;
 
         let mut ctx = Self::new(store, env, shape_graph_iri, data_graph_iri);
+        println!(
+            "Parsing shapes from graph <{}> into context",
+            ctx.shape_graph_iri_ref()
+        );
         parser::run_parser(&mut ctx).map_err(|e| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,

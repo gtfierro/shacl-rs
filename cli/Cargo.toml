@@ -14,3 +14,4 @@ doc = false
 clap.workspace = true
 graphviz-rust.workspace = true
 shacl.workspace = true
+oxigraph.workspace = true
