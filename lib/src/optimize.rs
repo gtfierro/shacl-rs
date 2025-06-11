@@ -13,6 +13,13 @@ impl OptimizerStats {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn display(&self) -> String {
+        format!(
+            "Optimizer Stats:\n- Unreachable targets removed: {}",
+            self.unreachable_targets_removed
+        )
+    }
 }
 
 pub struct Optimizer {
@@ -40,6 +47,10 @@ impl Optimizer {
 
     pub fn finish(self) -> ValidationContext {
         self.ctx
+    }
+
+    pub fn display_stats(&self) -> String {
+        self.stats.display()
     }
 
     // Add methods for optimization logic here

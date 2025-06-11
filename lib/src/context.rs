@@ -1,4 +1,5 @@
 use crate::components::Component;
+use crate::optimize::Optimizer;
 use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
@@ -152,6 +153,7 @@ impl ValidationContext {
 
     pub fn validate(&self) -> ValidationReportBuilder {
         let mut b = ValidationReportBuilder::new();
+        info!("Validating NodeShapes and PropertyShapes in the context");
         for node_shape in self.node_shapes.values() {
             // Validate each NodeShape
             if let Err(e) = node_shape.validate(self, &mut b) {
@@ -268,7 +270,7 @@ impl ValidationContext {
                 locations,          // no locations
                 true,               // require ontology names
                 false,              // strict parsing
-                false,              // not offline
+                true,              // not offline
                 true,               // in-memory
             )
             .unwrap(),
@@ -327,6 +329,7 @@ impl ValidationContext {
             ))
         })?;
 
+
         let mut ctx = Self::new(store, env, shape_graph_iri, data_graph_iri);
         info!(
             "Parsing shapes from graph <{}> into context",
@@ -338,7 +341,11 @@ impl ValidationContext {
                 format!("Error parsing shapes: {}", e),
             ))
         })?;
-        Ok(ctx)
+        info!("Optimizing shape graph");
+        let mut o = Optimizer::new(ctx);
+        o.optimize()?;
+        info!("Finished parsing shapes and optimizing context");
+        Ok(o.finish())
     }
 
     // Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
@@ -451,7 +458,7 @@ impl TraceItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Context {
     focus_node: Term,
     path: Option<PShapePath>,

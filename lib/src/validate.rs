@@ -1,10 +1,12 @@
 use crate::context::{Context, ValidationContext};
 use crate::report::ValidationReportBuilder;
+use std::collections::HashSet;
 
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::ID;
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
+use log::{debug, error, info};
 
 impl ValidateShape for NodeShape {
     fn validate(
@@ -13,8 +15,9 @@ impl ValidateShape for NodeShape {
         rb: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         // first gather all of the targets
-        let mut target_contexts = Vec::new();
-        for target in self.targets() {
+        let mut target_contexts = HashSet::new();
+        for target in self.targets.iter() {
+            info!("get targets from target: {:?} on shape {}", target, self.identifier());
             target_contexts.extend(target.get_target_nodes(context, *self.identifier())?);
         }
 

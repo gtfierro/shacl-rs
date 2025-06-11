@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_variables)]
 mod components;
+mod optimize;
 pub mod context;
 mod named_nodes;
 pub mod parser;
