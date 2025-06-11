@@ -127,9 +127,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .ok_or_else(|| "Invalid data file path")?,
             )
             .map_err(|e| format!("Error loading files: {}", e))?;
-            let b = ctx.validate();
-            println!("Validation completed successfully.");
-            b.dump();
+            let report_builder = ctx.validate();
+            let turtle_report = report_builder.to_turtle(&ctx)?;
+            println!("{}", turtle_report);
         }
         Commands::Heat(args) => {
             let ctx = ValidationContext::from_files(
