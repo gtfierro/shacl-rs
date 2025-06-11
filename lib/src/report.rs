@@ -1,6 +1,7 @@
 use crate::context::{Context, TraceItem, ValidationContext};
+use crate::named_nodes::SHACL;
 use crate::types::Path;
-use oxigraph::model::vocab::{rdf, sh};
+use oxigraph::model::vocab::rdf;
 use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term, Triple};
 use std::collections::HashMap; // For using Term as a HashMap key
 
@@ -29,17 +30,18 @@ impl ValidationReportBuilder {
     pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
+        let sh = SHACL::new();
 
         graph.insert(&Triple::new(
             report_node.clone(),
             rdf::TYPE,
-            sh::VALIDATION_REPORT.into(),
+            sh.validation_report.into(),
         ));
 
         let conforms = self.results.is_empty();
         graph.insert(&Triple::new(
             report_node.clone(),
-            sh::CONFORMS,
+            sh.conforms,
             Literal::from(conforms).into(),
         ));
 
@@ -48,27 +50,27 @@ impl ValidationReportBuilder {
                 let result_node: Subject = BlankNode::default().into();
                 graph.insert(&Triple::new(
                     report_node.clone(),
-                    sh::RESULT,
+                    sh.result,
                     result_node.clone().into(),
                 ));
 
                 graph.insert(&Triple::new(
                     result_node.clone(),
                     rdf::TYPE,
-                    sh::VALIDATION_RESULT.into(),
+                    sh.validation_result.into(),
                 ));
 
                 // sh:focusNode
                 graph.insert(&Triple::new(
                     result_node.clone(),
-                    sh::FOCUS_NODE,
+                    sh.focus_node,
                     context.focus_node().clone(),
                 ));
 
                 // sh:resultMessage
                 graph.insert(&Triple::new(
                     result_node.clone(),
-                    sh::RESULT_MESSAGE,
+                    sh.result_message,
                     Literal::new_simple_literal(error_message).into(),
                 ));
 
@@ -118,7 +120,7 @@ impl ValidationReportBuilder {
                 if let Some(term) = source_shape_term {
                     graph.insert(&Triple::new(
                         result_node.clone(),
-                        sh::SOURCE_SHAPE,
+                        sh.source_shape,
                         term,
                     ));
                 }
@@ -126,21 +128,21 @@ impl ValidationReportBuilder {
                 if let Some(term) = result_path_term {
                     graph.insert(&Triple::new(
                         result_node.clone(),
-                        sh::RESULT_PATH,
+                        sh.result_path,
                         term,
                     ));
                 }
 
                 graph.insert(&Triple::new(
                     result_node.clone(),
-                    sh::RESULT_SEVERITY,
-                    sh::VIOLATION.into(),
+                    sh.result_severity,
+                    sh.violation.into(),
                 ));
 
                 if let Some(term) = source_constraint_component_term {
                     graph.insert(&Triple::new(
                         result_node.clone(),
-                        sh::SOURCE_CONSTRAINT_COMPONENT,
+                        sh.source_constraint_component,
                         term,
                     ));
                 }
@@ -181,12 +183,13 @@ impl ValidationReportBuilder {
 }
 
 fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
+    let sh = SHACL::new();
     match path {
         Path::Simple(term) => term.clone(),
         Path::Inverse(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph.insert(&Triple::new(bn.clone(), sh::INVERSE_PATH, inner_term));
+            graph.insert(&Triple::new(bn.clone(), sh.inverse_path, inner_term));
             bn.into()
         }
         Path::Sequence(paths) => {
@@ -197,7 +200,7 @@ fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
             let bn: Subject = BlankNode::default().into();
             let items: Vec<Term> = paths.iter().map(|p| path_to_rdf(p, graph)).collect();
             let list_head = build_rdf_list(items, graph);
-            graph.insert(&Triple::new(bn.clone(), sh::ALTERNATIVE_PATH, list_head));
+            graph.insert(&Triple::new(bn.clone(), sh.alternative_path, list_head));
             bn.into()
         }
         Path::ZeroOrMore(inner) => {
@@ -205,7 +208,7 @@ fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
             let inner_term = path_to_rdf(inner, graph);
             graph.insert(&Triple::new(
                 bn.clone(),
-                sh::ZERO_OR_MORE_PATH,
+                sh.zero_or_more_path,
                 inner_term,
             ));
             bn.into()
@@ -213,13 +216,13 @@ fn path_to_rdf(path: &Path, graph: &mut Graph) -> Term {
         Path::OneOrMore(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph.insert(&Triple::new(bn.clone(), sh::ONE_OR_MORE_PATH, inner_term));
+            graph.insert(&Triple::new(bn.clone(), sh.one_or_more_path, inner_term));
             bn.into()
         }
         Path::ZeroOrOne(inner) => {
             let bn: Subject = BlankNode::default().into();
             let inner_term = path_to_rdf(inner, graph);
-            graph.insert(&Triple::new(bn.clone(), sh::ZERO_OR_ONE_PATH, inner_term));
+            graph.insert(&Triple::new(bn.clone(), sh.zero_or_one_path, inner_term));
             bn.into()
         }
     }
@@ -236,7 +239,7 @@ fn build_rdf_list(items: impl IntoIterator<Item = Term>, graph: &mut Graph) -> T
     let bnodes: Vec<NamedOrBlankNode> = (0..items.len())
         .map(|_| BlankNode::default().into())
         .collect();
-    let head = bnodes[0].clone().into();
+    let head: Subject = bnodes[0].clone().into();
 
     for (i, item) in items.iter().enumerate() {
         let subject: Subject = bnodes[i].clone().into();

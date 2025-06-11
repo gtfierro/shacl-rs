@@ -70,6 +70,18 @@ pub struct SHACL {
     pub deactivated: NamedNodeRef<'static>,
     pub message: NamedNodeRef<'static>,
     pub sparql: NamedNodeRef<'static>,
+
+    // Validation Report
+    pub validation_report: NamedNodeRef<'static>,
+    pub conforms: NamedNodeRef<'static>,
+    pub result: NamedNodeRef<'static>,
+    pub validation_result: NamedNodeRef<'static>,
+    pub focus_node: NamedNodeRef<'static>,
+    pub result_path: NamedNodeRef<'static>,
+    pub source_shape: NamedNodeRef<'static>,
+    pub source_constraint_component: NamedNodeRef<'static>,
+    pub result_message: NamedNodeRef<'static>,
+    pub result_severity: NamedNodeRef<'static>,
 }
 
 impl SHACL {
@@ -164,6 +176,24 @@ impl SHACL {
             deactivated: NamedNodeRef::new("http://www.w3.org/ns/shacl#deactivated").unwrap(),
             message: NamedNodeRef::new("http://www.w3.org/ns/shacl#message").unwrap(),
             sparql: NamedNodeRef::new("http://www.w3.org/ns/shacl#sparql").unwrap(),
+
+            // Validation Report
+            validation_report: NamedNodeRef::new("http://www.w3.org/ns/shacl#ValidationReport")
+                .unwrap(),
+            conforms: NamedNodeRef::new("http://www.w3.org/ns/shacl#conforms").unwrap(),
+            result: NamedNodeRef::new("http://www.w3.org/ns/shacl#result").unwrap(),
+            validation_result: NamedNodeRef::new("http://www.w3.org/ns/shacl#ValidationResult")
+                .unwrap(),
+            focus_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#focusNode").unwrap(),
+            result_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#resultPath").unwrap(),
+            source_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#sourceShape").unwrap(),
+            source_constraint_component: NamedNodeRef::new(
+                "http://www.w3.org/ns/shacl#sourceConstraintComponent",
+            )
+            .unwrap(),
+            result_message: NamedNodeRef::new("http://www.w3.org/ns/shacl#resultMessage").unwrap(),
+            result_severity: NamedNodeRef::new("http://www.w3.org/ns/shacl#resultSeverity")
+                .unwrap(),
         }
     }
 }
