@@ -29,6 +29,7 @@ pub use value_type::*;
 pub enum ComponentValidationResult {
     Pass(ComponentID),
     Fail(ComponentID, ValidationFailReason),
+    SubShape(Vec<(crate::context::Context, String)>),
 }
 
 pub enum ValidationFailReason {}
@@ -755,38 +756,23 @@ pub(super) fn check_conformance_for_node(
 
         // Pass node_as_context mutably. Component::validate now expects &mut Context.
         match component.validate(*constraint_id, node_as_context, main_validation_context) {
-            Ok(_validation_result) => {
-                // If the component is a PropertyConstraint, we need to further validate the property shape.
-                if let Component::PropertyConstraint(pc_comp) = component {
-                    let prop_shape = main_validation_context
-                        .get_prop_shape_by_id(pc_comp.shape())
-                        .ok_or_else(|| {
-                            format!(
-                                "Logical check: Property shape not found for ID: {}",
-                                pc_comp.shape()
-                            )
-                        })?;
-
-                    // PropertyShape::validate is an inherent method in lib/src/validate.rs
-                    // It now takes &mut Context.
-                    let mut temp_rb = ValidationReportBuilder::new();
-                    // Pass node_as_context mutably.
-                    if let Err(e) =
-                        prop_shape.validate(node_as_context, main_validation_context, &mut temp_rb)
-                    {
-                        // Error during property shape validation itself (e.g., query parse error)
-                        return Err(format!(
-                            "Logical check: Error validating property shape {}: {}",
-                            pc_comp.shape(),
-                            e
-                        ));
+            Ok(validation_result) => {
+                match validation_result {
+                    ComponentValidationResult::Pass(_) => {
+                        // Passed, continue to next constraint.
                     }
-                    if !temp_rb.results.is_empty() {
-                        // The property shape validation produced errors for the node_as_context.
-                        return Ok(false); // Does not conform
+                    ComponentValidationResult::SubShape(results) => {
+                        if !results.is_empty() {
+                            // Sub-shape validation failed.
+                            return Ok(false); // Does not conform.
+                        }
+                        // Empty results means it passed.
+                    }
+                    ComponentValidationResult::Fail(_, _) => {
+                        // Fail means it does not conform.
+                        return Ok(false);
                     }
                 }
-                // Other component types passed their own validation.
             }
             Err(_e) => {
                 // The component's validate method returned an Err, meaning a constraint violation.

@@ -39,30 +39,29 @@ impl ValidateShape for NodeShape {
                 // It now takes component_id, &mut Context, &ValidationContext
                 // and returns Result<ComponentValidationResult, String>
                 match comp.validate(*constraint_id, &mut target_context, context) {
-                    // Pass mutably
-                    Ok(_validation_result) => {
-                        // If the component is a PropertyConstraint, then we need to
-                        // trigger the validation of the referenced PropertyShape.
-                        // The PropertyConstraintComponent's validate method itself no longer does this.
-                        if let crate::components::Component::PropertyConstraint(pc_comp) = comp {
-                            let prop_shape = context
-                                .get_prop_shape_by_id(pc_comp.shape()) // Use accessor
-                                .ok_or_else(|| {
-                                    // This case should ideally be caught by pc_comp.validate if it checks existence
-                                    format!("Property shape not found for ID: {}", pc_comp.shape())
-                                    // Use accessor
-                                })?;
-
-                            // PropertyShape::validate now takes &mut Context, &ValidationContext, &mut ValidationReportBuilder
-                            // target_context is the correct context to pass here, mutably.
-                            if let Err(e) = prop_shape.validate(&mut target_context, context, rb) {
-                                // Pass mutably
-                                // Errors from PropertyShape::validate itself (e.g. query parsing, or its own components failing)
-                                rb.add_error(&target_context, e);
+                    Ok(validation_result) => {
+                        use crate::components::ComponentValidationResult;
+                        match validation_result {
+                            ComponentValidationResult::Pass(_) => {
+                                // Component passed, do nothing.
+                            }
+                            ComponentValidationResult::SubShape(results) => {
+                                // A sub-shape validation produced results. Add them to the report.
+                                for (ctx, err) in results {
+                                    rb.add_error(&ctx, err);
+                                }
+                            }
+                            ComponentValidationResult::Fail(_, _) => {
+                                // This variant is not currently used for detailed errors.
+                                // Errors are returned as Err(String).
+                                // For now, we can treat it as a generic failure.
+                                let err_msg = format!(
+                                    "Component {} failed validation without details.",
+                                    constraint_id
+                                );
+                                rb.add_error(&target_context, err_msg);
                             }
                         }
-                        // For other component types, if their .validate passed, no further action here.
-                        // Any "failure" for them would have been an Err(String) from their validate method, caught below.
                     }
                     Err(e) => {
                         // This error 'e' comes from the component's own validate method.

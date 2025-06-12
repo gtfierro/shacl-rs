@@ -4,7 +4,8 @@ use crate::types::{ComponentID, PropShapeID, ID};
 // Removed: use oxigraph::model::Term;
 
 use super::{
-    check_conformance_for_node, ComponentValidationResult, GraphvizOutput, ValidateComponent,
+    check_conformance_for_node, Component, ComponentValidationResult, GraphvizOutput,
+    ValidateComponent,
 };
 
 #[derive(Debug)]
@@ -82,7 +83,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
             for (_parent_node_shape_id, parent_node_shape) in validation_context.node_shapes() {
                 let mut is_parent_of_current_prop_shape = false;
                 for constraint_id_on_parent in parent_node_shape.constraints() {
-                    if let Some(super::Component::PropertyConstraint(pc)) =
+                    if let Some(Component::PropertyConstraint(pc)) =
                         validation_context.get_component_by_id(constraint_id_on_parent)
                     {
                         if pc.shape() == &source_property_shape_id {
@@ -96,7 +97,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                     // This parent_node_shape is one of the shapes `ps` from the spec.
                     // Collect all sh:property / sh:qualifiedValueShape target IDs from this parent.
                     for constraint_id_on_parent in parent_node_shape.constraints() {
-                        if let Some(super::Component::PropertyConstraint(any_pc_on_parent)) =
+                        if let Some(Component::PropertyConstraint(any_pc_on_parent)) =
                             validation_context.get_component_by_id(constraint_id_on_parent)
                         {
                             if let Some(any_prop_shape_on_parent) =
@@ -105,7 +106,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                                 for qvs_constraint_id_on_any_prop in
                                     any_prop_shape_on_parent.constraints()
                                 {
-                                    if let Some(super::Component::QualifiedValueShape(
+                                    if let Some(Component::QualifiedValueShape(
                                         qvs_comp_on_any_prop,
                                     )) = validation_context
                                         .get_component_by_id(qvs_constraint_id_on_any_prop)
@@ -302,10 +303,15 @@ impl ValidateComponent for PropertyConstraintComponent {
         c: &mut Context,
         validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
-        todo!()
         let mut builder = ValidationReportBuilder::new();
         if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
-            property_shape.validate(c, &validation_context, &mut builder)
+            property_shape.validate(c, validation_context, &mut builder)?;
+
+            if builder.results.is_empty() {
+                Ok(ComponentValidationResult::Pass(component_id))
+            } else {
+                Ok(ComponentValidationResult::SubShape(builder.results))
+            }
         } else {
             Err(format!(
                 "Referenced property shape not found for ID: {:?}",
