@@ -34,8 +34,8 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
     println!("Found {} SHT tests", all_tests.len());
 
     for test in all_tests {
-        let test_node = test.node.to_string();
-        let test_name = test.label.as_deref().unwrap_or(&test_node);
+        let test_node = test.data_graph_path.display().to_string();
+        let test_name = test.name.as_str();
         println!("Running test: {}", test_name);
 
         let data_graph_path = test
@@ -65,7 +65,7 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
         let conforms = report.results().is_empty();
 
         // A test expects to conform if it's not a failure test and has an empty result graph.
-        let expects_conform = !test.expected_failure && test.result_graph.is_empty();
+        let expects_conform = test.status == "conform" && test.expected_report.is_empty();
 
         assert_eq!(
             conforms, expects_conform,
