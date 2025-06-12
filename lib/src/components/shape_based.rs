@@ -1,4 +1,5 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
+use crate::report::ValidationReportBuilder;
 use crate::types::{ComponentID, PropShapeID, ID};
 // Removed: use oxigraph::model::Term;
 
@@ -301,8 +302,10 @@ impl ValidateComponent for PropertyConstraintComponent {
         c: &mut Context,
         validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
+        todo!()
+        let mut builder = ValidationReportBuilder::new();
         if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
-            property_shape.validate(component_id, c, validation_context)
+            property_shape.validate(c, &validation_context, &mut builder)
         } else {
             Err(format!(
                 "Referenced property shape not found for ID: {:?}",
@@ -312,27 +315,6 @@ impl ValidateComponent for PropertyConstraintComponent {
     }
 }
 
-impl ValidateComponent for PropertyConstraintComponent {
-    fn validate(
-        &self,
-        component_id: ComponentID,
-        _c: &mut Context,            // Changed to &mut Context
-        context: &ValidationContext, // May be used to check existence of self.shape
-    ) -> Result<ComponentValidationResult, String> {
-        // Ensure the referenced property shape exists.
-        // The actual validation via PropertyShape::validate (which uses an RB)
-        // is assumed to be handled by the caller of Component::validate (e.g. NodeShape::validate).
-        // This component's validation, under the new trait, primarily confirms its own structural validity
-        // or delegates checks that don't involve the RB directly.
-        if context.get_prop_shape_by_id(&self.shape).is_none() {
-            return Err(format!(
-                "Referenced property shape not found for ID: {}",
-                self.shape
-            ));
-        }
-        Ok(ComponentValidationResult::Pass(component_id))
-    }
-}
 
 #[derive(Debug)]
 pub struct QualifiedValueShapeComponent {
