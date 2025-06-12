@@ -19,7 +19,6 @@ pub struct TestCase {
 pub struct Manifest {
     pub path: PathBuf,
     pub test_cases: Vec<TestCase>,
-    pub included_manifests: Vec<Manifest>,
 }
 
 fn resolve_path(base_path: &Path, relative_path: &str) -> PathBuf {
@@ -81,14 +80,6 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
 }
 
 pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
-    load_manifest_recursive(path, 0)
-}
-
-fn load_manifest_recursive(path: &Path, recursion: u32) -> Result<Manifest, String> {
-    if recursion >= 10 {
-        return Err("Manifest include chain is too deep!".to_string());
-    }
-
     let manifest_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read manifest file {}: {}", path.display(), e))?;
 
@@ -115,26 +106,6 @@ fn load_manifest_recursive(path: &Path, recursion: u32) -> Result<Manifest, Stri
         .ok_or_else(|| format!("mf:Manifest not found in {}", path.display()))?;
 
     let mut test_cases = Vec::new();
-    let mut included_manifests = Vec::new();
-
-    // Handle included manifests
-    for include_obj in manifest_graph.objects_for_subject_predicate(manifest_node, mf.include) {
-        if let TermRef::NamedNode(nn) = include_obj {
-            let included_path_str = nn.as_str();
-            let included_path = if included_path_str.starts_with("file://") {
-                PathBuf::from(
-                    Url::parse(included_path_str)
-                        .map_err(|e| e.to_string())?
-                        .to_file_path()
-                        .map_err(|_| "Invalid file URL".to_string())?,
-                )
-            } else {
-                resolve_path(path, included_path_str)
-            };
-            let sub_manifest = load_manifest_recursive(&included_path, recursion + 1)?;
-            included_manifests.push(sub_manifest);
-        }
-    }
 
     // Handle test entries
     if let Some(entries_list_head) =
@@ -205,6 +176,5 @@ fn load_manifest_recursive(path: &Path, recursion: u32) -> Result<Manifest, Stri
     Ok(Manifest {
         path: path.to_path_buf(),
         test_cases,
-        included_manifests,
     })
 }
