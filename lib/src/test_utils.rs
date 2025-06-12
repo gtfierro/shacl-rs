@@ -94,7 +94,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     let parser = RdfParser::from_format(RdfFormat::Turtle)
         .with_base_iri(&manifest_url)
         .map_err(|e| e.to_string())?;
-    for triple in parser.parse(Cursor::new(manifest_content)) {
+    for triple in parser.for_reader(Cursor::new(manifest_content)) {
         manifest_graph.insert(&triple.map_err(|e| e.to_string())?);
     }
 
