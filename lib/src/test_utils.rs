@@ -97,7 +97,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     for quad in parser.for_reader(Cursor::new(manifest_content)) {
         let quad = quad.map_err(|e| e.to_string())?;
         // Construct a TripleRef by ignoring the graph name:
-        manifest_graph.insert(TripleRef::new(quad.subject, quad.predicate, quad.object));
+        manifest_graph.insert(TripleRef::new(&quad.subject, &quad.predicate, &quad.object));
     }
 
     let mf = MF::new();
