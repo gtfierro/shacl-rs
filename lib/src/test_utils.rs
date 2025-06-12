@@ -44,7 +44,7 @@ fn extract_path_graph(manifest_graph: &Graph, path_node: SubjectRef, report_grap
             || predicate_ref == sh.one_or_more_path
             || predicate_ref == sh.zero_or_one_path
         {
-            if let TermRef::Subject(nested_path_node) = triple.object {
+            if let Ok(nested_path_node) = SubjectRef::try_from(triple.object) {
                 extract_path_graph(manifest_graph, nested_path_node, report_graph);
             }
         }
@@ -63,13 +63,13 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
     // Add triples for each sh:result
     let results = manifest_graph.objects_for_subject_predicate(result_node, sh.result);
     for result in results {
-        if let TermRef::Subject(s) = result {
+        if let Ok(s) = SubjectRef::try_from(result) {
             for triple in manifest_graph.triples_for_subject(s) {
                 report_graph.insert(triple.into());
 
                 // Recursively handle sh:resultPath if it's a blank node
                 if triple.predicate == sh.result_path {
-                    if let TermRef::Subject(path_subject) = triple.object {
+                    if let Ok(path_subject) = SubjectRef::try_from(triple.object) {
                         extract_path_graph(manifest_graph, path_subject, &mut report_graph);
                     }
                 }
@@ -88,8 +88,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
         .to_string();
 
     let mut manifest_graph = Graph::new();
-    RdfParser::new()
-        .with_format(RdfFormat::Turtle)
+    RdfParser::from_format(RdfFormat::Turtle)
         .with_base_iri(&manifest_url)
         .map_err(|e| e.to_string())?
         .parse_into_graph(Cursor::new(manifest_content), &mut manifest_graph)
@@ -111,31 +110,37 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     if let Some(entries_list_head) =
         manifest_graph.object_for_subject_predicate(manifest_node, mf.entries)
     {
-        if let TermRef::Subject(mut current_node) = entries_list_head {
+        if let Ok(mut current_node) = SubjectRef::try_from(entries_list_head) {
             let nil_ref: SubjectRef = rdf.nil.into();
             while current_node != nil_ref {
                 let entry = manifest_graph
                     .object_for_subject_predicate(current_node, rdf.first)
-                    .and_then(|t| if let TermRef::Subject(s) = t { Some(s) } else { None })
+                    .and_then(|t| SubjectRef::try_from(t).ok())
                     .ok_or_else(|| "Invalid RDF list for mf:entries: missing rdf:first".to_string())?;
 
                 let is_validate_test =
-                    manifest_graph.contains(&TripleRef::new(entry, rdf.type_, sht.validate));
+                    manifest_graph.contains(TripleRef::new(entry, rdf.type_, sht.validate));
 
                 if is_validate_test {
                     let name = manifest_graph
                         .object_for_subject_predicate(entry, rdfs.label)
-                        .map(|t| t.value().to_string())
+                        .and_then(|t| match t {
+                            TermRef::Literal(l) => Some(l.value().to_string()),
+                            _ => None,
+                        })
                         .unwrap_or_else(|| "Unnamed test".to_string());
 
                     let status = manifest_graph
                         .object_for_subject_predicate(entry, mf.status)
-                        .map(|t| t.value().to_string())
+                        .and_then(|t| match t {
+                            TermRef::NamedNode(nn) => Some(nn.as_str().to_string()),
+                            _ => None,
+                        })
                         .ok_or_else(|| format!("Test '{}' has no mf:status", name))?;
 
                     let action_node = manifest_graph
                         .object_for_subject_predicate(entry, mf.action)
-                        .and_then(|t| if let TermRef::Subject(s) = t { Some(s) } else { None })
+                        .and_then(|t| SubjectRef::try_from(t).ok())
                         .ok_or_else(|| format!("Test '{}' has no mf:action", name))?;
 
                     let data_graph_term = manifest_graph
@@ -148,11 +153,30 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                     let result_node = manifest_graph
                         .object_for_subject_predicate(entry, mf.result)
-                        .and_then(|t| if let TermRef::Subject(s) = t { Some(s) } else { None })
+                        .and_then(|t| SubjectRef::try_from(t).ok())
                         .ok_or_else(|| format!("Test '{}' has no mf:result", name))?;
 
-                    let data_graph_path = resolve_path(path, data_graph_term.value());
-                    let shapes_graph_path = resolve_path(path, shapes_graph_term.value());
+                    let data_graph_path_str = match data_graph_term {
+                        TermRef::NamedNode(nn) => nn.as_str(),
+                        _ => {
+                            return Err(format!(
+                                "Test '{}' has a non-IRI value for sht:dataGraph",
+                                name
+                            ))
+                        }
+                    };
+                    let data_graph_path = resolve_path(path, data_graph_path_str);
+
+                    let shapes_graph_path_str = match shapes_graph_term {
+                        TermRef::NamedNode(nn) => nn.as_str(),
+                        _ => {
+                            return Err(format!(
+                                "Test '{}' has a non-IRI value for sht:shapesGraph",
+                                name
+                            ))
+                        }
+                    };
+                    let shapes_graph_path = resolve_path(path, shapes_graph_path_str);
 
                     let expected_report = extract_report_graph(&manifest_graph, result_node);
 
@@ -167,7 +191,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                 current_node = manifest_graph
                     .object_for_subject_predicate(current_node, rdf.rest)
-                    .and_then(|t| if let TermRef::Subject(s) = t { Some(s) } else { None })
+                    .and_then(|t| SubjectRef::try_from(t).ok())
                     .ok_or_else(|| "Invalid RDF list for mf:entries: missing rdf:rest".to_string())?;
             }
         }

@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
 use crate::types::ID;
-use log::{debug, error, info};
+use log::{info};
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 
