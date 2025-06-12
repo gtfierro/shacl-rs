@@ -292,23 +292,23 @@ impl PropertyConstraintComponent {
     }
 }
 
-impl GraphvizOutput for PropertyConstraintComponent {
-    fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
-        let shape_term_str = context
-            .propshape_id_lookup()
-            .borrow()
-            .get_term(self.shape)
-            .map_or_else(
-                || format!("MissingPropShape:{}", self.shape),
-                |term| format_term_for_label(term),
-            );
-        let label = format!("PropertyConstraint\\n({})", shape_term_str);
-        format!(
-            "{0} [label=\"{1}\"];\n    {0} -> {2} [style=dashed, label=\"validates\"];",
-            component_id.to_graphviz_id(),
-            label,
-            self.shape.to_graphviz_id()
-        )
+// Finish implementing the PropertyConstraintComponent by delegating
+// validation to the referenced property shape.
+impl ValidateComponent for PropertyConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &mut Context,
+        validation_context: &ValidationContext,
+    ) -> Result<ComponentValidationResult, String> {
+        if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
+            property_shape.validate(component_id, c, validation_context)
+        } else {
+            Err(format!(
+                "Referenced property shape not found for ID: {:?}",
+                self.shape
+            ))
+        }
     }
 }
 
