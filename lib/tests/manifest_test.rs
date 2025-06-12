@@ -34,6 +34,7 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
     println!("Found {} SHT tests", all_tests.len());
 
     for test in all_tests {
+
         let test_node = test.data_graph_path.display().to_string();
         let test_name = test.name.as_str();
         println!("Running test: {}", test_name);
@@ -44,10 +45,13 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
             .ok_or("Invalid data graph path")?;
         let shapes_graph_path = test
             .shapes_graph_path
-            .as_path()
-            .unwrap_or(&test.data_graph_path)
             .to_str()
             .ok_or("Invalid shapes graph path")?;
+
+        println!(
+            "Data graph: {}, Shapes graph: {}",
+            data_graph_path, shapes_graph_path
+        );
 
         let context = match ValidationContext::from_files(shapes_graph_path, data_graph_path) {
             Ok(c) => c,
@@ -69,8 +73,8 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
 
         assert_eq!(
             conforms, expects_conform,
-            "Conformance mismatch for test: {}",
-            test_name
+            "Conformance mismatch for test: {}. Expected {}",
+            test_name, expects_conform
         );
 
         // TODO: Add graph isomorphism check for tests with non-empty result graphs.
