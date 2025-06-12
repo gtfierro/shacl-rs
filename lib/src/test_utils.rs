@@ -35,7 +35,7 @@ fn resolve_path(base_path: &Path, relative_path: &str) -> PathBuf {
 fn extract_path_graph(manifest_graph: &Graph, path_node: SubjectRef, report_graph: &mut Graph) {
     let sh = SHACL::new();
     for triple in manifest_graph.triples_for_subject(path_node) {
-        report_graph.insert(triple.into());
+        report_graph.insert(triple);
         // Recurse for nested paths
         let predicate_ref = triple.predicate;
         if predicate_ref == sh.inverse_path
@@ -45,8 +45,8 @@ fn extract_path_graph(manifest_graph: &Graph, path_node: SubjectRef, report_grap
             || predicate_ref == sh.one_or_more_path
             || predicate_ref == sh.zero_or_one_path
         {
-            if let Ok(nested_path_node) = triple.object.to_subject_ref() {
-                extract_path_graph(manifest_graph, nested_path_node, report_graph);
+            if let TermRef::NamedNode(_) | TermRef::BlankNode(_) = triple.object {
+                extract_path_graph(manifest_graph, triple.object.to_subject_ref(), report_graph);
             }
         }
     }
@@ -58,20 +58,24 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
 
     // Add triples where result_node is the subject
     for triple in manifest_graph.triples_for_subject(result_node) {
-        report_graph.insert(triple.into());
+        report_graph.insert(triple);
     }
 
     // Add triples for each sh:result
     let results = manifest_graph.objects_for_subject_predicate(result_node, sh.result);
     for result in results {
-        let s = result.to_subject_ref()
-        for triple in manifest_graph.triples_for_subject(s) {
-            report_graph.insert(triple.into());
+        if let TermRef::NamedNode(_) | TermRef::BlankNode(_) = result {
+            let s = result.to_subject_ref();
+            for triple in manifest_graph.triples_for_subject(s) {
+                report_graph.insert(triple);
 
-            // Recursively handle sh:resultPath if it's a blank node
-            if triple.predicate == sh.result_path {
-                let path_subject = triple.object.to_subject_ref();
-                extract_path_graph(manifest_graph, path_subject, &mut report_graph);
+                // Recursively handle sh:resultPath if it's a blank node
+                if triple.predicate == sh.result_path {
+                    if let TermRef::NamedNode(_) | TermRef::BlankNode(_) = triple.object {
+                        let path_subject = triple.object.to_subject_ref();
+                        extract_path_graph(manifest_graph, path_subject, &mut report_graph);
+                    }
+                }
             }
         }
     }
@@ -87,11 +91,12 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
         .to_string();
 
     let mut manifest_graph = Graph::new();
-    RdfParser::from_format(RdfFormat::Turtle)
+    let parser = RdfParser::from_format(RdfFormat::Turtle)
         .with_base_iri(&manifest_url)
-        .map_err(|e| e.to_string())?
-        .parse_into_graph(Cursor::new(manifest_content), &mut manifest_graph)
         .map_err(|e| e.to_string())?;
+    for triple in parser.parse(Cursor::new(manifest_content)) {
+        manifest_graph.insert(&triple.map_err(|e| e.to_string())?);
+    }
 
     let mf = MF::new();
     let sht = SHT::new();
@@ -109,12 +114,16 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     if let Some(entries_list_head) =
         manifest_graph.object_for_subject_predicate(manifest_node, mf.entries)
     {
-        if let Ok(mut current_node) = entries_list_head.to_subject_ref() {
+        if let TermRef::NamedNode(_) | TermRef::BlankNode(_) = entries_list_head {
+            let mut current_node = entries_list_head.to_subject_ref();
             let nil_ref: SubjectRef = rdf.nil.into();
             while current_node != nil_ref {
                 let entry = manifest_graph
                     .object_for_subject_predicate(current_node, rdf.first)
-                    .and_then(|t| t.to_subject_ref())
+                    .and_then(|t| match t {
+                        TermRef::NamedNode(_) | TermRef::BlankNode(_) => Some(t.to_subject_ref()),
+                        _ => None,
+                    })
                     .ok_or_else(|| "Invalid RDF list for mf:entries: missing rdf:first".to_string())?;
 
                 let is_validate_test =
@@ -139,7 +148,10 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                     let action_node = manifest_graph
                         .object_for_subject_predicate(entry, mf.action)
-                        .and_then(|t| t.to_subject_ref())
+                        .and_then(|t| match t {
+                            TermRef::NamedNode(_) | TermRef::BlankNode(_) => Some(t.to_subject_ref()),
+                            _ => None,
+                        })
                         .ok_or_else(|| format!("Test '{}' has no mf:action", name))?;
 
                     let data_graph_term = manifest_graph
@@ -152,7 +164,10 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                     let result_node = manifest_graph
                         .object_for_subject_predicate(entry, mf.result)
-                        .and_then(|t| t.to_subject_ref())
+                        .and_then(|t| match t {
+                            TermRef::NamedNode(_) | TermRef::BlankNode(_) => Some(t.to_subject_ref()),
+                            _ => None,
+                        })
                         .ok_or_else(|| format!("Test '{}' has no mf:result", name))?;
 
                     let data_graph_path_str = match data_graph_term {
@@ -190,7 +205,10 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                 current_node = manifest_graph
                     .object_for_subject_predicate(current_node, rdf.rest)
-                    .and_then(|t| t.to_subject_ref())
+                    .and_then(|t| match t {
+                        TermRef::NamedNode(_) | TermRef::BlankNode(_) => Some(t.to_subject_ref()),
+                        _ => None,
+                    })
                     .ok_or_else(|| "Invalid RDF list for mf:entries: missing rdf:rest".to_string())?;
             }
         }
