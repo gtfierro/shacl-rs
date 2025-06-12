@@ -101,13 +101,14 @@ impl PropertyShape {
             self.identifier(),
             query_str
         );
-        let query = Query::parse(&query_str, None).map_err(|e| {
+        let mut query = Query::parse(&query_str, None).map_err(|e| {
             format!(
                 "Failed to parse query for PropertyShape {}: {}",
                 self.identifier(),
                 e
             )
         })?;
+        query.dataset_mut().set_default_graph_as_union();
 
         
         //println!("num triples in focus context: {}", context.store().len().unwrap());
