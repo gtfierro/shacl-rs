@@ -33,18 +33,18 @@ ex:TestShape-sparql
 		}
 	}""" ;
 .
-<>
+<urn:shapesGraph-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <shapesGraph-001>
+      <urn:shapesGraph-001>
     ) ;
 .
-<shapesGraph-001>
+<urn:shapesGraph-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of $shapesGraph and $currentShape" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:shapesGraph-001.ttl> ;
+      sht:shapesGraph <urn:shapesGraph-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -14,18 +14,18 @@ ex:TestShape
   sh:severity sh:Warning ;
   sh:targetNode "Hello" ;
 .
-<>
+<urn:severity-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <severity-001>
+      <urn:severity-001>
     ) ;
 .
-<severity-001>
+<urn:severity-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:severity 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:severity-001.ttl> ;
+      sht:shapesGraph <urn:severity-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

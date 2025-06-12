@@ -44,18 +44,18 @@ ex:TestShape
   sh:targetNode ex:Someone ;
   sh:targetNode ex:Typeless ; # not Animal, not Person
 .
-<>
+<urn:class-003.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <class-003>
+      <urn:class-003>
     ) ;
 .
-<class-003>
+<urn:class-003>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:class at node shape 003 multiple classes, overlapping target sets" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:class-003.ttl> ;
+      sht:shapesGraph <urn:class-003.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

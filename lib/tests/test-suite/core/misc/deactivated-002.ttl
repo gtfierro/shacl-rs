@@ -14,18 +14,18 @@ ex:TestShape
   sh:deactivated "false"^^xsd:boolean ;
   sh:targetNode 32 ;
 .
-<>
+<urn:deactivated-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <deactivated-002>
+      <urn:deactivated-002>
     ) ;
 .
-<deactivated-002>
+<urn:deactivated-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:deactivated 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:deactivated-002.ttl> ;
+      sht:shapesGraph <urn:deactivated-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -30,18 +30,18 @@ ex:SP
   sh:maxCount 1 ;
   sh:nodeKind sh:IRI ;
 .
-<>
+<urn:path-sequence-duplicate-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-sequence-duplicate-001>
+      <urn:path-sequence-duplicate-001>
     ) ;
 .
-<path-sequence-duplicate-001>
+<urn:path-sequence-duplicate-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of path sequence with duplicate 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-sequence-duplicate-001.ttl> ;
+      sht:shapesGraph <urn:path-sequence-duplicate-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

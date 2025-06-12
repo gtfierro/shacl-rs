@@ -87,18 +87,18 @@ ex:digit
   rdfs:label "digit" ;
   rdfs:range ex:Digit ;
 .
-<>
+<urn:qualifiedMinCountDisjoint-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <qualifiedMinCountDisjoint-001>
+      <urn:qualifiedMinCountDisjoint-001>
     ) ;
 .
-<qualifiedMinCountDisjoint-001>
+<urn:qualifiedMinCountDisjoint-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:qualifiedMinCount with disjoint shapes at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:qualifiedMinCountDisjoint-001.ttl> ;
+      sht:shapesGraph <urn:qualifiedMinCountDisjoint-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

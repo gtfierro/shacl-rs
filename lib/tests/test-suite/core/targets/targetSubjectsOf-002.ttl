@@ -37,18 +37,18 @@ ex:ValidInstance1
 ex:ValidInstance2
   ex:myProperty "A" ;
 .
-<>
+<urn:targetSubjectsOf-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <targetSubjectsOf-002>
+      <urn:targetSubjectsOf-002>
     ) ;
 .
-<targetSubjectsOf-002>
+<urn:targetSubjectsOf-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:targetSubjectsOf 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:targetSubjectsOf-002.ttl> ;
+      sht:shapesGraph <urn:targetSubjectsOf-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -8,12 +8,12 @@
 
 @prefix ex: <http://example.org/shacl-test/> .
 
-<> a mf:Manifest ;
+<urn:xone-duplicate.ttl> a mf:Manifest ;
   mf:entries (
-      <xone-duplicate>
+      <urn:xone-duplicate>
     ) .
 
-<xone-duplicate> a sht:Validate;
+<urn:xone-duplicate> a sht:Validate;
   rdfs:label "Test of validation report for shape xone-duplicate by property constraints" ;
   mf:action [ sht:dataGraph <xone-duplicate-data.ttl> ;
               sht:shapesGraph <xone-duplicate-shapes.ttl> ] ;

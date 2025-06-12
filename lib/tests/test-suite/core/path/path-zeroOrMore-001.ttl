@@ -30,18 +30,18 @@ ex:ValidResource1
 ex:ValidResource2
   ex:child ex:Person2 ;
 .
-<>
+<urn:path-zeroOrMore-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-zeroOrMore-001>
+      <urn:path-zeroOrMore-001>
     ) ;
 .
-<path-zeroOrMore-001>
+<urn:path-zeroOrMore-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of path sh:zeroOrMorePath 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-zeroOrMore-001.ttl> ;
+      sht:shapesGraph <urn:path-zeroOrMore-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

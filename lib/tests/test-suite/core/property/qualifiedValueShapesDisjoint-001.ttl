@@ -91,18 +91,18 @@ ex:ValidHand
   ex:digit ex:Thumb1 ;
   rdfs:label "Valid hand" ;
 .
-<>
+<urn:qualifiedValueShapesDisjoint-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <qualifiedValueShapesDisjoint-001>
+      <urn:qualifiedValueShapesDisjoint-001>
     ) ;
 .
-<qualifiedValueShapesDisjoint-001>
+<urn:qualifiedValueShapesDisjoint-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:qualifiedValueShapesDisjoint at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:qualifiedValueShapesDisjoint-001.ttl> ;
+      sht:shapesGraph <urn:qualifiedValueShapesDisjoint-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

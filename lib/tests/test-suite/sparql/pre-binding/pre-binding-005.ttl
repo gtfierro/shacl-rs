@@ -38,18 +38,18 @@ ex:TestShape-sparql
 ex:ValidResource1
   rdf:type rdfs:Resource ;
 .
-<>
+<urn:pre-binding-005.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <pre-binding-005>
+      <urn:pre-binding-005>
     ) ;
 .
-<pre-binding-005>
+<urn:pre-binding-005>
   rdf:type sht:Validate ;
   rdfs:label "Test of pre-binding in BGP and FILTER" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:pre-binding-005.ttl> ;
+      sht:shapesGraph <urn:pre-binding-005.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

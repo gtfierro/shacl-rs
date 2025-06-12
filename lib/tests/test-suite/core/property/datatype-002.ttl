@@ -32,18 +32,18 @@ ex:ValidInstance1
 ex:ValidInstance2
   ex:value "A" ;
 .
-<>
+<urn:datatype-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <datatype-002>
+      <urn:datatype-002>
     ) ;
 .
-<datatype-002>
+<urn:datatype-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:datatype at property shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:datatype-002.ttl> ;
+      sht:shapesGraph <urn:datatype-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

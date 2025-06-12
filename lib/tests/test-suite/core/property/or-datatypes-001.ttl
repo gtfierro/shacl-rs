@@ -47,18 +47,18 @@ ex:ValidResource1
   rdfs:comment "A string" ;
   rdfs:label "Valid resource1" ;
 .
-<>
+<urn:or-datatypes-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <or-datatypes-001>
+      <urn:or-datatypes-001>
     ) ;
 .
-<or-datatypes-001>
+<urn:or-datatypes-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:or of sh:datatypes at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:or-datatypes-001.ttl> ;
+      sht:shapesGraph <urn:or-datatypes-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

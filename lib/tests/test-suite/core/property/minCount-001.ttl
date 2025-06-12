@@ -33,18 +33,18 @@ ex:ValidResource
   ex:firstName "John" ;
   rdfs:label "Valid resource" ;
 .
-<>
+<urn:minCount-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <minCount-001>
+      <urn:minCount-001>
     ) ;
 .
-<minCount-001>
+<urn:minCount-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:minCount at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:minCount-001.ttl> ;
+      sht:shapesGraph <urn:minCount-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

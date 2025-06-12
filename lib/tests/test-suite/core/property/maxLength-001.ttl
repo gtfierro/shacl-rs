@@ -31,18 +31,18 @@ ex:ValidInstance1
 ex:ValidInstance2
   rdf:type ex:TestShape ;
 .
-<>
+<urn:maxLength-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <maxLength-001>
+      <urn:maxLength-001>
     ) ;
 .
-<maxLength-001>
+<urn:maxLength-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:maxLength at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:maxLength-001.ttl> ;
+      sht:shapesGraph <urn:maxLength-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

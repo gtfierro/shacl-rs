@@ -49,18 +49,18 @@ ex:TestShape-P
 ex:ValidResource1
   rdf:type ex:Person ;
 .
-<>
+<urn:path-inverse-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-inverse-001>
+      <urn:path-inverse-001>
     ) ;
 .
-<path-inverse-001>
+<urn:path-inverse-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of path sh:inversePath 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-inverse-001.ttl> ;
+      sht:shapesGraph <urn:path-inverse-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -49,18 +49,18 @@ _:b60054
  sh:class ex:Company ;
  sh:nodeKind sh:IRI
 .
-<>
+<urn:personexample.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <personexample>
+      <urn:personexample>
     ) ;
 .
-<personexample>
+<urn:personexample>
   rdf:type sht:Validate ;
   rdfs:label "Test of personexample" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:personexample.ttl> ;
+      sht:shapesGraph <urn:personexample.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -22,19 +22,19 @@ ex:s1 a sh:PropertyShape ;
   	    sh:inversePath ( ex:p ) ] ;
   sh:class ex:C .
 
-<>
+<urn:path-strange-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-strange-002>
+      <urn:path-strange-002>
     ) ;
 .
 
-<path-strange-002>
+<urn:path-strange-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of strange path 002 valid and invalid paths together" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-strange-002.ttl> ;
+      sht:shapesGraph <urn:path-strange-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

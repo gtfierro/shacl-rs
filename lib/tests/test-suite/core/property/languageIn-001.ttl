@@ -31,18 +31,18 @@ ex:NewZealandLanguagesShape-prefLabel
       "mi"
     ) ;
 .
-<>
+<urn:languageIn-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <languageIn-001>
+      <urn:languageIn-001>
     ) ;
 .
-<languageIn-001>
+<urn:languageIn-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:languageIn at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:languageIn-001.ttl> ;
+      sht:shapesGraph <urn:languageIn-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

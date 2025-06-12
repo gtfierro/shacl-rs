@@ -16,18 +16,18 @@ ex:TestShape
   sh:targetNode 42 ;
   sh:targetNode "aldi"^^xsd:integer ;
 .
-<>
+<urn:datatype-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <datatype-001>
+      <urn:datatype-001>
     ) ;
 .
-<datatype-001>
+<urn:datatype-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:datatype at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:datatype-001.ttl> ;
+      sht:shapesGraph <urn:datatype-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

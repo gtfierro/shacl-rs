@@ -7,16 +7,16 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<>
+<urn:unsupported-sparql-002.ttl>
 	rdf:type mf:Manifest ;
-	mf:entries ( <unsupported-sparql-002> ) .
+	mf:entries ( <urn:unsupported-sparql-002> ) .
     
-<unsupported-sparql-002>
+<urn:unsupported-sparql-002>
 	rdf:type sht:Validate ;
 	rdfs:label "Test of unsupported VALUES" ;
 	mf:action [
-		sht:dataGraph <> ;
-		sht:shapesGraph <> ;
+		sht:dataGraph <urn:unsupported-sparql-002.ttl> ;
+		sht:shapesGraph <urn:unsupported-sparql-002.ttl> ;
 	] ;
 	mf:result sht:Failure ;
 	mf:status sht:approved .

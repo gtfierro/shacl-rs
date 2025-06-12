@@ -37,18 +37,18 @@ ex:SuperShape
 ex:ValidInstance1
   ex:property "One" ;
 .
-<>
+<urn:and-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <and-002>
+      <urn:and-002>
     ) ;
 .
-<and-002>
+<urn:and-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:and at node shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:and-002.ttl> ;
+      sht:shapesGraph <urn:and-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

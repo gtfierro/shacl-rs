@@ -53,18 +53,18 @@ ex:property1
 ex:property2
   rdf:type rdf:Property ;
 .
-<>
+<urn:equals-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <equals-001>
+      <urn:equals-001>
     ) ;
 .
-<equals-001>
+<urn:equals-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:equals at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:equals-001.ttl> ;
+      sht:shapesGraph <urn:equals-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

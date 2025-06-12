@@ -45,18 +45,18 @@ ex:Reto
 ex:RetosAddress
   ex:postalCode 5678 ;
 .
-<>
+<urn:node-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <node-002>
+      <urn:node-002>
     ) ;
 .
-<node-002>
+<urn:node-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:node at property shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:node-002.ttl> ;
+      sht:shapesGraph <urn:node-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

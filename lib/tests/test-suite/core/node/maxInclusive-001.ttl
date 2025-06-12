@@ -19,18 +19,18 @@ ex:TestShape
   sh:targetNode 4.1 ;
   sh:targetNode "Hello" ;
 .
-<>
+<urn:maxInclusive-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <maxInclusive-001>
+      <urn:maxInclusive-001>
     ) ;
 .
-<maxInclusive-001>
+<urn:maxInclusive-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:maxInclusive at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:maxInclusive-001.ttl> ;
+      sht:shapesGraph <urn:maxInclusive-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

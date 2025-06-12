@@ -15,18 +15,18 @@ ex:TestShape
   sh:targetNode "Invalid String" ;
   sh:targetNode "Test" ;
 .
-<>
+<urn:hasValue-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <hasValue-001>
+      <urn:hasValue-001>
     ) ;
 .
-<hasValue-001>
+<urn:hasValue-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:hasValue at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:hasValue-001.ttl> ;
+      sht:shapesGraph <urn:hasValue-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

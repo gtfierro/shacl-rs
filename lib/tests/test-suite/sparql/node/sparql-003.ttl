@@ -39,18 +39,18 @@ ex:ValidCountry
   rdf:type ex:Country ;
   ex:germanLabel "Spanien"@de ;
 .
-<>
+<urn:sparql-003.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <sparql-003>
+      <urn:sparql-003>
     ) ;
 .
-<sparql-003>
+<urn:sparql-003>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:sparql at node shape 003" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:sparql-003.ttl> ;
+      sht:shapesGraph <urn:sparql-003.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

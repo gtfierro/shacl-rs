@@ -54,18 +54,18 @@ ex:ValidRectangle3
   ex:area 6 ;
   ex:height 3 ;
 .
-<>
+<urn:or-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <or-001>
+      <urn:or-001>
     ) ;
 .
-<or-001>
+<urn:or-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:or at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:or-001.ttl> ;
+      sht:shapesGraph <urn:or-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

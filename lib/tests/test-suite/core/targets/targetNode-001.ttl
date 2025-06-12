@@ -28,18 +28,18 @@ ex:TestShape-label
 ex:ValidResource1
   rdf:type rdfs:Resource ;
 .
-<>
+<urn:targetNode-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <targetNode-001>
+      <urn:targetNode-001>
     ) ;
 .
-<targetNode-001>
+<urn:targetNode-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:targetNode 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:targetNode-001.ttl> ;
+      sht:shapesGraph <urn:targetNode-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

@@ -36,18 +36,18 @@ ex:TestShape-sparql
 ex:ValidResource1
   rdf:type rdfs:Resource ;
 .
-<>
+<urn:pre-binding-006.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <pre-binding-006>
+      <urn:pre-binding-006>
     ) ;
 .
-<pre-binding-006>
+<urn:pre-binding-006>
   rdf:type sht:Validate ;
   rdfs:label "Test of pre-binding in nested SELECT" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:pre-binding-006.ttl> ;
+      sht:shapesGraph <urn:pre-binding-006.ttl> ;
     ] ;
   mf:result sht:Failure ;
   mf:status sht:approved ;

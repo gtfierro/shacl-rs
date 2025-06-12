@@ -34,18 +34,18 @@ ex:Yellow
   rdf:type ex:TestShape ;
   rdfs:label "Yellow" ;
 .
-<>
+<urn:in-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <in-001>
+      <urn:in-001>
     ) ;
 .
-<in-001>
+<urn:in-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:in at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:in-001.ttl> ;
+      sht:shapesGraph <urn:in-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

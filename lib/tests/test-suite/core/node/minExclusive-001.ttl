@@ -19,18 +19,18 @@ ex:TestShape
   sh:targetNode 4.1 ;
   sh:targetNode "Hello" ;
 .
-<>
+<urn:minExclusive-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <minExclusive-001>
+      <urn:minExclusive-001>
     ) ;
 .
-<minExclusive-001>
+<urn:minExclusive-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:minExclusive at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:minExclusive-001.ttl> ;
+      sht:shapesGraph <urn:minExclusive-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

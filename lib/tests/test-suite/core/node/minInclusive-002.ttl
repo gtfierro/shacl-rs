@@ -16,18 +16,18 @@ ex:TestShape a sh:NodeShape ;
   sh:targetNode "2002-10-10T12:00:00"^^xsd:dateTime ;
   sh:targetNode ex:TestShape ;
 .
-<>
+<urn:minInclusive-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <minInclusive-002>
+      <urn:minInclusive-002>
     ) ;
 .
-<minInclusive-002>
+<urn:minInclusive-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:minInclusive at node shape 002 - dateTime with timezone" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:minInclusive-002.ttl> ;
+      sht:shapesGraph <urn:minInclusive-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

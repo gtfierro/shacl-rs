@@ -54,18 +54,18 @@ ex:TestShape
 ex:ValidResource1
   ex:property "Value" ;
 .
-<>
+<urn:nodeValidator-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <nodeValidator-001>
+      <urn:nodeValidator-001>
     ) ;
 .
-<nodeValidator-001>
+<urn:nodeValidator-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:nodeValidator 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:nodeValidator-001.ttl> ;
+      sht:shapesGraph <urn:nodeValidator-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

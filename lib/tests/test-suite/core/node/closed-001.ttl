@@ -25,18 +25,18 @@ ex:MyShape
 ex:ValidInstance1
   ex:someProperty 3 ;
 .
-<>
+<urn:closed-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <closed-001>
+      <urn:closed-001>
     ) ;
 .
-<closed-001>
+<urn:closed-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:closed at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:closed-001.ttl> ;
+      sht:shapesGraph <urn:closed-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

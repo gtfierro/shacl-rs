@@ -38,18 +38,18 @@ ex:ValidResource2
   ex:property1 ex:Node1 ;
   ex:property1 ex:Node2 ;
 .
-<>
+<urn:path-sequence-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-sequence-002>
+      <urn:path-sequence-002>
     ) ;
 .
-<path-sequence-002>
+<urn:path-sequence-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of path sequence 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-sequence-002.ttl> ;
+      sht:shapesGraph <urn:path-sequence-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

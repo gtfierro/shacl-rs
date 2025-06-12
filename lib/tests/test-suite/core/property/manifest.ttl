@@ -2,7 +2,7 @@
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sht:     <http://www.w3.org/ns/shacl-test#> .
 
-<>
+<urn:manifest.ttl>
 	a mf:Manifest ;
 	rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/property" ;
 	mf:include <and-001.ttl> ;

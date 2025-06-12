@@ -59,18 +59,18 @@ ex:hasLang
 			""" ;
   sh:message "Values are literals with language \"{?lang}\"" ;
 .
-<>
+<urn:unsupported-sparql-006.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <unsupported-sparql-006>
+      <urn:unsupported-sparql-006>
     ) ;
 .
-<unsupported-sparql-006>
+<urn:unsupported-sparql-006>
   rdf:type sht:Validate ;
   rdfs:label "Test of ASK trying to reassign ?value" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:unsupported-sparql-006.ttl> ;
+      sht:shapesGraph <urn:unsupported-sparql-006.ttl> ;
     ] ;
   mf:result sht:Failure ;
   mf:status sht:approved ;

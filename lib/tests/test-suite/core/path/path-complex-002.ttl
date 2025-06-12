@@ -8,12 +8,12 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<> a mf:Manifest ;
+<urn:path-complex-002.ttl> a mf:Manifest ;
   mf:entries (
-      <path-complex-002>
+      <urn:path-complex-002>
     ) .
 
-<path-complex-002> a sht:Validate ;
+<urn:path-complex-002> a sht:Validate ;
   rdfs:label "Test of complex path validation results" ;
   mf:action [
       sht:dataGraph <path-complex-002-data.ttl> ;

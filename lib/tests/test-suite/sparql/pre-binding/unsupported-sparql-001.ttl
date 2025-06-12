@@ -7,16 +7,16 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<>
+<urn:unsupported-sparql-001.ttl>
 	rdf:type mf:Manifest ;
-	mf:entries ( <unsupported-sparql-001> ) .
+	mf:entries ( <urn:unsupported-sparql-001> ) .
     
-<unsupported-sparql-001>
+<urn:unsupported-sparql-001>
 	rdf:type sht:Validate ;
 	rdfs:label "Test of unsupported MINUS" ;
 	mf:action [
-		sht:dataGraph <> ;
-		sht:shapesGraph <> ;
+		sht:dataGraph <urn:unsupported-sparql-001.ttl> ;
+		sht:shapesGraph <urn:unsupported-sparql-001.ttl> ;
 	] ;
 	mf:result sht:Failure ;
 	mf:status sht:approved .

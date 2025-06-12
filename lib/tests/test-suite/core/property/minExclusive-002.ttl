@@ -26,18 +26,18 @@ ex:TestShape-testProperty
   sh:path ex:testProperty ;
   sh:minExclusive 40 ;
 .
-<>
+<urn:minExclusive-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <minExclusive-002>
+      <urn:minExclusive-002>
     ) ;
 .
-<minExclusive-002>
+<urn:minExclusive-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:minExclusive at property shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:minExclusive-002.ttl> ;
+      sht:shapesGraph <urn:minExclusive-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

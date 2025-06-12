@@ -29,18 +29,18 @@ ex:ValidInstance
   rdf:type ex:SubClass ;
   rdfs:label "Valid instance" ;
 .
-<>
+<urn:targetClassImplicit-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <targetClassImplicit-001>
+      <urn:targetClassImplicit-001>
     ) ;
 .
-<targetClassImplicit-001>
+<urn:targetClassImplicit-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of implicit sh:targetClass 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:targetClassImplicit-001.ttl> ;
+      sht:shapesGraph <urn:targetClassImplicit-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

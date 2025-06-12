@@ -28,18 +28,18 @@ ex:ValidResource
   rdf:type rdfs:Resource ;
   rdfs:label "Valid resource" ;
 .
-<>
+<urn:maxCount-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <maxCount-002>
+      <urn:maxCount-002>
     ) ;
 .
-<maxCount-002>
+<urn:maxCount-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:maxCount at property shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:maxCount-002.ttl> ;
+      sht:shapesGraph <urn:maxCount-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

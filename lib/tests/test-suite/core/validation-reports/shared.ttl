@@ -12,14 +12,14 @@
 # on whether the nested sh:property constraint that is reached twice should
 # also be reported twice.
 
-<>
+<urn:shared.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <shared>
+      <urn:shared>
     ) ;
 .
 
-<shared>
+<urn:shared>
 	rdf:type sht:Validate;
 	rdfs:label "Test of validation report for shape shared by property constraints" ;
 	mf:action [

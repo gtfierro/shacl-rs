@@ -8,12 +8,12 @@
 
 @prefix ex: <http://example.org/shacl-test/> .
 
-<> a mf:Manifest ;
+<urn:qualified-001.ttl> a mf:Manifest ;
   mf:entries (
-      <qualified-001>
+      <urn:qualified-001>
     ) .
 
-<qualified-001> a sht:Validate;
+<urn:qualified-001> a sht:Validate;
   rdfs:label "Test of qualified parameters allowed in node shapes" ;
   mf:action [ sht:dataGraph <qualified-001-data.ttl> ;
               sht:shapesGraph <qualified-001-shapes.ttl> ] ;

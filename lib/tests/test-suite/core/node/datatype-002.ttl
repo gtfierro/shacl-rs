@@ -16,18 +16,18 @@ ex:TestShape
   sh:targetNode "Hallo"@de ;
   sh:targetNode "Hello" ;
 .
-<>
+<urn:datatype-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <datatype-002>
+      <urn:datatype-002>
     ) ;
 .
-<datatype-002>
+<urn:datatype-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:datatype at node shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:datatype-002.ttl> ;
+      sht:shapesGraph <urn:datatype-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

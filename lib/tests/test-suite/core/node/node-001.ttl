@@ -26,18 +26,18 @@ ex:ValidInstance
   rdf:type ex:TestClass ;
   rdfs:label "Valid instance" ;
 .
-<>
+<urn:node-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <node-001>
+      <urn:node-001>
     ) ;
 .
-<node-001>
+<urn:node-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:node at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:node-001.ttl> ;
+      sht:shapesGraph <urn:node-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

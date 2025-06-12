@@ -4,12 +4,12 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 
-<> a mf:Manifest ;
+<urn:shacl-shacl.ttl> a mf:Manifest ;
   mf:entries (
-      <shacl-shacl>
+      <urn:shacl-shacl>
     ) .
 
-<shacl-shacl> a sht:Validate ;
+<urn:shacl-shacl> a sht:Validate ;
   rdfs:label "frozen eat your own ( eat your own frozen dogfood )" ;
   mf:action [
       sht:dataGraph <shacl-shacl-data-shapes.ttl> ;

@@ -23,18 +23,18 @@ ex:TestShape2
   sh:path ex:property ;
   sh:minCount 1 ;
 .
-<>
+<urn:deactivated-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <deactivated-001>
+      <urn:deactivated-001>
     ) ;
 .
-<deactivated-001>
+<urn:deactivated-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:deactivated 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:deactivated-001.ttl> ;
+      sht:shapesGraph <urn:deactivated-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

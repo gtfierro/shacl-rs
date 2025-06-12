@@ -20,18 +20,18 @@ ex:TestShape
   sh:targetNode 9 ;
   sh:targetNode "John" ;
 .
-<>
+<urn:pattern-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <pattern-001>
+      <urn:pattern-001>
     ) ;
 .
-<pattern-001>
+<urn:pattern-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:pattern at node shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:pattern-001.ttl> ;
+      sht:shapesGraph <urn:pattern-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

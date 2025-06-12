@@ -27,18 +27,18 @@ ex:ValidResource1
 ex:ValidResource2
   ex:property2 "Other value" ;
 .
-<>
+<urn:multipleTargets-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <multipleTargets-001>
+      <urn:multipleTargets-001>
     ) ;
 .
-<multipleTargets-001>
+<urn:multipleTargets-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of multiple targets 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:multipleTargets-001.ttl> ;
+      sht:shapesGraph <urn:multipleTargets-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

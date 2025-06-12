@@ -8,12 +8,12 @@
 
 @prefix ex: <http://example.org/shacl-test/> .
 
-<> rdf:type mf:Manifest ;
+<urn:datatype-ill-formed.ttl> rdf:type mf:Manifest ;
    mf:entries (
-      <datatype-ill-formed>
+      <urn:datatype-ill-formed>
     ) .
 
-<datatype-ill-formed> rdf:type sht:Validate;
+<urn:datatype-ill-formed> rdf:type sht:Validate;
   rdfs:label "Test of validation report for ill-formed literals" ;
   mf:action [ sht:dataGraph <datatype-ill-formed-data.ttl> ;
               sht:shapesGraph <datatype-ill-formed-shapes.ttl> ] ;

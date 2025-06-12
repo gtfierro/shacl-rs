@@ -74,18 +74,18 @@ ex:myProperty
   rdfs:domain ex:MyClass ;
   rdfs:label "my property" ;
 .
-<>
+<urn:nodeKind-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <nodeKind-001>
+      <urn:nodeKind-001>
     ) ;
 .
-<nodeKind-001>
+<urn:nodeKind-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:nodeKind at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:nodeKind-001.ttl> ;
+      sht:shapesGraph <urn:nodeKind-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

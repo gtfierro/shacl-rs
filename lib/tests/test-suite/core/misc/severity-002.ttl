@@ -22,18 +22,18 @@ ex:TestShape2
   sh:datatype xsd:integer ;
   sh:severity sh:Info ;
 .
-<>
+<urn:severity-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <severity-002>
+      <urn:severity-002>
     ) ;
 .
-<severity-002>
+<urn:severity-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:severity 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:severity-002.ttl> ;
+      sht:shapesGraph <urn:severity-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

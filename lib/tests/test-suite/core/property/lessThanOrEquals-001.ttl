@@ -48,18 +48,18 @@ ex:property1
 ex:property2
   rdf:type rdf:Property ;
 .
-<>
+<urn:lessThanOrEquals-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <lessThanOrEquals-001>
+      <urn:lessThanOrEquals-001>
     ) ;
 .
-<lessThanOrEquals-001>
+<urn:lessThanOrEquals-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:lessThanOrEquals at property shape 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:lessThanOrEquals-001.ttl> ;
+      sht:shapesGraph <urn:lessThanOrEquals-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

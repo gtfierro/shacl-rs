@@ -40,18 +40,18 @@ ex:TestShape
   sh:targetNode ex:InvalidResource1 ;
   sh:targetNode ex:ValidResource1 ;
 .
-<>
+<urn:prefixes-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <prefixes-001>
+      <urn:prefixes-001>
     ) ;
 .
-<prefixes-001>
+<urn:prefixes-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:prefixes 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:prefixes-001.ttl> ;
+      sht:shapesGraph <urn:prefixes-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

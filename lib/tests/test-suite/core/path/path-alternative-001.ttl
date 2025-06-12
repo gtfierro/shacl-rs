@@ -39,18 +39,18 @@ ex:ValidResource3
   ex:property2 "One" ;
   ex:property2 "Two" ;
 .
-<>
+<urn:path-alternative-001.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <path-alternative-001>
+      <urn:path-alternative-001>
     ) ;
 .
-<path-alternative-001>
+<urn:path-alternative-001>
   rdf:type sht:Validate ;
   rdfs:label "Test of path sh:alternativePath 001" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:path-alternative-001.ttl> ;
+      sht:shapesGraph <urn:path-alternative-001.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;

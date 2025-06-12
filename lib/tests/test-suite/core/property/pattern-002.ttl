@@ -36,18 +36,18 @@ ex:ValidInstance2
   rdf:type ex:TestShape ;
   ex:property "john" ;
 .
-<>
+<urn:pattern-002.ttl>
   rdf:type mf:Manifest ;
   mf:entries (
-      <pattern-002>
+      <urn:pattern-002>
     ) ;
 .
-<pattern-002>
+<urn:pattern-002>
   rdf:type sht:Validate ;
   rdfs:label "Test of sh:pattern at property shape 002" ;
   mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
+      sht:dataGraph <urn:pattern-002.ttl> ;
+      sht:shapesGraph <urn:pattern-002.ttl> ;
     ] ;
   mf:result [
       rdf:type sh:ValidationReport ;
