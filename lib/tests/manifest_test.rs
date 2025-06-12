@@ -16,29 +16,11 @@ fn parse_tests(tests: &[&str]) -> Result<Vec<TestCase>, Box<dyn Error>> {
     Ok(all_tests)
 }
 
-#[test]
-fn run_sht_tests() -> Result<(), Box<dyn Error>> {
-
-    let tests = [
-        // targets
-        "tests/test-suite/core/targets/targetNode-001.ttl",
-        "tests/test-suite/core/targets/targetClass-001.ttl",
-        "tests/test-suite/core/targets/targetObjectsOf-001.ttl",
-        "tests/test-suite/core/targets/multipleTargets-001.ttl",
-        "tests/test-suite/core/targets/targetSubjectsOf-001.ttl",
-        "tests/test-suite/core/targets/targetSubjectsOf-002.ttl",
-        "tests/test-suite/core/targets/targetClassImplicit-001.ttl",
-    ];
-
-    let all_tests = parse_tests(&tests)?;
-    println!("Found {} SHT tests", all_tests.len());
-
-    for test in all_tests {
-
-        let test_node = test.data_graph_path.display().to_string();
+fn run_test_file(file: &str) -> Result<(), Box<dyn Error>> {
+    let tests = parse_tests(&[file])?;
+    for test in tests {
         let test_name = test.name.as_str();
-        println!("Running test: {}", test_name);
-
+        println!("Running test: {} from file: {}", test_name, file);
         let data_graph_path = test
             .data_graph_path
             .to_str()
@@ -47,38 +29,37 @@ fn run_sht_tests() -> Result<(), Box<dyn Error>> {
             .shapes_graph_path
             .to_str()
             .ok_or("Invalid shapes graph path")?;
-
-        println!(
-            "Data graph: {}, Shapes graph: {}",
-            data_graph_path, shapes_graph_path
-        );
-
-        let context = match ValidationContext::from_files(shapes_graph_path, data_graph_path) {
-            Ok(c) => c,
-            Err(e) => {
-                // TODO: Some tests are expected to fail at parsing, we should check for that.
-                // For now, we panic.
-                panic!(
-                    "Failed to create ValidationContext for test '{}': {}",
-                    test_name, e
-                );
-            }
-        };
-
+        let context = ValidationContext::from_files(shapes_graph_path, data_graph_path)
+            .map_err(|e| format!("Failed to create ValidationContext for test '{}': {}", test_name, e))?;
         let report = context.validate();
         let conforms = report.results().is_empty();
-
-        // A test expects to conform if it's not a failure test and has an empty result graph.
         let expects_conform = test.status == "conform" && test.expected_report.is_empty();
-
         assert_eq!(
             conforms, expects_conform,
             "Conformance mismatch for test: {}. Expected {}",
             test_name, expects_conform
         );
-
-        // TODO: Add graph isomorphism check for tests with non-empty result graphs.
     }
-
     Ok(())
+}
+
+macro_rules! generate_test_cases {
+    ($($name:ident: $file:expr),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                run_test_file($file)
+            }
+        )*
+    }
+}
+
+generate_test_cases! {
+    test_targetNode_001: "tests/test-suite/core/targets/targetNode-001.ttl",
+    test_targetClass_001: "tests/test-suite/core/targets/targetClass-001.ttl",
+    test_targetObjectsOf_001: "tests/test-suite/core/targets/targetObjectsOf-001.ttl",
+    test_multipleTargets_001: "tests/test-suite/core/targets/multipleTargets-001.ttl",
+    test_targetSubjectsOf_001: "tests/test-suite/core/targets/targetSubjectsOf-001.ttl",
+    test_targetSubjectsOf_002: "tests/test-suite/core/targets/targetSubjectsOf-002.ttl",
+    test_targetClassImplicit_001: "tests/test-suite/core/targets/targetClassImplicit-001.ttl",
 }
