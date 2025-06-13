@@ -1,4 +1,4 @@
-use crate::context::{format_term_for_label, Context, ValidationContext, SourceShape};
+use crate::context::{format_term_for_label, Context, SourceShape, ValidationContext};
 use crate::types::{ComponentID, ID};
 use oxigraph::model::NamedNode;
 

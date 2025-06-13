@@ -1,6 +1,5 @@
-use oxigraph::model::{
-    BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple,
-};
+use log::{debug, error, info};
+use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple};
 use petgraph::algo::is_isomorphic_matching;
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
@@ -121,15 +120,15 @@ pub fn to_canonical_graph(graph: &Graph) -> Graph {
     let mut canonical_graph = Graph::new();
     for t in graph.iter() {
         let subject = match t.subject {
-            SubjectRef::BlankNode(bn) => {
-                Subject::from(BlankNode::new_unchecked(bnode_labels.get(&bn.into_owned()).unwrap()))
-            }
+            SubjectRef::BlankNode(bn) => Subject::from(BlankNode::new_unchecked(
+                bnode_labels.get(&bn.into_owned()).unwrap(),
+            )),
             _ => t.subject.into_owned(),
         };
         let object = match t.object {
-            TermRef::BlankNode(bn) => {
-                Term::from(BlankNode::new_unchecked(bnode_labels.get(&bn.into_owned()).unwrap()))
-            }
+            TermRef::BlankNode(bn) => Term::from(BlankNode::new_unchecked(
+                bnode_labels.get(&bn.into_owned()).unwrap(),
+            )),
             _ => t.object.into_owned(),
         };
         canonical_graph.insert(Triple::new(subject, t.predicate.into_owned(), object).as_ref());
@@ -146,14 +145,20 @@ struct TripleCanonicalizer<'a> {
 
 impl<'a> TripleCanonicalizer<'a> {
     fn new(graph: &'a Graph) -> Self {
-        let subjects: Vec<BlankNode> = graph.iter().filter_map(|t| match t.subject {
-            SubjectRef::BlankNode(bn) => Some(bn.into_owned()),
-            _ => None,
-        }).collect();
-        let objects: Vec<BlankNode> = graph.iter().filter_map(|t| match t.object {
-            TermRef::BlankNode(bn) => Some(bn.into_owned()),
-            _ => None,
-        }).collect();
+        let subjects: Vec<BlankNode> = graph
+            .iter()
+            .filter_map(|t| match t.subject {
+                SubjectRef::BlankNode(bn) => Some(bn.into_owned()),
+                _ => None,
+            })
+            .collect();
+        let objects: Vec<BlankNode> = graph
+            .iter()
+            .filter_map(|t| match t.object {
+                TermRef::BlankNode(bn) => Some(bn.into_owned()),
+                _ => None,
+            })
+            .collect();
         let bnode_set: HashSet<BlankNode> = subjects.into_iter().chain(objects).collect();
 
         let bnodes: Vec<BlankNode> = bnode_set.iter().cloned().collect();

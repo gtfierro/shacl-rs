@@ -89,7 +89,8 @@ impl ValidateComponent for MaxCountConstraintComponent {
     ) -> Result<ComponentValidationResult, String> {
         println!(
             "Validating MaxCountConstraintComponent with ID: {} value nodes: {:?}",
-            component_id.to_graphviz_id(), c.value_nodes()
+            component_id.to_graphviz_id(),
+            c.value_nodes()
         );
         if c.value_nodes().map_or(0, |v| v.len()) > self.max_count as usize {
             return Err(format!(

@@ -1,4 +1,4 @@
-use crate::context::{format_term_for_label, Context, ValidationContext, SourceShape};
+use crate::context::{format_term_for_label, Context, SourceShape, ValidationContext};
 use crate::report::ValidationReportBuilder;
 use crate::types::{ComponentID, PropShapeID, ID};
 use oxigraph::model::NamedNode;
@@ -330,12 +330,19 @@ impl GraphvizOutput for PropertyConstraintComponent {
         NamedNode::new_unchecked("http://www.w3.org/ns/shacl#PropertyShapeComponent")
     }
 
-    fn to_graphviz_string(&self, component_id: ComponentID, validation_context: &ValidationContext) -> String {
+    fn to_graphviz_string(
+        &self,
+        component_id: ComponentID,
+        validation_context: &ValidationContext,
+    ) -> String {
         let shape_term_str = validation_context
             .propshape_id_lookup()
             .borrow()
             .get_term(*self.shape())
-            .map_or_else(|| format!("MissingPropertyShape:{}", self.shape().0), |term| format!("{}", term));
+            .map_or_else(
+                || format!("MissingPropertyShape:{}", self.shape().0),
+                |term| format!("{}", term),
+            );
         format!(
             "{} [label=\"PropertyConstraint: {}\"];",
             component_id.to_graphviz_id(),
@@ -343,7 +350,6 @@ impl GraphvizOutput for PropertyConstraintComponent {
         )
     }
 }
-
 
 #[derive(Debug)]
 pub struct QualifiedValueShapeComponent {

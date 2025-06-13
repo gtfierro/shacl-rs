@@ -1,11 +1,10 @@
-use shacl::context::ValidationContext;
-use shacl::canonicalization::{are_isomorphic, graph_diff};
 use oxigraph::io::{RdfFormat, RdfSerializer};
-use std::path::Path;
-use shacl::test_utils::{Manifest, load_manifest, TestCase};
+use shacl::canonicalization::{are_isomorphic, graph_diff};
+use shacl::context::ValidationContext;
+use shacl::test_utils::{load_manifest, Manifest, TestCase};
 use std::error::Error;
+use std::path::Path;
 use std::path::PathBuf;
-
 
 fn graph_to_turtle(graph: &oxigraph::model::Graph) -> Result<String, Box<dyn Error>> {
     let mut buffer = Vec::new();
@@ -21,8 +20,13 @@ fn parse_tests(tests: &[&str]) -> Result<Vec<TestCase>, Box<dyn Error>> {
     let mut all_tests = Vec::new();
     for test_path in tests {
         let test_path = PathBuf::from(test_path);
-        let man = load_manifest(&test_path)
-            .map_err(|e| format!("Failed to load manifest from {}: {}", test_path.display(), e))?;
+        let man = load_manifest(&test_path).map_err(|e| {
+            format!(
+                "Failed to load manifest from {}: {}",
+                test_path.display(),
+                e
+            )
+        })?;
         all_tests.extend(man.test_cases);
     }
     Ok(all_tests)
@@ -41,16 +45,29 @@ fn run_test_file(file: &str) -> Result<(), Box<dyn Error>> {
             .shapes_graph_path
             .to_str()
             .ok_or("Invalid shapes graph path")?;
-        let context = ValidationContext::from_files(shapes_graph_path, data_graph_path)
-            .map_err(|e| format!("Failed to create ValidationContext for test '{}': {}", test_name, e))?;
+        let context =
+            ValidationContext::from_files(shapes_graph_path, data_graph_path).map_err(|e| {
+                format!(
+                    "Failed to create ValidationContext for test '{}': {}",
+                    test_name, e
+                )
+            })?;
         let report = context.validate();
         let conforms = report.results().is_empty();
         let expects_conform = test.status == "conform" && test.expected_report.is_empty();
         let report_graph = report.to_graph(&context);
-        let report_turtle = graph_to_turtle(&report_graph)
-            .map_err(|e| format!("Failed to convert report graph to Turtle for test '{}': {}", test_name, e))?;
-        let expected_turtle = graph_to_turtle(&test.expected_report)
-            .map_err(|e| format!("Failed to convert expected report graph to Turtle for test '{}': {}", test_name, e))?;
+        let report_turtle = graph_to_turtle(&report_graph).map_err(|e| {
+            format!(
+                "Failed to convert report graph to Turtle for test '{}': {}",
+                test_name, e
+            )
+        })?;
+        let expected_turtle = graph_to_turtle(&test.expected_report).map_err(|e| {
+            format!(
+                "Failed to convert expected report graph to Turtle for test '{}': {}",
+                test_name, e
+            )
+        })?;
         assert_eq!(
             conforms, expects_conform,
             "Conformance mismatch for test: {}. Expected {}",

@@ -89,14 +89,17 @@ impl ValidationReportBuilder {
                     match item {
                         TraceItem::Component(id) => {
                             if source_constraint_component_term.is_none() {
-                                source_constraint_component_term = Some(validation_context
-                                    .components.get(id)
-                                    .unwrap()
-                                    .component_type());
+                                source_constraint_component_term = Some(
+                                    validation_context
+                                        .components
+                                        .get(id)
+                                        .unwrap()
+                                        .component_type(),
+                                );
                             }
-                            break
-                        },
-                        _ => {},
+                            break;
+                        }
+                        _ => {}
                     }
                 }
 

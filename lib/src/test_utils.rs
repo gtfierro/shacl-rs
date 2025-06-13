@@ -1,5 +1,5 @@
-use crate::named_nodes::{MF, RDF, RDFS, SHACL, SHT};
 use crate::components::ToSubjectRef;
+use crate::named_nodes::{MF, RDF, RDFS, SHACL, SHT};
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{Graph, SubjectRef, TermRef, TripleRef};
 use std::fs;
@@ -121,7 +121,8 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
             let nil_ref: TermRef = rdf.nil.into();
             while current_node != nil_ref {
                 let obj = manifest_graph
-                    .object_for_subject_predicate(current_node.to_subject_ref(), rdf.first).ok_or_else(|| {
+                    .object_for_subject_predicate(current_node.to_subject_ref(), rdf.first)
+                    .ok_or_else(|| {
                         format!(
                             "Invalid RDF list for mf:entries: missing rdf:first at {}",
                             current_node
@@ -157,7 +158,8 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                         .object_for_subject_predicate(entry, mf.result)
                         .ok_or_else(|| format!("Test '{}' has no mf:result", name))?;
 
-                    let expected_report = extract_report_graph(&manifest_graph, result_node.to_subject_ref());
+                    let expected_report =
+                        extract_report_graph(&manifest_graph, result_node.to_subject_ref());
 
                     test_cases.push(TestCase {
                         name,
@@ -170,7 +172,9 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
 
                 current_node = manifest_graph
                     .object_for_subject_predicate(current_node.to_subject_ref(), rdf.rest)
-                    .ok_or_else(|| "Invalid RDF list for mf:entries: missing rdf:rest".to_string())?;
+                    .ok_or_else(|| {
+                        "Invalid RDF list for mf:entries: missing rdf:rest".to_string()
+                    })?;
             }
         }
     }

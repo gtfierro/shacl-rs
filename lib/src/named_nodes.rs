@@ -267,12 +267,30 @@ pub struct MF {
 impl MF {
     pub fn new() -> Self {
         MF {
-            manifest: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#Manifest").unwrap(),
-            entries: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#entries").unwrap(),
-            action: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action").unwrap(),
-            result: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result").unwrap(),
-            status: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#status").unwrap(),
-            include: NamedNodeRef::new("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#include").unwrap(),
+            manifest: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#Manifest",
+            )
+            .unwrap(),
+            entries: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#entries",
+            )
+            .unwrap(),
+            action: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action",
+            )
+            .unwrap(),
+            result: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result",
+            )
+            .unwrap(),
+            status: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#status",
+            )
+            .unwrap(),
+            include: NamedNodeRef::new(
+                "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#include",
+            )
+            .unwrap(),
         }
     }
 }

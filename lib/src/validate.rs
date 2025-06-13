@@ -1,10 +1,10 @@
-use crate::context::{Context, ValidationContext, SourceShape};
+use crate::context::{Context, SourceShape, ValidationContext};
 use crate::report::ValidationReportBuilder;
 use std::collections::HashSet;
 
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ID, PropShapeID};
-use log::{info};
+use crate::types::{PropShapeID, ID};
+use log::info;
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 
@@ -110,7 +110,6 @@ impl PropertyShape {
         })?;
         query.dataset_mut().set_default_graph_as_union();
 
-        
         //println!("num triples in focus context: {}", context.store().len().unwrap());
         // print out triples
         //for triple in context.store().quads_for_pattern(None, None, None, None) {

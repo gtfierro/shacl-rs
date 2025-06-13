@@ -1,5 +1,4 @@
 use crate::components::Component;
-use std::fmt;
 use crate::optimize::Optimizer;
 use crate::parser;
 use crate::report::ValidationReportBuilder;
@@ -16,6 +15,7 @@ use papaya::HashMap as FastMap;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::BufReader;
@@ -456,7 +456,7 @@ impl fmt::Display for SourceShape {
     }
 }
 
-impl SourceShape  {
+impl SourceShape {
     pub fn as_prop_id(&self) -> Option<&PropShapeID> {
         match self {
             SourceShape::PropertyShape(id) => Some(id),
@@ -471,12 +471,16 @@ impl SourceShape  {
     }
     pub fn get_term(&self, ctx: &ValidationContext) -> Option<Term> {
         match self {
-            SourceShape::NodeShape(id) => {
-                ctx.nodeshape_id_lookup().borrow().get_term(*id).map(|t| t.clone())
-            },
-            SourceShape::PropertyShape(id) => {
-                ctx.propshape_id_lookup().borrow().get_term(*id).map(|t| t.clone())
-            },
+            SourceShape::NodeShape(id) => ctx
+                .nodeshape_id_lookup()
+                .borrow()
+                .get_term(*id)
+                .map(|t| t.clone()),
+            SourceShape::PropertyShape(id) => ctx
+                .propshape_id_lookup()
+                .borrow()
+                .get_term(*id)
+                .map(|t| t.clone()),
         }
     }
 }
