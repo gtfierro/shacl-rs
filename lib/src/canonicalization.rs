@@ -1,4 +1,6 @@
-use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, Term, Triple};
+use oxigraph::model::{
+    BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple,
+};
 use petgraph::algo::is_isomorphic_matching;
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
@@ -106,14 +108,14 @@ pub fn to_canonical_graph(graph: &Graph) -> Graph {
     let mut canonical_graph = Graph::new();
     for t in graph.iter() {
         let subject = match t.subject {
-            Subject::BlankNode(bn) => {
-                Subject::from(BlankNode::new_unchecked(bnode_labels.get(bn).unwrap()))
-            }
+            SubjectRef::BlankNode(bn) => Subject::from(BlankNode::new_unchecked(
+                bnode_labels.get(&bn.to_owned()).unwrap(),
+            )),
             _ => t.subject.into_owned(),
         };
         let object = match t.object {
-            Term::BlankNode(bn) => {
-                Term::from(BlankNode::new_unchecked(bnode_labels.get(bn).unwrap()))
+            TermRef::BlankNode(bn) => {
+                Term::from(BlankNode::new_unchecked(bnode_labels.get(&bn.to_owned()).unwrap()))
             }
             _ => t.object.into_owned(),
         };
@@ -135,11 +137,11 @@ impl<'a> TripleCanonicalizer<'a> {
             .iter()
             .flat_map(|t| {
                 let mut bnodes = Vec::new();
-                if let Subject::BlankNode(bn) = t.subject {
-                    bnodes.push(bn.into_owned());
+                if let SubjectRef::BlankNode(bn) = t.subject {
+                    bnodes.push(bn.to_owned());
                 }
-                if let Term::BlankNode(bn) = t.object {
-                    bnodes.push(bn.into_owned());
+                if let TermRef::BlankNode(bn) = t.object {
+                    bnodes.push(bn.to_owned());
                 }
                 bnodes
             })
