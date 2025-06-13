@@ -14,3 +14,4 @@ log = { workspace = true }
 url = { workspace = true }
 paste = "1.0.15"
 petgraph = { version = "0.8.2", features = ["rayon"] }
+sha2 = { workspace = true }
