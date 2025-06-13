@@ -442,7 +442,7 @@ impl ValidationContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum SourceShape {
+pub enum SourceShape {
     NodeShape(ID),
     PropertyShape(PropShapeID),
 }
@@ -507,6 +507,7 @@ pub struct Context {
     focus_node: Term,
     pub(crate) result_path: Option<PShapePath>,
     value_nodes: Option<Vec<Term>>,
+    value: Option<Term>, // something that violated a component
     source_shape: SourceShape,
     execution_trace: Vec<TraceItem>,
 }
@@ -523,6 +524,7 @@ impl Context {
             result_path,
             value_nodes,
             source_shape,
+            value: None,
             execution_trace: Vec::new(),
         }
     }
@@ -533,6 +535,14 @@ impl Context {
         } else {
             self.value_nodes = Some(value_nodes.to_vec());
         }
+    }
+
+    pub fn with_value(&mut self, value: Term) {
+        self.value = Some(value);
+    }
+
+    pub fn value(&self) -> Option<&Term> {
+        self.value.as_ref()
     }
 
     pub fn focus_node(&self) -> &Term {

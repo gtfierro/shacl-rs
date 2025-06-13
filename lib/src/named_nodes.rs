@@ -77,6 +77,7 @@ pub struct SHACL {
     pub result: NamedNodeRef<'static>,
     pub validation_result: NamedNodeRef<'static>,
     pub focus_node: NamedNodeRef<'static>,
+    pub value: NamedNodeRef<'static>,
     pub result_path: NamedNodeRef<'static>,
     pub source_shape: NamedNodeRef<'static>,
     pub source_constraint_component: NamedNodeRef<'static>,
@@ -185,6 +186,7 @@ impl SHACL {
             validation_result: NamedNodeRef::new("http://www.w3.org/ns/shacl#ValidationResult")
                 .unwrap(),
             focus_node: NamedNodeRef::new("http://www.w3.org/ns/shacl#focusNode").unwrap(),
+            value: NamedNodeRef::new("http://www.w3.org/ns/shacl#value").unwrap(),
             result_path: NamedNodeRef::new("http://www.w3.org/ns/shacl#resultPath").unwrap(),
             source_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#sourceShape").unwrap(),
             source_constraint_component: NamedNodeRef::new(

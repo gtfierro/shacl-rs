@@ -27,10 +27,11 @@ impl ValidateComponent for InConstraintComponent {
             };
         }
 
-        match c.value_nodes() {
+        match c.value_nodes().cloned() {
             Some(value_nodes) => {
                 for vn in value_nodes {
-                    if !self.values.contains(vn) {
+                    if !self.values.contains(&vn) {
+                        c.with_value(vn.clone());
                         return Err(format!(
                             "Value {:?} is not in the allowed list {:?}.",
                             vn, self.values

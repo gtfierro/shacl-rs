@@ -115,12 +115,13 @@ impl ValidateComponent for DatatypeConstraintComponent {
             _ => return Err("sh:datatype must be an IRI".to_string()),
         };
 
-        if let Some(value_nodes) = c.value_nodes() {
+        if let Some(value_nodes) = c.value_nodes().cloned() {
             for value_node in value_nodes {
                 match value_node.as_ref() {
                     TermRef::Literal(lit) => {
                         if lit.datatype() != target_datatype_iri {
                             // TODO: Consider ill-typed literals if required by spec for specific datatypes
+                            c.with_value(value_node.clone());
                             return Err(format!(
                                 "Value {:?} does not have datatype {}",
                                 value_node, self.datatype
@@ -129,6 +130,7 @@ impl ValidateComponent for DatatypeConstraintComponent {
                     }
                     _ => {
                         // Not a literal, so it cannot conform to a datatype constraint
+                        c.with_value(value_node.clone());
                         return Err(format!(
                             "Value {:?} is not a literal, expected datatype {}",
                             value_node, self.datatype

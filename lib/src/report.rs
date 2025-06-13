@@ -103,6 +103,10 @@ impl ValidationReportBuilder {
                     }
                 }
 
+                if let Some(v) = context.value() {
+                    graph.insert(&Triple::new(result_node.clone(), sh.value, v.clone()));
+                }
+
                 if let Some(term) = source_shape_term {
                     graph.insert(&Triple::new(result_node.clone(), sh.source_shape, term));
                 }
