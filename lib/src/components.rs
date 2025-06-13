@@ -661,42 +661,35 @@ impl Component {
 
     pub fn component_type(&self) -> NamedNode {
         match self {
-            Component::NodeConstraint(_) => SHACL::node_constraint(),
-            Component::PropertyConstraint(_) => SHACL::property_constraint(),
-            Component::QualifiedValueShape(_) => SHACL::qualified_value_shape(),
-
-            Component::ClassConstraint(_) => SHACL::class_constraint(),
-            Component::DatatypeConstraint(_) => SHACL::datatype_constraint(),
-            Component::NodeKindConstraint(_) => SHACL::node_kind_constraint(),
-
-            Component::MinCount(_) => SHACL::min_count(),
-            Component::MaxCount(_) => SHACL::max_count(),
-
-            Component::MinExclusiveConstraint(_) => SHACL::min_exclusive(),
-            Component::MinInclusiveConstraint(_) => SHACL::min_inclusive(),
-            Component::MaxExclusiveConstraint(_) => SHACL::max_exclusive(),
-            Component::MaxInclusiveConstraint(_) => SHACL::max_inclusive(),
-
-            Component::MinLengthConstraint(_) => SHACL::min_length(),
-            Component::MaxLengthConstraint(_) => SHACL::max_length(),
-            Component::PatternConstraint(_) => SHACL::pattern(),
-            Component::LanguageInConstraint(_) => SHACL::language_in(),
-            Component::UniqueLangConstraint(_) => SHACL::unique_lang(),
-
-            Component::EqualsConstraint(_) => SHACL::equals(),
-            Component::DisjointConstraint(_) => SHACL::disjoint(),
-            Component::LessThanConstraint(_) => SHACL::less_than(),
-            Component::LessThanOrEqualsConstraint(_) => SHACL::less_than_or_equals(),
-
-            Component::NotConstraint(_) => SHACL::not_(),
-            Component::AndConstraint(_) => SHACL::and_(),
-            Component::OrConstraint(_) => SHACL::or_(),
-            Component::XoneConstraint(_) => SHACL::xone(),
-
-            Component::ClosedConstraint(_) => SHACL::closed(),
-            Component::HasValueConstraint(_) => SHACL::has_value(),
-            Component::InConstraint(_) => SHACL::in_(),
-            Component::SPARQLConstraint(_) => SHACL.sparql(),
+            Component::NodeConstraint(c) => c.component_type(),
+            Component::PropertyConstraint(c) => c.component_type(),
+            Component::QualifiedValueShape(c) => c.component_type(),
+            Component::ClassConstraint(c) => c.component_type(),
+            Component::DatatypeConstraint(c) => c.component_type(),
+            Component::NodeKindConstraint(c) => c.component_type(),
+            Component::MinCount(c) => c.component_type(),
+            Component::MaxCount(c) => c.component_type(),
+            Component::MinExclusiveConstraint(c) => c.component_type(),
+            Component::MinInclusiveConstraint(c) => c.component_type(),
+            Component::MaxExclusiveConstraint(c) => c.component_type(),
+            Component::MaxInclusiveConstraint(c) => c.component_type(),
+            Component::MinLengthConstraint(c) => c.component_type(),
+            Component::MaxLengthConstraint(c) => c.component_type(),
+            Component::PatternConstraint(c) => c.component_type(),
+            Component::LanguageInConstraint(c) => c.component_type(),
+            Component::UniqueLangConstraint(c) => c.component_type(),
+            Component::EqualsConstraint(c) => c.component_type(),
+            Component::DisjointConstraint(c) => c.component_type(),
+            Component::LessThanConstraint(c) => c.component_type(),
+            Component::LessThanOrEqualsConstraint(c) => c.component_type(),
+            Component::NotConstraint(c) => c.component_type(),
+            Component::AndConstraint(c) => c.component_type(),
+            Component::OrConstraint(c) => c.component_type(),
+            Component::XoneConstraint(c) => c.component_type(),
+            Component::ClosedConstraint(c) => c.component_type(),
+            Component::HasValueConstraint(c) => c.component_type(),
+            Component::InConstraint(c) => c.component_type(),
+            Component::SPARQLConstraint(c) => c.component_type(),
         }
     }
 
