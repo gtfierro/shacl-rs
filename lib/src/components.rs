@@ -777,11 +777,11 @@ impl Component {
 /// Checks if a given node (represented by `node_as_context`) conforms to the `shape_to_check_against`.
 /// Returns `Ok(true)` if it conforms, `Ok(false)` if it does not, or `Err(String)` for an internal error.
 pub(super) fn check_conformance_for_node(
-    node_as_context: &mut Context, // Changed to &mut Context
+    node_as_context: &mut Context,
     shape_to_check_against: &NodeShape,
     main_validation_context: &ValidationContext,
 ) -> Result<bool, String> {
-    node_as_context.record_node_shape_visit(*shape_to_check_against.identifier()); // Record node shape visit (already added)
+    node_as_context.record_node_shape_visit(*shape_to_check_against.identifier());
 
     for constraint_id in shape_to_check_against.constraints() {
         let component = main_validation_context
