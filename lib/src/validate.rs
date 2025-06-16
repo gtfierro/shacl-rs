@@ -3,7 +3,7 @@ use crate::report::ValidationReportBuilder;
 use std::collections::HashSet;
 
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{PropShapeID, ID};
+use crate::types::PropShapeID;
 use log::info;
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
@@ -51,15 +51,9 @@ impl ValidateShape for NodeShape {
                                     rb.add_error(&ctx, err);
                                 }
                             }
-                            ComponentValidationResult::Fail(_, _) => {
-                                // This variant is not currently used for detailed errors.
-                                // Errors are returned as Err(String).
-                                // For now, we can treat it as a generic failure.
-                                let err_msg = format!(
-                                    "Component {} failed validation without details.",
-                                    constraint_id
-                                );
-                                rb.add_error(&target_context, err_msg);
+                            ComponentValidationResult::Fail(failure) => {
+                                // The component failed, add the failure message to the report.
+                                rb.add_error(&target_context, failure.message);
                             }
                         }
                     }
@@ -193,11 +187,23 @@ impl PropertyShape {
             // It now takes component_id, &mut Context, &ValidationContext
             // and returns Result<ComponentValidationResult, String>
             match component.validate(*constraint_id, &mut value_node_context, context) {
-                // Pass mutably
-                Ok(_validation_result) => {
-                    // If a component's validate passes, no direct error to add to rb here by PropertyShape.
-                    // The component itself passed. If it were to cause a validation failure
-                    // (e.g. MinCount), its validate method would return Err(String).
+                Ok(validation_result) => {
+                    use crate::components::ComponentValidationResult;
+                    match validation_result {
+                        ComponentValidationResult::Pass(_) => {
+                            // Component passed, do nothing.
+                        }
+                        ComponentValidationResult::SubShape(results) => {
+                            // A sub-shape validation produced results. Add them to the report.
+                            for (ctx, err) in results {
+                                rb.add_error(&ctx, err);
+                            }
+                        }
+                        ComponentValidationResult::Fail(failure) => {
+                            // The component failed, add the failure message to the report.
+                            rb.add_error(&value_node_context, failure.message);
+                        }
+                    }
                 }
                 Err(e) => {
                     // This error 'e' comes from the component's own validate method.

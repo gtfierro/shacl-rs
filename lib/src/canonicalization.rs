@@ -1,4 +1,3 @@
-use log::{debug, error, info};
 use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple};
 use petgraph::algo::is_isomorphic_matching;
 use petgraph::graph::{DiGraph, NodeIndex};
