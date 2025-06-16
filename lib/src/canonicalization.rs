@@ -1,6 +1,9 @@
-use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple};
+use oxigraph::model::{
+    BlankNode, Graph, GraphNameRef, NamedNode, Quad, Subject, SubjectRef, Term, TermRef, Triple,
+};
 use crate::components::ToSubjectRef;
-use petgraph::algo::{is_isomorphic_matching, is_isomorphic_subgraph, is_isomorphic};
+use oxigraph::store::{StorageError, Store};
+use petgraph::algo::{is_isomorphic, is_isomorphic_matching, is_isomorphic_subgraph};
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -53,7 +56,6 @@ pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     //is_isomorphic_matching(&pg1, &pg2, |n1, n2| node_equality(n1, n2), |e1, e2| e1 == e2)
     //is_isomorphic_subgraph(&pg1, &pg2) && is_isomorphic_subgraph(&pg2, &pg1)
     is_isomorphic(&pg1, &pg2)
-
 }
 
 /// Contains the results of a graph diff operation.
@@ -397,4 +399,90 @@ impl<'a> TripleCanonicalizer<'a> {
     fn is_discrete(&self, coloring: &[Partition]) -> bool {
         coloring.iter().all(|p| p.nodes.len() <= 1)
     }
+}
+
+/// Replaces all blank nodes in a given graph within the store with unique IRIs (Skolemization).
+///
+/// A `base_iri` is used to construct the new IRIs. For each blank node, a new IRI is generated
+/// by appending its identifier to the `base_iri`. This process is often called Skolemization.
+///
+/// The replacement is done within a single transaction to ensure atomicity. The skolemization is
+/// deterministic: the same blank node identifier will always be mapped to the same IRI for a given
+/// base IRI.
+///
+/// # Arguments
+///
+/// * `store` - The `oxigraph::store::Store` containing the graph to modify.
+/// * `graph_name` - The name of the graph to perform skolemization on.
+/// * `base_iri` - A base IRI to use for generating new skolem IRIs. It should probably end with a `/` or `#`.
+///
+/// # Errors
+///
+/// Returns a `StorageError` if there are issues with the underlying store during the transaction.
+pub fn skolemize(
+    store: &Store,
+    graph_name: GraphNameRef,
+    base_iri: &str,
+) -> Result<(), StorageError> {
+    let mut bnodes_to_skolemize = HashMap::<BlankNode, NamedNode>::new();
+    let mut quads_to_remove = Vec::<Quad>::new();
+    let mut quads_to_add = Vec::<Quad>::new();
+
+    let quads_in_graph: Vec<Quad> = store
+        .quads_for_pattern(None, None, None, Some(graph_name))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for quad in &quads_in_graph {
+        let mut has_bnode = false;
+
+        if let Subject::BlankNode(_) = &quad.subject {
+            has_bnode = true;
+        }
+        if let Term::BlankNode(_) = &quad.object {
+            has_bnode = true;
+        }
+
+        if has_bnode {
+            quads_to_remove.push(quad.clone());
+
+            let new_subject = if let Subject::BlankNode(bn) = &quad.subject {
+                let skolem_iri = bnodes_to_skolemize.entry(bn.clone()).or_insert_with(|| {
+                    NamedNode::new_unchecked(format!("{}{}", base_iri, bn.as_str()))
+                });
+                Subject::from(skolem_iri.clone())
+            } else {
+                quad.subject.clone()
+            };
+
+            let new_object = if let Term::BlankNode(bn) = &quad.object {
+                let skolem_iri = bnodes_to_skolemize.entry(bn.clone()).or_insert_with(|| {
+                    NamedNode::new_unchecked(format!("{}{}", base_iri, bn.as_str()))
+                });
+                Term::from(skolem_iri.clone())
+            } else {
+                quad.object.clone()
+            };
+
+            quads_to_add.push(Quad::new(
+                new_subject,
+                quad.predicate.clone(),
+                new_object,
+                quad.graph_name.clone(),
+            ));
+        }
+    }
+
+    if quads_to_add.is_empty() {
+        return Ok(()); // Nothing to do
+    }
+
+    store.transaction(|transaction| {
+        for quad in &quads_to_remove {
+            transaction.remove(quad.as_ref())?;
+        }
+        for quad in &quads_to_add {
+            transaction.insert(quad.as_ref())?;
+        }
+        Ok(())
+    })
 }
