@@ -64,7 +64,11 @@ impl ToSubjectRef for Term {
 
 impl<'a> ToSubjectRef for TermRef<'a> {
     fn to_subject_ref(&self) -> SubjectRef<'a> {
-        self.try_to_subject_ref().expect("Invalid subject term")
+        match self {
+            TermRef::NamedNode(n) => n.clone().into(),
+            TermRef::BlankNode(b) => b.clone().into(),
+            _ => panic!("Invalid subject term {:?}", self),
+        }
     }
     fn try_to_subject_ref(&self) -> Result<SubjectRef<'a>, String> {
         match self {

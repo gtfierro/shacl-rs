@@ -1,6 +1,6 @@
 use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple};
 use crate::components::ToSubjectRef;
-use petgraph::algo::is_isomorphic_matching;
+use petgraph::algo::{is_isomorphic_matching, is_isomorphic_subgraph, is_isomorphic};
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -36,8 +36,8 @@ pub fn oxigraph_to_petgraph(ox_graph: &Graph) -> DiGraph<Term, NamedNode> {
 fn node_equality(n1: &Term, n2: &Term) -> bool {
     match (n1, n2) {
         (Term::BlankNode(_), Term::BlankNode(_)) => true,
-        (Term::BlankNode(_), Term::NamedNode(_)) => false,
-        (Term::NamedNode(_), Term::BlankNode(_)) => false,
+        (Term::BlankNode(_), Term::NamedNode(_)) => n1 == n2,
+        (Term::NamedNode(_), Term::BlankNode(_)) => n1 == n2,
         (n1, n2) => n1 == n2,
     }
 }
@@ -50,7 +50,10 @@ pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     let pg1 = oxigraph_to_petgraph(g1);
     let pg2 = oxigraph_to_petgraph(g2);
 
-    is_isomorphic_matching(&pg1, &pg2, |n1, n2| node_equality(n1, n2), |e1, e2| e1 == e2)
+    //is_isomorphic_matching(&pg1, &pg2, |n1, n2| node_equality(n1, n2), |e1, e2| e1 == e2)
+    //is_isomorphic_subgraph(&pg1, &pg2) && is_isomorphic_subgraph(&pg2, &pg1)
+    is_isomorphic(&pg1, &pg2)
+
 }
 
 /// Contains the results of a graph diff operation.
