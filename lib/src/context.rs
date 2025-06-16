@@ -1,3 +1,4 @@
+use crate::canonicalization;
 use crate::components::Component;
 use crate::optimize::Optimizer;
 use crate::parser;
@@ -289,6 +290,30 @@ impl ValidationContext {
         let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
 
         let store = env.io().store().clone();
+
+        let shape_graph_base_iri =
+            format!("{}/.well-known/skolem/", shape_graph_iri.as_str().trim_end_matches('/'));
+        info!(
+            "Skolemizing shape graph <{}> with base IRI <{}>",
+            shape_graph_iri, shape_graph_base_iri
+        );
+        canonicalization::skolemize(
+            &store,
+            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
+            &shape_graph_base_iri,
+        )?;
+
+        let data_graph_base_iri =
+            format!("{}/.well-known/skolem/", data_graph_iri.as_str().trim_end_matches('/'));
+        info!(
+            "Skolemizing data graph <{}> with base IRI <{}>",
+            data_graph_iri, data_graph_base_iri
+        );
+        canonicalization::skolemize(
+            &store,
+            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
+            &data_graph_base_iri,
+        )?;
         //Self::load_graph_into_store(
         //    &store,
         //    shape_graph_path,
