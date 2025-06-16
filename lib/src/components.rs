@@ -46,24 +46,31 @@ pub struct ValidationFailure {
 
 pub trait ToSubjectRef {
     fn to_subject_ref(&self) -> SubjectRef;
+    fn try_to_subject_ref(&self) -> Result<SubjectRef, String>;
 }
 
 impl ToSubjectRef for Term {
     fn to_subject_ref(&self) -> SubjectRef {
+        self.try_to_subject_ref().expect("Invalid subject term")
+    }
+    fn try_to_subject_ref(&self) -> Result<SubjectRef, String> {
         match self {
-            Term::NamedNode(n) => n.into(),
-            Term::BlankNode(b) => b.into(),
-            _ => panic!("Invalid subject term: {:?}", self),
+            Term::NamedNode(n) => Ok(n.into()),
+            Term::BlankNode(b) => Ok(b.into()),
+            _ => Err(format!("Invalid subject term {:?}", self)),
         }
     }
 }
 
 impl<'a> ToSubjectRef for TermRef<'a> {
     fn to_subject_ref(&self) -> SubjectRef<'a> {
+        self.try_to_subject_ref().expect("Invalid subject term")
+    }
+    fn try_to_subject_ref(&self) -> Result<SubjectRef<'a>, String> {
         match self {
-            TermRef::NamedNode(nr) => nr.clone().into(),
-            TermRef::BlankNode(br) => br.clone().into(),
-            _ => panic!("Invalid subject term ref: {:?}", self),
+            TermRef::NamedNode(n) => Ok(n.clone().into()),
+            TermRef::BlankNode(b) => Ok(b.clone().into()),
+            _ => Err(format!("Invalid subject term {:?}", self)),
         }
     }
 }

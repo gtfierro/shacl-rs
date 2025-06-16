@@ -1,4 +1,5 @@
 use oxigraph::model::{BlankNode, Graph, NamedNode, Subject, SubjectRef, Term, TermRef, Triple};
+use crate::components::ToSubjectRef;
 use petgraph::algo::is_isomorphic_matching;
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
@@ -300,7 +301,7 @@ impl<'a> TripleCanonicalizer<'a> {
             let mut signature_parts = vec![c.hash.clone()];
             for w_node in &w.nodes {
                 // Case where n is a subject and w_node is an object
-                if let Ok(subject_ref) = SubjectRef::try_from(n.as_ref()) {
+                if let Ok(subject_ref) = n.try_to_subject_ref() {
                     for t in self.graph.triples_for_subject(subject_ref) {
                         if t.object == w_node.as_ref() {
                             signature_parts.push(format!("out:{}", t.predicate));
@@ -309,7 +310,7 @@ impl<'a> TripleCanonicalizer<'a> {
                 }
 
                 // Case where w_node is a subject and n is an object
-                if let Ok(w_subject_ref) = SubjectRef::try_from(w_node.as_ref()) {
+                if let Ok(w_subject_ref) = n.try_to_subject_ref() {
                     for t in self.graph.triples_for_subject(w_subject_ref) {
                         if t.object == n.as_ref() {
                             signature_parts.push(format!("in:{}", t.predicate));
