@@ -3,7 +3,8 @@ use crate::types::{ComponentID, ID};
 use oxigraph::model::NamedNode;
 
 use super::{
-    check_conformance_for_node, ComponentValidationResult, GraphvizOutput, ValidateComponent,
+    check_conformance_for_node, ComponentValidationResult, ConformanceReport, GraphvizOutput,
+    ValidateComponent, ValidationFailure,
 };
 
 // logical constraints
@@ -74,25 +75,22 @@ impl ValidateComponent for NotConstraintComponent {
                 &mut value_node_as_context, // Pass mutably
                 negated_node_shape,
                 validation_context,
-            ) {
-                Ok(true) => {
+            )? {
+                ConformanceReport::Conforms => {
                     // value_node_to_check CONFORMS to the negated_node_shape.
                     // This means the sh:not constraint FAILS for this value_node.
-                    return Err(format!(
-                        "Value {:?} conforms to sh:not shape {:?}, but should not.",
-                        value_node_to_check, self.shape
-                    ));
+                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
+                        component_id,
+                        failed_value_node: Some(value_node_to_check.clone()),
+                        message: format!(
+                            "Value {:?} conforms to sh:not shape {:?}, but should not.",
+                            value_node_to_check, self.shape
+                        ),
+                    }));
                 }
-                Ok(false) => {
+                ConformanceReport::NonConforms(_) => {
                     // value_node_to_check DOES NOT CONFORM to the negated_node_shape.
                     // This means the sh:not constraint PASSES for this value_node. Continue.
-                }
-                Err(e) => {
-                    // An error occurred during the conformance check itself.
-                    return Err(format!(
-                        "Error checking conformance for sh:not shape {:?}: {}",
-                        self.shape, e
-                    ));
                 }
             }
         }
@@ -169,23 +167,21 @@ impl ValidateComponent for AndConstraintComponent {
                     &mut value_node_as_context, // Pass mutably
                     conjunct_node_shape,
                     validation_context,
-                ) {
-                    Ok(true) => {
+                )? {
+                    ConformanceReport::Conforms => {
                         // value_node_to_check CONFORMS to this conjunct_node_shape. Continue to next conjunct.
                     }
-                    Ok(false) => {
+                    ConformanceReport::NonConforms(failure) => {
                         // value_node_to_check DOES NOT CONFORM to this conjunct_node_shape.
                         // For sh:and, all shapes must conform. So, this is a failure for this value_node.
-                        return Err(format!(
-                            "Value {:?} does not conform to sh:and shape {:?}",
-                            value_node_to_check, conjunct_shape_id
-                        ));
-                    }
-                    Err(e) => {
-                        return Err(format!(
-                            "Error checking conformance for sh:and shape {:?}: {}",
-                            conjunct_shape_id, e
-                        ));
+                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
+                            component_id,
+                            failed_value_node: Some(value_node_to_check.clone()),
+                            message: format!(
+                                "Value {:?} does not conform to sh:and shape {:?}: {}",
+                                value_node_to_check, conjunct_shape_id, failure.message
+                            ),
+                        }));
                     }
                 }
             }
@@ -245,10 +241,11 @@ impl ValidateComponent for OrConstraintComponent {
             return if value_nodes.is_empty() {
                 Ok(ComponentValidationResult::Pass(component_id))
             } else {
-                Err(
-                    "sh:or with an empty list of shapes cannot be satisfied by any value node."
-                        .to_string(),
-                )
+                Ok(ComponentValidationResult::Fail(ValidationFailure {
+                    component_id,
+                    failed_value_node: value_nodes.first().cloned(),
+                    message: "sh:or with an empty list of shapes cannot be satisfied by any value node.".to_string(),
+                }))
             };
         }
 
@@ -277,30 +274,28 @@ impl ValidateComponent for OrConstraintComponent {
                     &mut value_node_as_context, // Pass mutably
                     disjunct_node_shape,
                     validation_context,
-                ) {
-                    Ok(true) => {
+                )? {
+                    ConformanceReport::Conforms => {
                         // value_node_to_check CONFORMS to this disjunct_node_shape.
                         // For sh:or, this is enough for this value_node.
                         passed_at_least_one_disjunct = true;
                         break; // Move to the next value_node_to_check
                     }
-                    Ok(false) => {
+                    ConformanceReport::NonConforms(_) => {
                         // value_node_to_check DOES NOT CONFORM. Try next disjunct shape.
-                    }
-                    Err(e) => {
-                        return Err(format!(
-                            "Error checking conformance for sh:or shape {:?}: {}",
-                            disjunct_shape_id, e
-                        ));
                     }
                 }
             }
             if !passed_at_least_one_disjunct {
                 // This value_node_to_check did not conform to any of the sh:or shapes.
-                return Err(format!(
-                    "Value {:?} does not conform to any sh:or shapes.",
-                    value_node_to_check
-                ));
+                return Ok(ComponentValidationResult::Fail(ValidationFailure {
+                    component_id,
+                    failed_value_node: Some(value_node_to_check.clone()),
+                    message: format!(
+                        "Value {:?} does not conform to any sh:or shapes.",
+                        value_node_to_check
+                    ),
+                }));
             }
             // If loop completes, value_node_to_check conformed to at least one disjunct.
         }
@@ -358,10 +353,11 @@ impl ValidateComponent for XoneConstraintComponent {
             return if value_nodes.is_empty() {
                 Ok(ComponentValidationResult::Pass(component_id))
             } else {
-                Err(
-                    "sh:xone with an empty list of shapes cannot be satisfied by any value node."
-                        .to_string(),
-                )
+                Ok(ComponentValidationResult::Fail(ValidationFailure {
+                    component_id,
+                    failed_value_node: value_nodes.first().cloned(),
+                    message: "sh:xone with an empty list of shapes cannot be satisfied by any value node.".to_string(),
+                }))
             };
         }
 
@@ -389,29 +385,27 @@ impl ValidateComponent for XoneConstraintComponent {
                     &mut value_node_as_context, // Pass mutably
                     xone_node_shape,
                     validation_context,
-                ) {
-                    Ok(true) => {
+                )? {
+                    ConformanceReport::Conforms => {
                         // value_node_to_check CONFORMS to this xone_node_shape.
                         conforming_shapes_count += 1;
                     }
-                    Ok(false) => {
+                    ConformanceReport::NonConforms(_) => {
                         // value_node_to_check DOES NOT CONFORM. Continue.
-                    }
-                    Err(e) => {
-                        return Err(format!(
-                            "Error checking conformance for sh:xone shape {:?}: {}",
-                            xone_shape_id, e
-                        ));
                     }
                 }
             }
 
             if conforming_shapes_count != 1 {
                 // This value_node_to_check did not conform to exactly one of the sh:xone shapes.
-                return Err(format!(
-                    "Value {:?} conformed to {} sh:xone shapes, but expected exactly 1.",
-                    value_node_to_check, conforming_shapes_count
-                ));
+                return Ok(ComponentValidationResult::Fail(ValidationFailure {
+                    component_id,
+                    failed_value_node: Some(value_node_to_check.clone()),
+                    message: format!(
+                        "Value {:?} conformed to {} sh:xone shapes, but expected exactly 1.",
+                        value_node_to_check, conforming_shapes_count
+                    ),
+                }));
             }
             // If loop completes, value_node_to_check conformed to exactly one xone_shape.
         }
