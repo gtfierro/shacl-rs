@@ -37,23 +37,13 @@ impl ValidateShape for NodeShape {
 
                 // Call the component's own validation logic.
                 // It now takes component_id, &mut Context, &ValidationContext
-                // and returns Result<ComponentValidationResult, String>
+                // and returns Result<Vec<ComponentValidationResult>, String>
                 match comp.validate(*constraint_id, &mut target_context, context) {
-                    Ok(validation_result) => {
+                    Ok(validation_results) => {
                         use crate::components::ComponentValidationResult;
-                        match validation_result {
-                            ComponentValidationResult::Pass(_) => {
-                                // Component passed, do nothing.
-                            }
-                            ComponentValidationResult::SubShape(results) => {
-                                // A sub-shape validation produced results. Add them to the report.
-                                for (ctx, err) in results {
-                                    rb.add_error(&ctx, err);
-                                }
-                            }
-                            ComponentValidationResult::Fail(failure) => {
-                                // The component failed, add the failure message to the report.
-                                rb.add_error(&target_context, failure.message);
+                        for result in validation_results {
+                            if let ComponentValidationResult::Fail(ctx, failure) = result {
+                                rb.add_error(&ctx, failure.message);
                             }
                         }
                     }
@@ -189,20 +179,11 @@ impl PropertyShape {
             // It now takes component_id, &mut Context, &ValidationContext
             // and returns Result<ComponentValidationResult, String>
             match component.validate(*constraint_id, &mut value_node_context, context) {
-                Ok(validation_result) => {
+                Ok(results) => {
                     use crate::components::ComponentValidationResult;
-                    match validation_result {
-                        ComponentValidationResult::Pass(_) => {
-                            // Component passed, do nothing.
-                        }
-                        ComponentValidationResult::SubShape(results) => {
-                            // A sub-shape validation produced results. Add them to the report.
-                            validation_results.extend(results);
-                        }
-                        ComponentValidationResult::Fail(failure) => {
-                            // The component failed, add the failure message to the report.
-                            validation_results
-                                .push((value_node_context.clone(), failure.message));
+                    for result in results {
+                        if let ComponentValidationResult::Fail(ctx, failure) = result {
+                            validation_results.push((ctx, failure.message));
                         }
                     }
                 }

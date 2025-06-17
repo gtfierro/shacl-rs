@@ -3,11 +3,10 @@ use oxigraph::model::{
 };
 use crate::components::ToSubjectRef;
 use oxigraph::store::{StorageError, Store};
-use petgraph::algo::{is_isomorphic, is_isomorphic_matching, is_isomorphic_subgraph};
+use petgraph::algo::is_isomorphic;
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::convert::TryFrom;
 
 /// Converts an `oxigraph::model::Graph` to a `petgraph::graph::DiGraph`.
 ///
