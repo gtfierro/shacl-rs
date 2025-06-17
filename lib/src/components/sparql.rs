@@ -175,44 +175,36 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
         // 7. Process results
         if let QueryResults::Solutions(solutions) = results {
-            let mut solutions_vec = Vec::new();
-            for solution in solutions {
-                solutions_vec.push(solution.map_err(|e| e.to_string())?);
-            }
+            let mut validation_results = Vec::new();
 
-            if let Some(first_solution) = solutions_vec.first() {
-                // Violation found, use the first solution to generate an error message
+            let message_template = context
+                .store()
+                .quads_for_pattern(
+                    Some(subject),
+                    Some(shacl.message),
+                    None,
+                    Some(context.shape_graph_iri_ref()),
+                )
+                .filter_map(Result::ok)
+                .map(|q| q.object)
+                .next();
 
-                // Check for failure
-                if let Some(Term::Literal(lit)) = first_solution.get("failure") {
+            for solution_res in solutions {
+                let solution = solution_res.map_err(|e| e.to_string())?;
+
+                // Check for failure variable
+                if let Some(Term::Literal(lit)) = solution.get("failure") {
                     if lit.datatype() == xsd::BOOLEAN && lit.value() == "true" {
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(c.focus_node().clone()),
-                            message: format!(
-                                "SPARQL constraint failure reported by query for constraint {:?}",
-                                self.constraint_node
-                            ),
-                        }));
+                        return Err(format!(
+                            "SPARQL constraint failure reported by query for constraint {:?}",
+                            self.constraint_node
+                        ));
                     }
                 }
 
-                // Get message
-                let message_template = context
-                    .store()
-                    .quads_for_pattern(
-                        Some(subject),
-                        Some(shacl.message),
-                        None,
-                        Some(context.shape_graph_iri_ref()),
-                    )
-                    .filter_map(Result::ok)
-                    .map(|q| q.object)
-                    .next(); // Taking the first message for simplicity
-
-                let message = if let Some(Term::Literal(lit)) = message_template {
+                let message = if let Some(Term::Literal(lit)) = &message_template {
                     let mut msg = lit.value().to_string();
-                    for (var, val) in first_solution.iter() {
+                    for (var, val) in solution.iter() {
                         let var_name = format!("{{?{}}}", var.as_str());
                         let var_name_dollar = format!("{{${}}}", var.as_str());
                         let val_str = format_term_for_label(val);
@@ -227,18 +219,20 @@ impl ValidateComponent for SPARQLConstraintComponent {
                     )
                 };
 
-                // NOTE: This implementation returns an error for the first violating solution.
-                // The SHACL spec says there should be a validation result for each solution.
-                // This would require changes to the validation architecture.
-                let failed_node = first_solution
+                let failed_node = solution
                     .get("value")
                     .cloned()
                     .unwrap_or_else(|| c.focus_node().clone());
-                return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                    component_id,
-                    failed_value_node: Some(failed_node),
-                    message,
-                }));
+
+                let mut error_context = c.clone();
+                error_context.with_value(failed_node);
+                validation_results.push((error_context, message));
+            }
+
+            if validation_results.is_empty() {
+                return Ok(ComponentValidationResult::Pass(component_id));
+            } else {
+                return Ok(ComponentValidationResult::SubShape(validation_results));
             }
         } else {
             return Err(format!(
@@ -246,8 +240,5 @@ impl ValidateComponent for SPARQLConstraintComponent {
                 self.constraint_node
             ));
         }
-
-        // No solutions, so validation passes
-        Ok(ComponentValidationResult::Pass(component_id))
     }
 }

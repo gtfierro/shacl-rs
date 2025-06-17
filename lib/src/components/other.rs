@@ -9,7 +9,7 @@ impl ValidateComponent for InConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         if self.values.is_empty() {
@@ -31,28 +31,25 @@ impl ValidateComponent for InConstraintComponent {
             };
         }
 
-        match c.value_nodes().cloned() {
-            Some(value_nodes) => {
-                for vn in value_nodes {
-                    if !self.values.contains(&vn) {
-                        c.with_value(vn.clone());
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Value {:?} is not in the allowed list {:?}.",
-                                vn, self.values
-                            ),
-                        }));
-                    }
+        let mut validation_results = Vec::new();
+        if let Some(value_nodes) = c.value_nodes().cloned() {
+            for vn in value_nodes {
+                if !self.values.contains(&vn) {
+                    let mut error_context = c.clone();
+                    error_context.with_value(vn.clone());
+                    let message = format!(
+                        "Value {:?} is not in the allowed list {:?}.",
+                        vn, self.values
+                    );
+                    validation_results.push((error_context, message));
                 }
-                // All value nodes are in self.values
-                Ok(ComponentValidationResult::Pass(component_id))
             }
-            None => {
-                // No value nodes to check, so the constraint is satisfied.
-                Ok(ComponentValidationResult::Pass(component_id))
-            }
+        }
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
         }
     }
 }
@@ -135,7 +132,7 @@ impl ValidateComponent for HasValueConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         match c.value_nodes() {

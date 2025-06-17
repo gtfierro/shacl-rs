@@ -58,14 +58,17 @@ impl ValidateComponent for ClassConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         let cc_var = Variable::new("value_node").unwrap();
         if c.value_nodes().is_none() {
             return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes to validate
         }
+
+        let mut validation_results = Vec::new();
         let vns = c.value_nodes().cloned().unwrap();
+
         for vn in vns.iter() {
             match context.store().query_opt_with_substituted_variables(
                 self.query.clone(),
@@ -74,15 +77,13 @@ impl ValidateComponent for ClassConstraintComponent {
             ) {
                 Ok(QueryResults::Boolean(result)) => {
                     if !result {
-                        c.with_value(vn.clone());
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Value {:?} does not conform to class constraint: {}",
-                                vn, self.class
-                            ),
-                        }));
+                        let mut error_context = c.clone();
+                        error_context.with_value(vn.clone());
+                        let message = format!(
+                            "Value {:?} does not conform to class constraint: {}",
+                            vn, self.class
+                        );
+                        validation_results.push((error_context, message));
                     }
                 }
                 Ok(_) => {
@@ -93,7 +94,12 @@ impl ValidateComponent for ClassConstraintComponent {
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -112,7 +118,7 @@ impl ValidateComponent for DatatypeConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         let target_datatype_iri = match self.datatype.as_ref() {
@@ -120,39 +126,47 @@ impl ValidateComponent for DatatypeConstraintComponent {
             _ => return Err("sh:datatype must be an IRI".to_string()),
         };
 
+        let mut validation_results = Vec::new();
+
         if let Some(value_nodes) = c.value_nodes().cloned() {
             for value_node in value_nodes {
+                let mut fail = false;
+                let mut message = String::new();
+
                 match value_node.as_ref() {
                     TermRef::Literal(lit) => {
                         if lit.datatype() != target_datatype_iri {
                             // TODO: Consider ill-typed literals if required by spec for specific datatypes
-                            c.with_value(value_node.clone());
-                            return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                                component_id,
-                                failed_value_node: Some(value_node.clone()),
-                                message: format!(
-                                    "Value {:?} does not have datatype {}",
-                                    value_node, self.datatype
-                                ),
-                            }));
+                            fail = true;
+                            message = format!(
+                                "Value {:?} does not have datatype {}",
+                                value_node, self.datatype
+                            );
                         }
                     }
                     _ => {
                         // Not a literal, so it cannot conform to a datatype constraint
-                        c.with_value(value_node.clone());
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(value_node.clone()),
-                            message: format!(
-                                "Value {:?} is not a literal, expected datatype {}",
-                                value_node, self.datatype
-                            ),
-                        }));
+                        fail = true;
+                        message = format!(
+                            "Value {:?} is not a literal, expected datatype {}",
+                            value_node, self.datatype
+                        );
                     }
+                }
+
+                if fail {
+                    let mut error_context = c.clone();
+                    error_context.with_value(value_node.clone());
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -190,11 +204,12 @@ impl ValidateComponent for NodeKindConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         let sh = SHACL::new();
         let expected_node_kind_term = self.node_kind.as_ref();
+        let mut validation_results = Vec::new();
 
         if let Some(value_nodes) = c.value_nodes().cloned() {
             for value_node in value_nodes {
@@ -218,19 +233,22 @@ impl ValidateComponent for NodeKindConstraintComponent {
                 };
 
                 if !matches {
-                    c.with_value(value_node.clone());
-                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                        component_id,
-                        failed_value_node: Some(value_node.clone()),
-                        message: format!(
-                            "Value {:?} does not match nodeKind {}",
-                            value_node, self.node_kind
-                        ),
-                    }));
+                    let mut error_context = c.clone();
+                    error_context.with_value(value_node.clone());
+                    let message = format!(
+                        "Value {:?} does not match nodeKind {}",
+                        value_node, self.node_kind
+                    );
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 

@@ -169,6 +169,8 @@ impl ValidateComponent for NodeConstraintComponent {
             return Err(format!("sh:node referenced shape {:?} not found", self.shape));
         };
 
+        let mut validation_results = Vec::new();
+
         for value_node_to_check in value_nodes {
             let mut value_node_as_context = Context::new(
                 value_node_to_check.clone(),
@@ -187,19 +189,22 @@ impl ValidateComponent for NodeConstraintComponent {
                 }
                 ConformanceReport::NonConforms(failure) => {
                     // Does not conform. This is a failure for the NodeConstraintComponent.
-                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                        component_id,
-                        failed_value_node: Some(value_node_to_check.clone()),
-                        message: format!(
-                            "Value {:?} does not conform to sh:node shape {:?}: {}",
-                            value_node_to_check, self.shape, failure.message
-                        ),
-                    }));
+                    let mut error_context = c.clone();
+                    error_context.with_value(value_node_to_check.clone());
+                    let message = format!(
+                        "Value {:?} does not conform to sh:node shape {:?}: {}",
+                        value_node_to_check, self.shape, failure.message
+                    );
+                    validation_results.push((error_context, message));
                 }
             }
         }
 
-        Ok(ComponentValidationResult::Pass(component_id))
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 

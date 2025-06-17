@@ -27,9 +27,8 @@ pub use value_type::*;
 
 #[derive(Debug, Clone)]
 pub enum ComponentValidationResult {
-    Pass(ComponentID),
-    Fail(ValidationFailure),
-    SubShape(Vec<(crate::context::Context, String)>),
+    Pass(Context),
+    Fail(Context, ValidationFailure),
 }
 
 #[derive(Debug, Clone)]
@@ -589,7 +588,7 @@ pub trait ValidateComponent {
         component_id: ComponentID,
         c: &mut Context, // Changed to &mut Context
         context: &ValidationContext,
-    ) -> Result<ComponentValidationResult, String>;
+    ) -> Result<Vec<ComponentValidationResult>, String>;
 }
 
 #[derive(Debug)]

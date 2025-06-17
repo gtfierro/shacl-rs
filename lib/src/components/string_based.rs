@@ -40,21 +40,22 @@ impl ValidateComponent for MinLengthConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
+        let mut validation_results = Vec::new();
         if let Some(value_nodes) = c.value_nodes() {
             for vn in value_nodes {
                 let len = match vn.as_ref() {
                     TermRef::BlankNode(_) => {
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Blank node {:?} found where string length constraints apply (minLength).",
-                                vn
-                            ),
-                        }));
+                        let mut error_context = c.clone();
+                        error_context.with_value(vn.clone());
+                        let message = format!(
+                            "Blank node {:?} found where string length constraints apply (minLength).",
+                            vn
+                        );
+                        validation_results.push((error_context, message));
+                        continue;
                     }
                     TermRef::NamedNode(nn) => nn.as_str().chars().count(),
                     TermRef::Literal(literal) => literal.value().chars().count(),
@@ -66,18 +67,22 @@ impl ValidateComponent for MinLengthConstraintComponent {
                     }
                 };
                 if len < self.min_length as usize {
-                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                        component_id,
-                        failed_value_node: Some(vn.clone()),
-                        message: format!(
-                            "Value {:?} has length {} which is less than minLength {}.",
-                            vn, len, self.min_length
-                        ),
-                    }));
+                    let mut error_context = c.clone();
+                    error_context.with_value(vn.clone());
+                    let message = format!(
+                        "Value {:?} has length {} which is less than minLength {}.",
+                        vn, len, self.min_length
+                    );
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -114,21 +119,22 @@ impl ValidateComponent for MaxLengthConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
+        let mut validation_results = Vec::new();
         if let Some(value_nodes) = c.value_nodes() {
             for vn in value_nodes {
                 let len = match vn.as_ref() {
                     TermRef::BlankNode(_) => {
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Blank node {:?} found where string length constraints apply (maxLength).",
-                                vn
-                            ),
-                        }));
+                        let mut error_context = c.clone();
+                        error_context.with_value(vn.clone());
+                        let message = format!(
+                            "Blank node {:?} found where string length constraints apply (maxLength).",
+                            vn
+                        );
+                        validation_results.push((error_context, message));
+                        continue;
                     }
                     TermRef::NamedNode(nn) => nn.as_str().chars().count(),
                     TermRef::Literal(literal) => literal.value().chars().count(),
@@ -140,18 +146,22 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                     }
                 };
                 if len > self.max_length as usize {
-                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                        component_id,
-                        failed_value_node: Some(vn.clone()),
-                        message: format!(
-                            "Value {:?} has length {} which is greater than maxLength {}.",
-                            vn, len, self.max_length
-                        ),
-                    }));
+                    let mut error_context = c.clone();
+                    error_context.with_value(vn.clone());
+                    let message = format!(
+                        "Value {:?} has length {} which is greater than maxLength {}.",
+                        vn, len, self.max_length
+                    );
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -191,7 +201,7 @@ impl ValidateComponent for PatternConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         let mut pattern_builder = regex::RegexBuilder::new(&self.pattern);
@@ -214,18 +224,19 @@ impl ValidateComponent for PatternConstraintComponent {
             Err(e) => return Err(format!("Invalid regex pattern '{}': {}", self.pattern, e)),
         };
 
+        let mut validation_results = Vec::new();
         if let Some(value_nodes) = c.value_nodes() {
             for vn in value_nodes {
                 let value_str = match vn.as_ref() {
                     TermRef::BlankNode(_) => {
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Blank node {:?} cannot be matched against a pattern.",
-                                vn
-                            ),
-                        }));
+                        let mut error_context = c.clone();
+                        error_context.with_value(vn.clone());
+                        let message = format!(
+                            "Blank node {:?} cannot be matched against a pattern.",
+                            vn
+                        );
+                        validation_results.push((error_context, message));
+                        continue;
                     }
                     TermRef::NamedNode(nn) => nn.as_str().to_string(),
                     TermRef::Literal(literal) => literal.value().to_string(),
@@ -235,22 +246,26 @@ impl ValidateComponent for PatternConstraintComponent {
                 };
 
                 if !re.is_match(&value_str) {
-                    return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                        component_id,
-                        failed_value_node: Some(vn.clone()),
-                        message: format!(
-                            "Value {:?} does not match pattern '{}'{}.",
-                            vn,
-                            self.pattern,
-                            self.flags
-                                .as_ref()
-                                .map_or("".to_string(), |f| format!(" with flags '{}'", f))
-                        ),
-                    }));
+                    let mut error_context = c.clone();
+                    error_context.with_value(vn.clone());
+                    let message = format!(
+                        "Value {:?} does not match pattern '{}'{}.",
+                        vn,
+                        self.pattern,
+                        self.flags
+                            .as_ref()
+                            .map_or("".to_string(), |f| format!(" with flags '{}'", f))
+                    );
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -315,57 +330,61 @@ impl ValidateComponent for LanguageInConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
+        let mut validation_results = Vec::new();
         if let Some(value_nodes) = c.value_nodes() {
             for vn in value_nodes {
+                let mut fail = false;
+                let mut message = String::new();
+
                 match vn.as_ref() {
                     TermRef::Literal(lit) => {
                         let lit_lang = lit.language().unwrap_or("");
                         if self.languages.is_empty() {
-                            // "If the SHACL list is empty, then no value nodes can satisfy the constraint."
-                            // This implies any literal (tagged or not) fails if there are value nodes.
-                            // If there are no value nodes, it passes (covered by outer Some(value_nodes)).
-                            return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                                component_id,
-                                failed_value_node: Some(vn.clone()),
-                                message: format!(
-                                    "Value {:?} fails sh:languageIn constraint because the list of allowed languages is empty.",
-                                    vn
-                                ),
-                            }));
-                        }
-                        let matched = self
-                            .languages
-                            .iter()
-                            .any(|allowed_lang| lang_matches(lit_lang, allowed_lang));
-                        if !matched {
-                            return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                                component_id,
-                                failed_value_node: Some(vn.clone()),
-                                message: format!(
+                            fail = true;
+                            message = format!(
+                                "Value {:?} fails sh:languageIn constraint because the list of allowed languages is empty.",
+                                vn
+                            );
+                        } else {
+                            let matched = self
+                                .languages
+                                .iter()
+                                .any(|allowed_lang| lang_matches(lit_lang, allowed_lang));
+                            if !matched {
+                                fail = true;
+                                message = format!(
                                     "Language tag '{}' of value {:?} is not in the allowed list {:?}.",
                                     lit_lang, vn, self.languages
-                                ),
-                            }));
+                                );
+                            }
                         }
                     }
                     _ => {
                         // Not a literal, so it cannot conform to a languageIn constraint.
-                        return Ok(ComponentValidationResult::Fail(ValidationFailure {
-                            component_id,
-                            failed_value_node: Some(vn.clone()),
-                            message: format!(
-                                "Value {:?} is not a literal, but sh:languageIn applies to literals.",
-                                vn
-                            ),
-                        }));
+                        fail = true;
+                        message = format!(
+                            "Value {:?} is not a literal, but sh:languageIn applies to literals.",
+                            vn
+                        );
                     }
+                }
+
+                if fail {
+                    let mut error_context = c.clone();
+                    error_context.with_value(vn.clone());
+                    validation_results.push((error_context, message));
                 }
             }
         }
-        Ok(ComponentValidationResult::Pass(component_id))
+
+        if validation_results.is_empty() {
+            Ok(ComponentValidationResult::Pass(component_id))
+        } else {
+            Ok(ComponentValidationResult::SubShape(validation_results))
+        }
     }
 }
 
@@ -402,7 +421,7 @@ impl ValidateComponent for UniqueLangConstraintComponent {
     fn validate(
         &self,
         component_id: ComponentID,
-        c: &mut Context, // Changed to &mut Context
+        c: &mut Context,
         _validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
         if !self.unique_lang {
