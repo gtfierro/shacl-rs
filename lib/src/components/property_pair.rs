@@ -37,6 +37,65 @@ impl GraphvizOutput for EqualsConstraintComponent {
     }
 }
 
+impl ValidateComponent for EqualsConstraintComponent {
+    fn validate(
+        &self,
+        component_id: ComponentID,
+        c: &mut Context,
+        context: &ValidationContext,
+    ) -> Result<Vec<ComponentValidationResult>, String> {
+        let value_nodes: Vec<Term> = match c.value_nodes() {
+            Some(nodes) => nodes.clone(),
+            None => vec![c.focus_node().clone()],
+        };
+        let value_nodes_set: HashSet<Term> = value_nodes.into_iter().collect();
+
+        let focus_node = c.focus_node();
+        let equals_property = match &self.property {
+            Term::NamedNode(nn) => nn,
+            _ => {
+                return Err(format!(
+                    "sh:equals property must be an IRI, but got {:?}",
+                    self.property
+                ))
+            }
+        };
+
+        let other_values_set: HashSet<Term> = context
+            .store()
+            .quads_for_pattern(
+                Some(focus_node.try_to_subject_ref()?),
+                Some(equals_property.as_ref()),
+                None,
+                Some(context.data_graph_iri_ref()),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .collect();
+
+        let mut results = Vec::new();
+
+        for diff_node in value_nodes_set.symmetric_difference(&other_values_set) {
+            let mut fail_context = c.clone();
+            fail_context.with_value(diff_node.clone());
+            results.push(ComponentValidationResult::Fail(
+                fail_context,
+                ValidationFailure {
+                    component_id,
+                    failed_value_node: Some(diff_node.clone()),
+                    message: format!(
+                        "sh:equals failed: value {} is not shared between value nodes and values of property <{}>",
+                        format_term_for_label(diff_node),
+                        equals_property.as_str()
+                    ),
+                },
+            ));
+        }
+
+        Ok(results)
+    }
+}
+
 #[derive(Debug)]
 pub struct DisjointConstraintComponent {
     property: Term, // Should be an IRI
