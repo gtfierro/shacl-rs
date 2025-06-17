@@ -181,11 +181,13 @@ impl PropertyShape {
             match component.validate(*constraint_id, &mut value_node_context, context) {
                 Ok(results) => {
                     use crate::components::ComponentValidationResult;
-                    for result in results {
+                    validation_results.extend(results.into_iter().filter_map(|result| {
                         if let ComponentValidationResult::Fail(ctx, failure) = result {
-                            validation_results.push((ctx, failure.message));
+                            Some((ctx, failure.message))
+                        } else {
+                            None
                         }
-                    }
+                    }));
                 }
                 Err(e) => {
                     // This error 'e' comes from the component's own validate method.
