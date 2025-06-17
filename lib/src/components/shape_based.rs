@@ -246,13 +246,15 @@ impl ValidateComponent for PropertyConstraintComponent {
 
             let results = validation_failures
                 .into_iter()
-                .map(|(ctx, msg)| {
-                    let failure = ValidationFailure {
-                        component_id: _component_id,
-                        failed_value_node: ctx.value().cloned(),
-                        message: msg,
-                    };
-                    ComponentValidationResult::Fail(ctx, failure)
+                .map(|result| match result {
+                    ComponentValidationResult::Fail(ctx, original_failure) => {
+                        let failure = ValidationFailure {
+                            component_id: _component_id,
+                            failed_value_node: original_failure.failed_value_node,
+                            message: original_failure.message,
+                        };
+                        ComponentValidationResult::Fail(ctx, failure)
+                    }
                 })
                 .collect();
             Ok(results)
