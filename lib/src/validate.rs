@@ -38,9 +38,20 @@ impl ValidateShape for NodeShape {
                 // Call the component's own validation logic.
                 // It now takes component_id, &mut Context, &ValidationContext
                 // and returns Result<Vec<ComponentValidationResult>, String>
+                println!(
+                    "Validating NodeShape {} with component {} (label: {})",
+                    self.identifier(),
+                    constraint_id,
+                    comp.label()
+                );
                 match comp.validate(*constraint_id, &mut target_context, context) {
                     Ok(validation_results) => {
                         use crate::components::ComponentValidationResult;
+                        println!(
+                            "  Component {} returned {} validation results",
+                            constraint_id,
+                            validation_results.len()
+                        );
                         for result in validation_results {
                             if let ComponentValidationResult::Fail(ctx, failure) = result {
                                 rb.add_error(&ctx, failure.message);
@@ -65,7 +76,7 @@ impl PropertyShape {
         // Changed to a single mutable Context reference
         focus_context: &mut Context, // Changed to &mut Context
         context: &ValidationContext,
-    ) -> Result<Vec<(Context, String)>, String> {
+    ) -> Result<Vec<ComponentValidationResult>, String> {
         focus_context.record_property_shape_visit(*self.identifier()); // Record PropertyShape visit
 
         let mut validation_results = Vec::new();
