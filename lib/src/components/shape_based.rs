@@ -238,6 +238,11 @@ impl ValidateComponent for PropertyConstraintComponent {
     ) -> Result<Vec<ComponentValidationResult>, String> {
         if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
             let validation_failures = property_shape.validate(c, validation_context)?;
+            println!(
+                "PropertyConstraintComponent: {} validation failures found for shape {}",
+                validation_failures.len(),
+                self.shape
+            );
 
             let results = validation_failures
                 .into_iter()
