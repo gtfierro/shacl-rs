@@ -107,6 +107,11 @@ impl PropertyShape {
             )
         })?;
         query.dataset_mut().set_default_graph_as_union();
+        println!(
+            "Executing SPARQL query for PropertyShape {}: {}",
+            self.identifier(),
+            query
+        );
 
         //println!("num triples in focus context: {}", context.store().len().unwrap());
         // print out triples
@@ -172,6 +177,11 @@ impl PropertyShape {
         } else {
             Some(value_nodes_vec)
         };
+        println!(
+            "Found {} value nodes for PropertyShape {}",
+            value_nodes_opt.as_ref().map_or(0, |v| v.len()),
+            self.identifier()
+        );
 
         let mut value_node_context = Context::new(
             // Made mutable
@@ -186,6 +196,13 @@ impl PropertyShape {
             let component = context
                 .get_component_by_id(constraint_id)
                 .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
+            println!(
+                "Validating PropertyShape {} with component {} (label: {})\n value nodes: {:?}",
+                self.identifier(),
+                constraint_id,
+                component.label(),
+                value_node_context.value_nodes()
+            );
 
             // Call the component's own validation logic.
             // It now takes component_id, &mut Context, &ValidationContext
