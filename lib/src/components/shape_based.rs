@@ -237,24 +237,25 @@ impl ValidateComponent for PropertyConstraintComponent {
         validation_context: &ValidationContext,
     ) -> Result<Vec<ComponentValidationResult>, String> {
         if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
-            let validation_failures = property_shape.validate(c, validation_context)?;
+            let validation_results = property_shape.validate(c, validation_context)?;
             println!(
-                "PropertyConstraintComponent: {} validation failures found for shape {}",
-                validation_failures.len(),
+                "PropertyConstraintComponent: {} validation results found for shape {}",
+                validation_results.len(),
                 self.shape
             );
 
-            let results = validation_failures
+            let results = validation_results
                 .into_iter()
-                .map(|result| match result {
+                .filter_map(|result| match result {
                     ComponentValidationResult::Fail(ctx, original_failure) => {
                         let failure = ValidationFailure {
                             component_id: _component_id,
                             failed_value_node: original_failure.failed_value_node,
                             message: original_failure.message,
                         };
-                        ComponentValidationResult::Fail(ctx, failure)
+                        Some(ComponentValidationResult::Fail(ctx, failure))
                     }
+                    ComponentValidationResult::Pass(_) => None,
                 })
                 .collect();
             Ok(results)
