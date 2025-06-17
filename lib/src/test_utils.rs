@@ -1,7 +1,7 @@
 use crate::components::ToSubjectRef;
 use crate::named_nodes::{MF, RDF, RDFS, SHACL, SHT};
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{Graph, SubjectRef, TermRef, TripleRef};
+use oxigraph::model::{vocab::xsd, Graph, SubjectRef, TermRef, TripleRef};
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -10,7 +10,7 @@ use url::Url;
 #[derive(Debug)]
 pub struct TestCase {
     pub name: String,
-    pub status: String,
+    pub conforms: bool,
     pub data_graph_path: PathBuf,
     pub shapes_graph_path: PathBuf,
     pub expected_report: Graph,
@@ -104,6 +104,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     let sht = SHT::new();
     let rdf = RDF::new();
     let rdfs = RDFS::new();
+    let sh = SHACL::new();
 
     let manifest_node = manifest_graph
         .subjects_for_predicate_object(rdf.type_, mf.manifest)
@@ -142,15 +143,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                         })
                         .unwrap_or_else(|| "Unnamed test".to_string());
 
-                    let status = manifest_graph
-                        .object_for_subject_predicate(entry, mf.status)
-                        .and_then(|t| match t {
-                            TermRef::NamedNode(nn) => Some(nn.as_str().to_string()),
-                            _ => None,
-                        })
-                        .ok_or_else(|| format!("Test '{}' has no mf:status", name))?;
-
-                    let action_node = manifest_graph
+                    let _action_node = manifest_graph
                         .object_for_subject_predicate(entry, mf.action)
                         .ok_or_else(|| format!("Test '{}' has no mf:action", name))?;
 
@@ -158,12 +151,29 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                         .object_for_subject_predicate(entry, mf.result)
                         .ok_or_else(|| format!("Test '{}' has no mf:result", name))?;
 
+                    let conforms = manifest_graph
+                        .object_for_subject_predicate(result_node.to_subject_ref(), sh.conforms)
+                        .and_then(|t| {
+                            if let TermRef::Literal(l) = t {
+                                if l.datatype() == xsd::BOOLEAN {
+                                    return l.value().parse::<bool>().ok();
+                                }
+                            }
+                            None
+                        })
+                        .ok_or_else(|| {
+                            format!(
+                                "Test '{}' has no valid sh:conforms boolean literal in its result",
+                                name
+                            )
+                        })?;
+
                     let expected_report =
                         extract_report_graph(&manifest_graph, result_node.to_subject_ref());
 
                     test_cases.push(TestCase {
                         name,
-                        status,
+                        conforms,
                         data_graph_path: path.to_path_buf(),
                         shapes_graph_path: path.to_path_buf(),
                         expected_report,
