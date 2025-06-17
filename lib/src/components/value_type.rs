@@ -65,7 +65,7 @@ impl ValidateComponent for ClassConstraintComponent {
         if c.value_nodes().is_none() {
             return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes to validate
         }
-        let vns = c.value_nodes().unwrap();
+        let vns = c.value_nodes().cloned().unwrap();
         for vn in vns.iter() {
             match context.store().query_opt_with_substituted_variables(
                 self.query.clone(),
@@ -196,7 +196,7 @@ impl ValidateComponent for NodeKindConstraintComponent {
         let sh = SHACL::new();
         let expected_node_kind_term = self.node_kind.as_ref();
 
-        if let Some(value_nodes) = c.value_nodes() {
+        if let Some(value_nodes) = c.value_nodes().cloned() {
             for value_node in value_nodes {
                 let matches = match value_node.as_ref() {
                     TermRef::NamedNode(_) => {

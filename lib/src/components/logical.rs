@@ -250,9 +250,11 @@ impl ValidateComponent for OrConstraintComponent {
                 }))
             };
         }
+        let value_nodes = value_nodes.clone();
 
         for value_node_to_check in value_nodes {
             let mut passed_at_least_one_disjunct = false;
+            c.with_value(value_node_to_check.clone());
             // The source_shape for the context used in check_conformance_for_node
             // will be set to the specific disjunct_node_shape's ID.
             for disjunct_shape_id in &self.shapes {
