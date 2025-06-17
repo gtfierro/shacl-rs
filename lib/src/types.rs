@@ -36,6 +36,7 @@ impl From<u64> for ComponentID {
     fn from(item: u64) -> Self {
         ComponentID(item)
     }
+
 }
 
 impl fmt::Display for ComponentID {
@@ -47,6 +48,9 @@ impl fmt::Display for ComponentID {
 impl ComponentID {
     pub fn to_graphviz_id(&self) -> String {
         format!("c{}", self.0)
+    }
+    pub fn name(&self, context: &ValidationContext) -> String {
+        context.component_id_lookup.borrow().get_term(*self).unwrap().to_string()
     }
 }
 

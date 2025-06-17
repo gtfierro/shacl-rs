@@ -52,6 +52,10 @@ impl NodeShape {
     pub fn severity(&self) -> Severity {
         self.severity
     }
+
+    pub fn name(&self, context: &ValidationContext) -> String {
+        context.nodeshape_id_lookup().borrow().get_term(*self.identifier()).unwrap().to_string()
+    }
 }
 
 #[derive(Debug)]
@@ -94,5 +98,8 @@ impl PropertyShape {
 
     pub fn severity(&self) -> Severity {
         self.severity
+    }
+    pub fn name(&self, context: &ValidationContext) -> String {
+        context.propshape_id_lookup().borrow().get_term(*self.identifier()).unwrap().to_string()
     }
 }

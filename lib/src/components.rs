@@ -25,6 +25,7 @@ pub use string_based::*;
 pub use value_range::*;
 pub use value_type::*;
 
+#[derive(Debug, Clone)]
 pub enum ComponentValidationResult {
     Pass(ComponentID),
     Fail(ValidationFailure),

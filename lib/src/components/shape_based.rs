@@ -265,9 +265,11 @@ impl GraphvizOutput for PropertyConstraintComponent {
                 |term| format!("{}", term),
             );
         format!(
-            "{} [label=\"PropertyConstraint: {}\"];",
+            "{} [label=\"PropertyConstraint: {}\"];\n{} -> {};",
             component_id.to_graphviz_id(),
-            shape_term_str
+            shape_term_str,
+            component_id.to_graphviz_id(),
+            self.shape.to_graphviz_id(),
         )
     }
 }

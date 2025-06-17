@@ -85,7 +85,7 @@ impl PropertyShape {
         let sparql_path = self.sparql_path();
 
         let query_str = format!(
-            "SELECT ?valueNode WHERE {{ {} {} ?valueNode . }}",
+            "SELECT DISTINCT ?valueNode WHERE {{ {} {} ?valueNode . }}",
             focus_node_term.to_string(),
             sparql_path
         );

@@ -142,8 +142,10 @@ impl ValidateComponent for AndConstraintComponent {
         let Some(value_nodes) = c.value_nodes() else {
             return Ok(ComponentValidationResult::Pass(component_id)); // No value nodes
         };
+        let value_nodes = value_nodes.clone();
 
         for value_node_to_check in value_nodes {
+            c.with_value(value_node_to_check.clone());
             // The source_shape for the context used in check_conformance_for_node
             // will be set to the specific conjunct_node_shape's ID.
             for conjunct_shape_id in &self.shapes {
