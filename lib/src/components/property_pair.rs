@@ -46,7 +46,7 @@ impl ValidateComponent for EqualsConstraintComponent {
     ) -> Result<Vec<ComponentValidationResult>, String> {
         let value_nodes: Vec<Term> = match c.value_nodes() {
             Some(nodes) => nodes.clone(),
-            None => vec![c.focus_node().clone()],
+            None => vec![],
         };
         let value_nodes_set: HashSet<Term> = value_nodes.into_iter().collect();
 
