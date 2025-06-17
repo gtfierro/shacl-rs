@@ -1,13 +1,11 @@
 use crate::context::{format_term_for_label, Context, SourceShape, ValidationContext};
-use crate::report::ValidationReportBuilder;
-use crate::shape::PropertyShape;
 use crate::types::{ComponentID, PropShapeID, ID};
 use oxigraph::model::NamedNode;
 // Removed: use oxigraph::model::Term;
 
 use super::{
-    check_conformance_for_node, Component, ComponentValidationResult, ConformanceReport,
-    GraphvizOutput, ValidateComponent, ValidationFailure,
+    check_conformance_for_node, ComponentValidationResult, ConformanceReport, GraphvizOutput,
+    ValidateComponent, ValidationFailure,
 };
 
 #[derive(Debug)]
@@ -229,14 +227,13 @@ impl ValidateComponent for PropertyConstraintComponent {
         c: &mut Context,
         validation_context: &ValidationContext,
     ) -> Result<ComponentValidationResult, String> {
-        let mut builder = ValidationReportBuilder::new();
         if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
-            property_shape.validate(c, validation_context, &mut builder)?;
+            let results = property_shape.validate(c, validation_context)?;
 
-            if builder.results.is_empty() {
+            if results.is_empty() {
                 Ok(ComponentValidationResult::Pass(component_id))
             } else {
-                Ok(ComponentValidationResult::SubShape(builder.results))
+                Ok(ComponentValidationResult::SubShape(results))
             }
         } else {
             Err(format!(
