@@ -883,8 +883,8 @@ impl Component {
             Component::MinInclusiveConstraint(comp) => comp.validate(component_id, c, context),
             Component::MaxExclusiveConstraint(comp) => comp.validate(component_id, c, context),
             Component::MaxInclusiveConstraint(comp) => comp.validate(component_id, c, context),
+            Component::ClosedConstraint(comp) => comp.validate(component_id, c, context),
             // For components without specific validation logic, or structural ones, consider them as passing.
-            _ => Ok(vec![]),
         }
     }
 }

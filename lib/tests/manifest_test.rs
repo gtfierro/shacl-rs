@@ -203,13 +203,9 @@ generate_test_cases! {
     test_node_or_001: "tests/test-suite/core/node/or-001.ttl",
     test_node_pattern_001: "tests/test-suite/core/node/pattern-001.ttl",
     test_node_pattern_002: "tests/test-suite/core/node/pattern-002.ttl",
-    test_node_qualified_001_data: "tests/test-suite/core/node/qualified-001-data.ttl",
-    test_node_qualified_001_shapes: "tests/test-suite/core/node/qualified-001-shapes.ttl",
     test_node_qualified_001: "tests/test-suite/core/node/qualified-001.ttl",
     test_node_xone_001: "tests/test-suite/core/node/xone-001.ttl",
     test_node_xone_duplicate: "tests/test-suite/core/node/xone-duplicate.ttl",
-    test_node_xone_duplicate_data: "tests/test-suite/core/node/xone-duplicate-data.ttl",
-    test_node_xone_duplicate_shapes: "tests/test-suite/core/node/xone-duplicate-shapes.ttl",
 
 
 }
