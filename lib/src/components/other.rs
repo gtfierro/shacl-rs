@@ -131,21 +131,21 @@ impl ValidateComponent for ClosedConstraintComponent {
             return Err("sh:closed can only be used on a node shape".to_string());
         };
 
-        //if let Some(node_shape) = validation_context.node_shapes.get(source_shape_id) {
-        //    for constraint_com_id in node_shape.constraints() {
-        //        if let Some(component) = validation_context.get_component_by_id(constraint_com_id) {
-        //            if let Component::PropertyConstraint(pc) = component {
-        //                if let Some(prop_shape) =
-        //                    validation_context.get_prop_shape_by_id(&pc.shape)
-        //                {
-        //                    if let Path::Simple(Term::NamedNode(p)) = prop_shape.path() {
-        //                        allowed_properties.insert(p.clone());
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
+        if let Some(node_shape) = validation_context.node_shapes.get(source_shape_id) {
+            for constraint_com_id in node_shape.constraints() {
+                if let Some(component) = validation_context.get_component_by_id(constraint_com_id) {
+                    if let Component::PropertyConstraint(pc) = component {
+                        if let Some(prop_shape) =
+                            validation_context.get_prop_shape_by_id(&pc.shape)
+                        {
+                            if let Path::Simple(Term::NamedNode(p)) = prop_shape.path() {
+                                allowed_properties.insert(p.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         println!(
             "ClosedConstraintComponent: allowed_properties: {:?}",
@@ -175,12 +175,9 @@ impl ValidateComponent for ClosedConstraintComponent {
                 if !allowed_properties.contains(&predicate) {
                     let mut error_context = c.clone();
 
-                    // TODO: The SHACL spec for sh:closed requires that sh:resultPath is the predicate of the invalid triple.
-                    // The current context mechanism does not seem to support setting a dynamic result path for a node shape constraint violation.
-                    // This would require `Context` to have a public `result_path` field or a setter, and `PShapePath` to be constructible.
-
                     let object = quad.object.to_owned();
                     error_context.with_value(object.clone());
+                    error_context.with_result_path(predicate.clone());
 
                     let message = format!(
                         "Focus node {:?} has value for property {:?} which is not allowed by sh:closed",
