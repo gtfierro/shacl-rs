@@ -127,7 +127,8 @@ impl ValidateComponent for ClosedConstraintComponent {
             }
         }
 
-        let source_shape_id = if let Some(id) = c.source_shape().as_node_id() {
+        let source_shape_binding = c.source_shape();
+        let source_shape_id = if let Some(id) = source_shape_binding.as_node_id() {
             id
         } else {
             return Err("sh:closed can only be used on a node shape".to_string());
