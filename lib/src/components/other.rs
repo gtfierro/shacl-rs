@@ -179,7 +179,7 @@ impl ValidateComponent for ClosedConstraintComponent {
 
                     let object = quad.object.to_owned();
                     error_context.with_value(object.clone());
-                    error_context.with_result_path(predicate.clone());
+                    error_context.with_result_path(oxigraph::model::Term::NamedNode(predicate.clone()));
 
                     let message = format!(
                         "Focus node {:?} has value for property {:?} which is not allowed by sh:closed",
