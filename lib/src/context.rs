@@ -565,6 +565,11 @@ impl Context {
     pub fn with_value(&mut self, value: Term) {
         self.value = Some(value);
     }
+
+    pub fn with_result_path(&mut self, result_path: Term) {
+        // In our implementation, we use a Simple path containing the given term.
+        self.result_path = Some(crate::types::Path::Simple(result_path));
+    }
     
     pub fn with_execution_trace(&mut self, trace: Vec<TraceItem>) {
         self.execution_trace = trace;

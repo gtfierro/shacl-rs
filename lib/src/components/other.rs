@@ -1,4 +1,6 @@
 use crate::context::{format_term_for_label, Context, ValidationContext};
+use crate::Component;
+use crate::types::Path;
 use crate::types::ComponentID;
 use oxigraph::model::{NamedNode, Term};
 use std::collections::HashSet;
