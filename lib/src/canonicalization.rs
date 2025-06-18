@@ -485,3 +485,104 @@ pub fn skolemize(
         Ok(())
     })
 }
+
+/// Replaces skolem IRIs in a graph with blank nodes (Deskolemization).
+///
+/// This is the reverse operation of `skolemize`. It looks for IRIs that start with
+/// a given `base_iri` and replaces them with blank nodes. The identifier for the
+/// new blank node is taken from the part of the IRI that follows the `base_iri`.
+///
+/// The replacement is done within a single transaction to ensure atomicity. The deskolemization
+/// is deterministic: the same skolem IRI will always be mapped to the same blank node for a given
+/// base IRI.
+///
+/// # Arguments
+///
+/// * `store` - The `oxigraph::store::Store` containing the graph to modify.
+/// * `graph_name` - The name of the graph to perform deskolemization on.
+/// * `base_iri` - The base IRI that was used for generating skolem IRIs.
+///
+/// # Errors
+///
+/// Returns a `StorageError` if there are issues with the underlying store during the transaction.
+pub fn deskolemize(
+    store: &Store,
+    graph_name: GraphNameRef,
+    base_iri: &str,
+) -> Result<(), StorageError> {
+    let mut skolem_iris_to_bnode = HashMap::<NamedNode, BlankNode>::new();
+    let mut quads_to_remove = Vec::<Quad>::new();
+    let mut quads_to_add = Vec::<Quad>::new();
+
+    let quads_in_graph: Vec<Quad> = store
+        .quads_for_pattern(None, None, None, Some(graph_name))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for quad in &quads_in_graph {
+        let mut has_skolem_iri = false;
+
+        if let Subject::NamedNode(nn) = &quad.subject {
+            if nn.as_str().starts_with(base_iri) {
+                has_skolem_iri = true;
+            }
+        }
+        if let Term::NamedNode(nn) = &quad.object {
+            if nn.as_str().starts_with(base_iri) {
+                has_skolem_iri = true;
+            }
+        }
+
+        if has_skolem_iri {
+            quads_to_remove.push(quad.clone());
+
+            let new_subject = if let Subject::NamedNode(nn) = &quad.subject {
+                if nn.as_str().starts_with(base_iri) {
+                    let bnode = skolem_iris_to_bnode.entry(nn.clone()).or_insert_with(|| {
+                        let bnode_id = &nn.as_str()[base_iri.len()..];
+                        BlankNode::new_unchecked(bnode_id)
+                    });
+                    Subject::from(bnode.clone())
+                } else {
+                    quad.subject.clone()
+                }
+            } else {
+                quad.subject.clone()
+            };
+
+            let new_object = if let Term::NamedNode(nn) = &quad.object {
+                if nn.as_str().starts_with(base_iri) {
+                    let bnode = skolem_iris_to_bnode.entry(nn.clone()).or_insert_with(|| {
+                        let bnode_id = &nn.as_str()[base_iri.len()..];
+                        BlankNode::new_unchecked(bnode_id)
+                    });
+                    Term::from(bnode.clone())
+                } else {
+                    quad.object.clone()
+                }
+            } else {
+                quad.object.clone()
+            };
+
+            quads_to_add.push(Quad::new(
+                new_subject,
+                quad.predicate.clone(),
+                new_object,
+                quad.graph_name.clone(),
+            ));
+        }
+    }
+
+    if quads_to_add.is_empty() {
+        return Ok(()); // Nothing to do
+    }
+
+    store.transaction(|mut transaction| {
+        for quad in &quads_to_remove {
+            transaction.remove(quad.as_ref())?;
+        }
+        for quad in &quads_to_add {
+            transaction.insert(quad.as_ref())?;
+        }
+        Ok(())
+    })
+}
