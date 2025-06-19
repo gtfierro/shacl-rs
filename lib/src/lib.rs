@@ -1,4 +1,5 @@
-#![allow(dead_code, unused_variables)]
+//! A SHACL validator library.
+#![deny(clippy::all)]
 
 // Publicly visible items
 pub mod components;
@@ -8,8 +9,8 @@ pub mod types;
 pub use report::ValidationReport;
 
 // Internal modules.
-pub mod canonicalization;
-pub mod context;
+pub(crate) mod canonicalization;
+pub(crate) mod context;
 pub(crate) mod named_nodes;
 pub(crate) mod optimize;
 pub(crate) mod parser;
@@ -17,7 +18,7 @@ pub(crate) mod report;
 pub mod test_utils; // Often pub for integration tests
 pub(crate) mod validate;
 
-use context::ValidationContext;
+use crate::context::ValidationContext;
 use std::error::Error;
 
 /// A simple facade for the SHACL validator.
@@ -67,5 +68,13 @@ impl Validator {
     /// their constraints and relationships.
     pub fn to_graphviz(&self) -> Result<String, String> {
         self.context.graphviz()
+    }
+
+    /// Generates a Graphviz DOT string representation of the shapes, with nodes colored by execution frequency.
+    ///
+    /// This can be used to visualize which parts of the shapes graph were most active during validation.
+    /// Note: `validate()` must be called before this method to populate the execution traces.
+    pub fn to_graphviz_heatmap(&self) -> Result<String, String> {
+        self.context.graphviz_heatmap()
     }
 }

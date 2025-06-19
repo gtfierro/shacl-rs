@@ -75,14 +75,28 @@ struct HeatArgs {
     data_file: PathBuf,
 }
 
+#[derive(Parser)]
+struct GraphvizHeatmapArgs {
+    /// Path to the shapes file
+    #[arg(short, long, value_name = "FILE")]
+    shapes_file: PathBuf,
+
+    /// Path to the data file
+    #[arg(short, long, value_name = "FILE")]
+    data_file: PathBuf,
+}
+
 #[derive(clap::Subcommand)]
 enum Commands {
     /// Output the Graphviz DOT string of the shape graph
     Graphviz(GraphvizArgs),
     /// Generate a PDF of the shape graph using Graphviz
     Pdf(PdfArgs),
-    /// Validate the data against the shapes and output a heatmap of component invocations
+    /// Validate the data against the shapes and output a frequency table of component invocations
     Heat(HeatArgs),
+    /// Validate the data and output a graphviz heatmap of the shape graph
+    #[command(name = "graphviz-heatmap")]
+    GraphvizHeatmap(GraphvizHeatmapArgs),
     /// Validate the data against the shapes
     Validate(ValidateArgs),
 }
@@ -186,6 +200,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for ((id, label, item_type), count) in sorted_frequencies {
                 println!("{}\t{}\t{}\t{}", id, label, item_type, count);
             }
+        }
+        Commands::GraphvizHeatmap(args) => {
+            let validator = Validator::from_files(
+                args.shapes_file
+                    .to_str()
+                    .ok_or_else(|| "Invalid shapes file path")?,
+                args.data_file
+                    .to_str()
+                    .ok_or_else(|| "Invalid data file path")?,
+            )
+            .map_err(|e| format!("Error loading files: {}", e))?;
+
+            // Run validation to populate execution traces
+            let _report = validator.validate();
+
+            let dot_string = validator.to_graphviz_heatmap()?;
+            println!("{}", dot_string);
         }
     }
     Ok(())
