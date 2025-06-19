@@ -20,7 +20,7 @@ pub struct ValidationReport<'a> {
 impl<'a> ValidationReport<'a> {
     /// Creates a new ValidationReport.
     /// This is intended for internal use by the library.
-    pub(crate) fn new(builder: ValidationReportBuilder, context: &'a ValidationContext) -> Self {
+    pub fn new(builder: ValidationReportBuilder, context: &'a ValidationContext) -> Self {
         ValidationReport { builder, context }
     }
 
@@ -52,29 +52,29 @@ impl<'a> ValidationReport<'a> {
     }
 }
 
-pub(crate) struct ValidationReportBuilder {
-    pub(crate) results: Vec<(Context, String)>, // Made pub(crate)
+pub struct ValidationReportBuilder {
+    results: Vec<(Context, String)>,
 }
 
 impl ValidationReportBuilder {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         ValidationReportBuilder {
             results: Vec::new(),
         }
     }
 
-    pub(crate) fn add_error(&mut self, context: &Context, error: String) {
+    pub fn add_error(&mut self, context: &Context, error: String) {
         // Store the context by cloning it, as the original context might have a shorter lifetime.
         // The error string is moved.
         self.results.push((context.clone(), error));
         // The println! macro is removed as per the request to track errors instead of printing.
     }
 
-    pub(crate) fn results(&self) -> &[(Context, String)] {
+    pub fn results(&self) -> &[(Context, String)] {
         &self.results
     }
 
-    pub(crate) fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
+    pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
         let sh = SHACL::new();
@@ -179,7 +179,7 @@ impl ValidationReportBuilder {
         graph
     }
 
-    pub(crate) fn to_rdf(
+    pub fn to_rdf(
         &self,
         validation_context: &ValidationContext,
         format: RdfFormat,
@@ -199,14 +199,14 @@ impl ValidationReportBuilder {
         Ok(String::from_utf8(writer)?)
     }
 
-    pub(crate) fn to_turtle(
+    pub fn to_turtle(
         &self,
         validation_context: &ValidationContext,
     ) -> Result<String, Box<dyn Error>> {
         self.to_rdf(validation_context, RdfFormat::Turtle)
     }
 
-    pub(crate) fn dump(&self) {
+    pub fn dump(&self) {
         if self.results.is_empty() {
             println!("Validation report: No errors found.");
             return;
@@ -235,7 +235,7 @@ impl ValidationReportBuilder {
         println!("\n------------------");
     }
 
-    pub(crate) fn merge(&mut self, other: ValidationReportBuilder) {
+    pub fn merge(&mut self, other: ValidationReportBuilder) {
         self.results.extend(other.results);
     }
 }
