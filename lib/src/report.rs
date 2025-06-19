@@ -51,6 +51,11 @@ impl<'a> ValidationReport<'a> {
         self.builder.dump(self.context)
     }
 
+    /// Prints all execution traces to the console for debugging.
+    pub fn print_traces(&self) {
+        self.builder.print_traces(self.context);
+    }
+
     /// Calculates the frequency of each component, node shape, and property shape invocation
     /// across all validation failures.
     ///
@@ -300,6 +305,30 @@ impl ValidationReportBuilder {
             }
         }
         println!("\n------------------");
+    }
+
+    /// Prints all execution traces to the console for debugging.
+    pub(crate) fn print_traces(&self, validation_context: &ValidationContext) {
+        println!("\nExecution Traces:");
+        println!("-----------------");
+        let traces = validation_context.execution_traces.borrow();
+        if traces.is_empty() {
+            println!("No execution traces recorded.");
+            return;
+        }
+
+        for (i, trace) in traces.iter().enumerate() {
+            println!("\nTrace {}:", i);
+            if trace.is_empty() {
+                println!("  (empty trace)");
+                continue;
+            }
+            for item in trace {
+                let (label, item_type) =
+                    validation_context.get_trace_item_label_and_type(item);
+                println!("  - {} ({}) - {}", item.to_string(), item_type, label);
+            }
+        }
     }
 
     /// Merges results from another `ValidationReportBuilder` into this one.
