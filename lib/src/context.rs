@@ -442,6 +442,13 @@ impl ValidationContext {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
+    /// Creates a new execution trace and returns its index.
+    pub(crate) fn new_trace(&self) -> usize {
+        let mut traces = self.execution_traces.borrow_mut();
+        traces.push(Vec::new());
+        traces.len() - 1
+    }
+
     /// Returns a reference to the node shape ID lookup table.
     pub(crate) fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
         &self.nodeshape_id_lookup

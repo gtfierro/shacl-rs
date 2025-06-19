@@ -1,4 +1,4 @@
-use crate::context::{format_term_for_label, Context, ValidationContext};
+use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{Path, TraceItem};
 use oxigraph::io::{RdfFormat, RdfSerializer};

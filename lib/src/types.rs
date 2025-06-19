@@ -250,12 +250,16 @@ impl Target {
         source_shape_id: ID,
     ) -> Result<Vec<Context>, String> {
         match self {
-            Target::Node(t) => Ok(vec![Context::new(
-                t.clone(),
-                None,
-                Some(vec![t.clone()]),
-                SourceShape::NodeShape(source_shape_id),
-            )]),
+            Target::Node(t) => {
+                let trace_index = context.new_trace();
+                Ok(vec![Context::new(
+                    t.clone(),
+                    None,
+                    Some(vec![t.clone()]),
+                    SourceShape::NodeShape(source_shape_id),
+                    trace_index,
+                )])
+            }
             Target::Class(c) => {
                 let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -291,11 +295,13 @@ impl Target {
                             solution
                                 .get("inst")
                                 .map(|term_ref| {
+                                    let trace_index = context.new_trace();
                                     Context::new(
                                         term_ref.to_owned(),
                                         None,
                                         Some(vec![term_ref.clone()]),
                                         SourceShape::NodeShape(source_shape_id),
+                                        trace_index,
                                     )
                                 })
                                 .ok_or_else(|| {
@@ -336,11 +342,13 @@ impl Target {
                                 solution
                                     .get("s")
                                     .map(|term_ref| {
+                                        let trace_index = context.new_trace();
                                         Context::new(
                                             term_ref.to_owned(),
                                             None,
                                             Some(vec![term_ref.clone()]),
-                                            SourceShape::NodeShape(source_shape_id)
+                                            SourceShape::NodeShape(source_shape_id),
+                                            trace_index,
                                         )
                                     })
                                     .ok_or_else(|| {
@@ -381,11 +389,13 @@ impl Target {
                                 solution
                                     .get("o")
                                     .map(|term_ref| {
+                                        let trace_index = context.new_trace();
                                         Context::new(
                                             term_ref.to_owned(),
                                             None,
                                             Some(vec![term_ref.clone()]),
                                             SourceShape::NodeShape(source_shape_id),
+                                            trace_index,
                                         )
                                     })
                                     .ok_or_else(|| {
