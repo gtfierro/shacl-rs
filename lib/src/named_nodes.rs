@@ -3,94 +3,94 @@ use oxigraph::model::NamedNodeRef;
 /// A struct holding static `NamedNodeRef`s for all SHACL vocabulary terms.
 ///
 /// This provides a convenient and performant way to access SHACL IRIs.
-pub struct SHACL {
-    pub class: NamedNodeRef<'static>,
-    pub node: NamedNodeRef<'static>,
-    pub property: NamedNodeRef<'static>,
-    pub qualified_value_shape: NamedNodeRef<'static>,
-    pub qualified_min_count: NamedNodeRef<'static>,
-    pub qualified_max_count: NamedNodeRef<'static>,
-    pub min_count: NamedNodeRef<'static>,
-    pub max_count: NamedNodeRef<'static>,
-    pub qualified_value_shapes_disjoint: NamedNodeRef<'static>,
-    pub not: NamedNodeRef<'static>,
-    pub node_kind: NamedNodeRef<'static>,
-    pub datatype: NamedNodeRef<'static>,
-    pub min_exclusive: NamedNodeRef<'static>,
-    pub min_inclusive: NamedNodeRef<'static>,
-    pub max_exclusive: NamedNodeRef<'static>,
-    pub max_inclusive: NamedNodeRef<'static>,
-    pub min_length: NamedNodeRef<'static>,
-    pub max_length: NamedNodeRef<'static>,
-    pub pattern: NamedNodeRef<'static>,
-    pub flags: NamedNodeRef<'static>,
-    pub language_in: NamedNodeRef<'static>,
-    pub unique_lang: NamedNodeRef<'static>,
-    pub node_shape: NamedNodeRef<'static>,
-    pub property_shape: NamedNodeRef<'static>,
-    pub and_: NamedNodeRef<'static>,
-    pub or_: NamedNodeRef<'static>,
-    pub xone: NamedNodeRef<'static>,
-    pub path: NamedNodeRef<'static>,
-    pub inverse_path: NamedNodeRef<'static>,
-    pub alternative_path: NamedNodeRef<'static>,
-    pub sequence_path: NamedNodeRef<'static>,
-    pub zero_or_more_path: NamedNodeRef<'static>,
-    pub one_or_more_path: NamedNodeRef<'static>,
-    pub zero_or_one_path: NamedNodeRef<'static>,
+pub(crate) struct SHACL {
+    pub(crate) class: NamedNodeRef<'static>,
+    pub(crate) node: NamedNodeRef<'static>,
+    pub(crate) property: NamedNodeRef<'static>,
+    pub(crate) qualified_value_shape: NamedNodeRef<'static>,
+    pub(crate) qualified_min_count: NamedNodeRef<'static>,
+    pub(crate) qualified_max_count: NamedNodeRef<'static>,
+    pub(crate) min_count: NamedNodeRef<'static>,
+    pub(crate) max_count: NamedNodeRef<'static>,
+    pub(crate) qualified_value_shapes_disjoint: NamedNodeRef<'static>,
+    pub(crate) not: NamedNodeRef<'static>,
+    pub(crate) node_kind: NamedNodeRef<'static>,
+    pub(crate) datatype: NamedNodeRef<'static>,
+    pub(crate) min_exclusive: NamedNodeRef<'static>,
+    pub(crate) min_inclusive: NamedNodeRef<'static>,
+    pub(crate) max_exclusive: NamedNodeRef<'static>,
+    pub(crate) max_inclusive: NamedNodeRef<'static>,
+    pub(crate) min_length: NamedNodeRef<'static>,
+    pub(crate) max_length: NamedNodeRef<'static>,
+    pub(crate) pattern: NamedNodeRef<'static>,
+    pub(crate) flags: NamedNodeRef<'static>,
+    pub(crate) language_in: NamedNodeRef<'static>,
+    pub(crate) unique_lang: NamedNodeRef<'static>,
+    pub(crate) node_shape: NamedNodeRef<'static>,
+    pub(crate) property_shape: NamedNodeRef<'static>,
+    pub(crate) and_: NamedNodeRef<'static>,
+    pub(crate) or_: NamedNodeRef<'static>,
+    pub(crate) xone: NamedNodeRef<'static>,
+    pub(crate) path: NamedNodeRef<'static>,
+    pub(crate) inverse_path: NamedNodeRef<'static>,
+    pub(crate) alternative_path: NamedNodeRef<'static>,
+    pub(crate) sequence_path: NamedNodeRef<'static>,
+    pub(crate) zero_or_more_path: NamedNodeRef<'static>,
+    pub(crate) one_or_more_path: NamedNodeRef<'static>,
+    pub(crate) zero_or_one_path: NamedNodeRef<'static>,
 
-    pub target_class: NamedNodeRef<'static>,
-    pub target_node: NamedNodeRef<'static>,
-    pub target_objects_of: NamedNodeRef<'static>,
-    pub target_subjects_of: NamedNodeRef<'static>,
+    pub(crate) target_class: NamedNodeRef<'static>,
+    pub(crate) target_node: NamedNodeRef<'static>,
+    pub(crate) target_objects_of: NamedNodeRef<'static>,
+    pub(crate) target_subjects_of: NamedNodeRef<'static>,
 
-    pub equals: NamedNodeRef<'static>,
-    pub disjoint: NamedNodeRef<'static>,
-    pub less_than: NamedNodeRef<'static>,
-    pub less_than_or_equals: NamedNodeRef<'static>,
+    pub(crate) equals: NamedNodeRef<'static>,
+    pub(crate) disjoint: NamedNodeRef<'static>,
+    pub(crate) less_than: NamedNodeRef<'static>,
+    pub(crate) less_than_or_equals: NamedNodeRef<'static>,
 
-    pub closed: NamedNodeRef<'static>,
-    pub ignored_properties: NamedNodeRef<'static>,
-    pub has_value: NamedNodeRef<'static>,
-    pub in_: NamedNodeRef<'static>, // `in` is a reserved keyword in Rust
+    pub(crate) closed: NamedNodeRef<'static>,
+    pub(crate) ignored_properties: NamedNodeRef<'static>,
+    pub(crate) has_value: NamedNodeRef<'static>,
+    pub(crate) in_: NamedNodeRef<'static>, // `in` is a reserved keyword in Rust
 
     // NodeKind instances
-    pub iri: NamedNodeRef<'static>,
-    pub literal: NamedNodeRef<'static>,
-    pub blank_node: NamedNodeRef<'static>,
-    pub blank_node_or_iri: NamedNodeRef<'static>,
-    pub blank_node_or_literal: NamedNodeRef<'static>,
-    pub iri_or_literal: NamedNodeRef<'static>,
+    pub(crate) iri: NamedNodeRef<'static>,
+    pub(crate) literal: NamedNodeRef<'static>,
+    pub(crate) blank_node: NamedNodeRef<'static>,
+    pub(crate) blank_node_or_iri: NamedNodeRef<'static>,
+    pub(crate) blank_node_or_literal: NamedNodeRef<'static>,
+    pub(crate) iri_or_literal: NamedNodeRef<'static>,
 
     // Severities
-    pub severity: NamedNodeRef<'static>,
-    pub info: NamedNodeRef<'static>,
-    pub warning: NamedNodeRef<'static>,
-    pub violation: NamedNodeRef<'static>,
+    pub(crate) severity: NamedNodeRef<'static>,
+    pub(crate) info: NamedNodeRef<'static>,
+    pub(crate) warning: NamedNodeRef<'static>,
+    pub(crate) violation: NamedNodeRef<'static>,
 
     // SPARQL
-    pub select: NamedNodeRef<'static>,
-    pub deactivated: NamedNodeRef<'static>,
-    pub message: NamedNodeRef<'static>,
-    pub sparql: NamedNodeRef<'static>,
+    pub(crate) select: NamedNodeRef<'static>,
+    pub(crate) deactivated: NamedNodeRef<'static>,
+    pub(crate) message: NamedNodeRef<'static>,
+    pub(crate) sparql: NamedNodeRef<'static>,
 
     // Validation Report
-    pub validation_report: NamedNodeRef<'static>,
-    pub conforms: NamedNodeRef<'static>,
-    pub result: NamedNodeRef<'static>,
-    pub validation_result: NamedNodeRef<'static>,
-    pub focus_node: NamedNodeRef<'static>,
-    pub value: NamedNodeRef<'static>,
-    pub result_path: NamedNodeRef<'static>,
-    pub source_shape: NamedNodeRef<'static>,
-    pub source_constraint_component: NamedNodeRef<'static>,
-    pub result_message: NamedNodeRef<'static>,
-    pub result_severity: NamedNodeRef<'static>,
+    pub(crate) validation_report: NamedNodeRef<'static>,
+    pub(crate) conforms: NamedNodeRef<'static>,
+    pub(crate) result: NamedNodeRef<'static>,
+    pub(crate) validation_result: NamedNodeRef<'static>,
+    pub(crate) focus_node: NamedNodeRef<'static>,
+    pub(crate) value: NamedNodeRef<'static>,
+    pub(crate) result_path: NamedNodeRef<'static>,
+    pub(crate) source_shape: NamedNodeRef<'static>,
+    pub(crate) source_constraint_component: NamedNodeRef<'static>,
+    pub(crate) result_message: NamedNodeRef<'static>,
+    pub(crate) result_severity: NamedNodeRef<'static>,
 }
 
 impl SHACL {
     /// Creates a new `SHACL` instance with all terms initialized.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         SHACL {
             class: NamedNodeRef::new("http://www.w3.org/ns/shacl#class").unwrap(),
             node: NamedNodeRef::new("http://www.w3.org/ns/shacl#node").unwrap(),
@@ -205,19 +205,19 @@ impl SHACL {
 }
 
 /// A struct holding static `NamedNodeRef`s for RDF vocabulary terms.
-pub struct RDF {
-    pub type_: NamedNodeRef<'static>,
-    pub subject: NamedNodeRef<'static>,
-    pub predicate: NamedNodeRef<'static>,
-    pub object: NamedNodeRef<'static>,
-    pub first: NamedNodeRef<'static>,
-    pub rest: NamedNodeRef<'static>,
-    pub nil: NamedNodeRef<'static>,
+pub(crate) struct RDF {
+    pub(crate) type_: NamedNodeRef<'static>,
+    pub(crate) subject: NamedNodeRef<'static>,
+    pub(crate) predicate: NamedNodeRef<'static>,
+    pub(crate) object: NamedNodeRef<'static>,
+    pub(crate) first: NamedNodeRef<'static>,
+    pub(crate) rest: NamedNodeRef<'static>,
+    pub(crate) nil: NamedNodeRef<'static>,
 }
 
 impl RDF {
     /// Creates a new `RDF` instance.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         RDF {
             type_: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").unwrap(),
             subject: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#subject")
@@ -233,16 +233,16 @@ impl RDF {
 }
 
 /// A struct holding static `NamedNodeRef`s for RDFS vocabulary terms.
-pub struct RDFS {
-    pub sub_class_of: NamedNodeRef<'static>,
-    pub label: NamedNodeRef<'static>,
-    pub comment: NamedNodeRef<'static>,
-    pub class: NamedNodeRef<'static>,
+pub(crate) struct RDFS {
+    pub(crate) sub_class_of: NamedNodeRef<'static>,
+    pub(crate) label: NamedNodeRef<'static>,
+    pub(crate) comment: NamedNodeRef<'static>,
+    pub(crate) class: NamedNodeRef<'static>,
 }
 
 impl RDFS {
     /// Creates a new `RDFS` instance.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         RDFS {
             sub_class_of: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#subClassOf")
                 .unwrap(),
@@ -254,13 +254,13 @@ impl RDFS {
 }
 
 /// A struct holding static `NamedNodeRef`s for OWL vocabulary terms.
-pub struct OWL {
-    pub class: NamedNodeRef<'static>,
+pub(crate) struct OWL {
+    pub(crate) class: NamedNodeRef<'static>,
 }
 
 impl OWL {
     /// Creates a new `OWL` instance.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         OWL {
             class: NamedNodeRef::new("http://www.w3.org/2002/07/owl#Class").unwrap(),
         }
@@ -268,18 +268,18 @@ impl OWL {
 }
 
 /// A struct holding static `NamedNodeRef`s for W3C Test Manifest vocabulary terms.
-pub struct MF {
-    pub manifest: NamedNodeRef<'static>,
-    pub entries: NamedNodeRef<'static>,
-    pub action: NamedNodeRef<'static>,
-    pub result: NamedNodeRef<'static>,
-    pub status: NamedNodeRef<'static>,
-    pub include: NamedNodeRef<'static>,
+pub(crate) struct MF {
+    pub(crate) manifest: NamedNodeRef<'static>,
+    pub(crate) entries: NamedNodeRef<'static>,
+    pub(crate) action: NamedNodeRef<'static>,
+    pub(crate) result: NamedNodeRef<'static>,
+    pub(crate) status: NamedNodeRef<'static>,
+    pub(crate) include: NamedNodeRef<'static>,
 }
 
 impl MF {
     /// Creates a new `MF` instance.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         MF {
             manifest: NamedNodeRef::new(
                 "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#Manifest",
@@ -310,15 +310,15 @@ impl MF {
 }
 
 /// A struct holding static `NamedNodeRef`s for SHACL Test Suite vocabulary terms.
-pub struct SHT {
-    pub validate: NamedNodeRef<'static>,
-    pub data_graph: NamedNodeRef<'static>,
-    pub shapes_graph: NamedNodeRef<'static>,
+pub(crate) struct SHT {
+    pub(crate) validate: NamedNodeRef<'static>,
+    pub(crate) data_graph: NamedNodeRef<'static>,
+    pub(crate) shapes_graph: NamedNodeRef<'static>,
 }
 
 impl SHT {
     /// Creates a new `SHT` instance.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         SHT {
             validate: NamedNodeRef::new("http://www.w3.org/ns/shacl-test#Validate").unwrap(),
             data_graph: NamedNodeRef::new("http://www.w3.org/ns/shacl-test#dataGraph").unwrap(),

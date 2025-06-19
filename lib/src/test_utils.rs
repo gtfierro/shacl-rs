@@ -9,26 +9,26 @@ use url::Url;
 
 /// Represents a single test case from a SHACL test suite manifest.
 #[derive(Debug)]
-pub struct TestCase {
+pub(crate) struct TestCase {
     /// The name of the test case.
-    pub name: String,
+    pub(crate) name: String,
     /// Whether the data graph is expected to conform to the shapes graph.
-    pub conforms: bool,
+    pub(crate) conforms: bool,
     /// The path to the data graph file.
-    pub data_graph_path: PathBuf,
+    pub(crate) data_graph_path: PathBuf,
     /// The path to the shapes graph file.
-    pub shapes_graph_path: PathBuf,
+    pub(crate) shapes_graph_path: PathBuf,
     /// The expected validation report graph.
-    pub expected_report: Graph,
+    pub(crate) expected_report: Graph,
 }
 
 /// Represents a parsed SHACL test suite manifest file.
 #[derive(Debug)]
-pub struct Manifest {
+pub(crate) struct Manifest {
     /// The path to the manifest file.
-    pub path: PathBuf,
+    pub(crate) path: PathBuf,
     /// A vector of `TestCase`s included in the manifest.
-    pub test_cases: Vec<TestCase>,
+    pub(crate) test_cases: Vec<TestCase>,
 }
 
 fn resolve_path(base_path: &Path, relative_path: &str) -> PathBuf {
@@ -92,7 +92,7 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
 }
 
 /// Loads and parses a SHACL test suite manifest file from the given path.
-pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
+pub(crate) fn load_manifest(path: &Path) -> Result<Manifest, String> {
     let manifest_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read manifest file {}: {}", path.display(), e))?;
 

@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 /// Each unique subject and object in the oxigraph graph becomes a node in the petgraph graph.
 /// Each triple becomes a directed edge from the subject node to the object node, with the
 /// predicate as the edge weight.
-pub fn oxigraph_to_petgraph(ox_graph: &Graph) -> DiGraph<Term, NamedNode> {
+pub(crate) fn oxigraph_to_petgraph(ox_graph: &Graph) -> DiGraph<Term, NamedNode> {
     let mut pg_graph = DiGraph::<Term, NamedNode>::new();
     let mut node_map = HashMap::<Term, NodeIndex>::new();
 
@@ -49,7 +49,7 @@ fn node_equality(n1: &Term, n2: &Term) -> bool {
 /// This is done by converting both graphs to `petgraph` directed graphs and then
 /// using `petgraph::algo::is_isomorphic` to check for isomorphism, which correctly
 /// handles blank nodes.
-pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
+pub(crate) fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     let pg1 = oxigraph_to_petgraph(g1);
     let pg2 = oxigraph_to_petgraph(g2);
 
@@ -59,18 +59,18 @@ pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
 }
 
 /// Contains the results of a graph diff operation.
-pub struct GraphDiff {
+pub(crate) struct GraphDiff {
     /// Triples that are in both graphs.
-    pub in_both: Graph,
+    pub(crate) in_both: Graph,
     /// Triples that are only in the first graph.
-    pub in_first: Graph,
+    pub(crate) in_first: Graph,
     /// Triples that are only in the second graph.
-    pub in_second: Graph,
+    pub(crate) in_second: Graph,
 }
 
 impl GraphDiff {
     /// Prints the contents of the graph diff to the console for debugging.
-    pub fn dump(&self) {
+    pub(crate) fn dump(&self) {
         println!("unique to first");
         for triple in self.in_first.iter() {
             println!("{:?}", triple);
@@ -89,7 +89,7 @@ impl GraphDiff {
 /// - `in_both`: triples present in both graphs.
 /// - `in_first`: triples present only in the first graph.
 /// - `in_second`: triples present only in the second graph.
-pub fn graph_diff(g1: &Graph, g2: &Graph) -> GraphDiff {
+pub(crate) fn graph_diff(g1: &Graph, g2: &Graph) -> GraphDiff {
     let cg1 = to_canonical_graph(g1);
     let cg2 = to_canonical_graph(g2);
 
@@ -122,7 +122,7 @@ pub fn graph_diff(g1: &Graph, g2: &Graph) -> GraphDiff {
 /// with deterministic, content-based identifiers.
 ///
 /// This allows for meaningful comparison of graphs that contain blank nodes.
-pub fn to_canonical_graph(graph: &Graph) -> Graph {
+pub(crate) fn to_canonical_graph(graph: &Graph) -> Graph {
     let mut canonicalizer = TripleCanonicalizer::new(graph);
     let bnode_labels = canonicalizer.get_bnode_labels();
 
@@ -420,7 +420,7 @@ impl<'a> TripleCanonicalizer<'a> {
 /// # Errors
 ///
 /// Returns a `StorageError` if there are issues with the underlying store during the transaction.
-pub fn skolemize(
+pub(crate) fn skolemize(
     store: &Store,
     graph_name: GraphNameRef,
     base_iri: &str,
@@ -507,7 +507,7 @@ pub fn skolemize(
 /// # Errors
 ///
 /// Returns a `StorageError` if there are issues with the underlying store during the transaction.
-pub fn deskolemize(
+pub(crate) fn deskolemize(
     store: &Store,
     graph_name: GraphNameRef,
     base_iri: &str,
@@ -603,7 +603,7 @@ pub fn deskolemize(
 /// # Returns
 ///
 /// A new `Graph` with skolem IRIs replaced by blank nodes.
-pub fn deskolemize_graph(graph: &Graph, base_iri: &str) -> Graph {
+pub(crate) fn deskolemize_graph(graph: &Graph, base_iri: &str) -> Graph {
     let mut skolem_iris_to_bnode = HashMap::<NamedNode, BlankNode>::new();
     let mut new_graph = Graph::new();
 

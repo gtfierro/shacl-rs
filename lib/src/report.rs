@@ -1,6 +1,6 @@
-use crate::context::{Context, TraceItem, ValidationContext};
+use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
-use crate::types::Path;
+use crate::types::{Path, TraceItem};
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::vocab::rdf;
 use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term, Triple};
@@ -20,7 +20,7 @@ pub struct ValidationReport<'a> {
 impl<'a> ValidationReport<'a> {
     /// Creates a new ValidationReport.
     /// This is intended for internal use by the library.
-    pub fn new(builder: ValidationReportBuilder, context: &'a ValidationContext) -> Self {
+    pub(crate) fn new(builder: ValidationReportBuilder, context: &'a ValidationContext) -> Self {
         ValidationReport { builder, context }
     }
 
@@ -64,13 +64,13 @@ impl<'a> ValidationReport<'a> {
 ///
 /// It collects validation results and can then be used to generate
 /// the final report in various formats.
-pub struct ValidationReportBuilder {
+pub(crate) struct ValidationReportBuilder {
     results: Vec<(Context, String)>,
 }
 
 impl ValidationReportBuilder {
     /// Creates a new, empty `ValidationReportBuilder`.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ValidationReportBuilder {
             results: Vec::new(),
         }
@@ -82,7 +82,7 @@ impl ValidationReportBuilder {
     ///
     /// * `context` - The validation `Context` at the time of the failure.
     /// * `error` - A string message describing the validation error.
-    pub fn add_error(&mut self, context: &Context, error: String) {
+    pub(crate) fn add_error(&mut self, context: &Context, error: String) {
         // Store the context by cloning it, as the original context might have a shorter lifetime.
         // The error string is moved.
         self.results.push((context.clone(), error));
@@ -91,7 +91,7 @@ impl ValidationReportBuilder {
 
     /// Returns a slice of the validation results collected so far.
     /// Each item is a tuple containing the `Context` of the failure and the error message.
-    pub fn results(&self) -> &[(Context, String)] {
+    pub(crate) fn results(&self) -> &[(Context, String)] {
         &self.results
     }
 
@@ -107,7 +107,7 @@ impl ValidationReportBuilder {
     /// # Returns
     ///
     /// A `HashMap` where the key is a tuple of (ID String, Label, Type) and the value is the count.
-    pub fn get_component_frequencies(
+    pub(crate) fn get_component_frequencies(
         &self,
         validation_context: &ValidationContext,
     ) -> HashMap<(String, String, String), usize> {
@@ -123,7 +123,7 @@ impl ValidationReportBuilder {
     }
 
     /// Constructs an `oxigraph::model::Graph` representing the validation report.
-    pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
+    pub(crate) fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
         let sh = SHACL::new();
@@ -229,7 +229,7 @@ impl ValidationReportBuilder {
     }
 
     /// Serializes the validation report to a string in the specified RDF format.
-    pub fn to_rdf(
+    pub(crate) fn to_rdf(
         &self,
         validation_context: &ValidationContext,
         format: RdfFormat,
@@ -250,7 +250,7 @@ impl ValidationReportBuilder {
     }
 
     /// Serializes the validation report to a string in Turtle format.
-    pub fn to_turtle(
+    pub(crate) fn to_turtle(
         &self,
         validation_context: &ValidationContext,
     ) -> Result<String, Box<dyn Error>> {
@@ -258,7 +258,7 @@ impl ValidationReportBuilder {
     }
 
     /// Dumps a summary of the validation report to the console for debugging.
-    pub fn dump(&self, validation_context: &ValidationContext) {
+    pub(crate) fn dump(&self, validation_context: &ValidationContext) {
         if self.results.is_empty() {
             println!("Validation report: No errors found.");
             return;
@@ -298,7 +298,7 @@ impl ValidationReportBuilder {
     }
 
     /// Merges results from another `ValidationReportBuilder` into this one.
-    pub fn merge(&mut self, other: ValidationReportBuilder) {
+    pub(crate) fn merge(&mut self, other: ValidationReportBuilder) {
         self.results.extend(other.results);
     }
 }

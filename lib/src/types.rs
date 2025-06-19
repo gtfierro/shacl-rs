@@ -7,7 +7,7 @@ use std::hash::Hash; // Added Hash for derived traits
 
 /// A unique identifier for a `Term` within the validation context, derived from its hash.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TermID(pub u64);
+pub(crate) struct TermID(pub u64);
 
 /// A unique identifier for a `NodeShape`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -54,7 +54,7 @@ impl ComponentID {
         format!("c{}", self.0)
     }
     /// Retrieves the name (Term) of the component from the validation context.
-    pub fn name(&self, context: &ValidationContext) -> String {
+    pub(crate) fn name(&self, context: &ValidationContext) -> String {
         context
             .component_id_lookup
             .borrow()
@@ -207,7 +207,7 @@ impl Default for Severity {
 
 impl Severity {
     /// Creates a `Severity` from a `Term` if it matches a SHACL severity IRI.
-    pub fn from_term(term: &Term) -> Option<Self> {
+    pub(crate) fn from_term(term: &Term) -> Option<Self> {
         let shacl = SHACL::new();
         if let Term::NamedNode(nn) = term {
             if *nn == shacl.info {
@@ -228,7 +228,7 @@ impl Severity {
 
 impl Target {
     /// Creates a `Target` from a predicate and object `TermRef` if they correspond to a known SHACL target property.
-    pub fn from_predicate_object(predicate: NamedNodeRef, object: TermRef) -> Option<Self> {
+    pub(crate) fn from_predicate_object(predicate: NamedNodeRef, object: TermRef) -> Option<Self> {
         let shacl = SHACL::new();
         if predicate == shacl.target_class {
             Some(Target::Class(object.into_owned()))
@@ -244,7 +244,7 @@ impl Target {
     }
 
     /// Retrieves the set of focus nodes for this target from the data graph.
-    pub fn get_target_nodes(
+    pub(crate) fn get_target_nodes(
         &self,
         context: &ValidationContext,
         source_shape_id: ID,
@@ -400,6 +400,28 @@ impl Target {
                     Ok(vec![]) // Predicate for ObjectsOf must be an IRI
                 }
             }
+        }
+    }
+}
+
+/// An item in the execution trace of a validation, used for debugging and reporting.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TraceItem {
+    /// A `NodeShape` was visited.
+    NodeShape(ID),
+    /// A `PropertyShape` was visited.
+    PropertyShape(PropShapeID),
+    /// A `Component` was validated.
+    Component(ComponentID),
+}
+
+impl TraceItem {
+    /// Returns a string representation of the trace item.
+    pub fn to_string(&self) -> String {
+        match self {
+            TraceItem::NodeShape(id) => format!("NodeShape({})", id.to_graphviz_id()),
+            TraceItem::PropertyShape(id) => format!("PropertyShape({})", id.to_graphviz_id()),
+            TraceItem::Component(id) => format!("Component({})", id.to_graphviz_id()),
         }
     }
 }

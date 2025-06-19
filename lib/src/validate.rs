@@ -66,7 +66,7 @@ impl PropertyShape {
     /// This involves finding the value nodes for the property shape's path from the
     /// focus node in the `focus_context`, and then validating those value nodes
     /// against all the constraints of this property shape.
-    pub fn validate(
+    pub(crate) fn validate(
         &self,
         focus_context: &mut Context,
         context: &ValidationContext,

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 
 /// Runs the parser to discover all shapes and components from the shapes graph
 /// and populates them into the `ValidationContext`.
-pub fn run_parser(context: &mut ValidationContext) -> Result<(), String> {
+pub(crate) fn run_parser(context: &mut ValidationContext) -> Result<(), String> {
     // parses the shape graph to get all of the shapes and components defined within
     let shapes = get_node_shapes(context);
     for shape in shapes {
@@ -407,7 +407,7 @@ fn parse_shacl_path_recursive(
 }
 
 /// Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
-pub fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) -> Vec<Term> {
+pub(crate) fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) -> Vec<Term> {
     let mut items: Vec<Term> = Vec::new();
     let rdf = RDF::new();
     let mut current_term = list_head_term;

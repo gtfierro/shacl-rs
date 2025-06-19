@@ -27,7 +27,7 @@ pub use value_type::*;
 
 /// The result of validating a single value node against a constraint component.
 #[derive(Debug, Clone)]
-pub enum ComponentValidationResult {
+pub(crate) enum ComponentValidationResult {
     /// Indicates that the validation passed. Contains the context of the validation.
     Pass(Context),
     /// Indicates that the validation failed. Contains the context and details of the failure.
@@ -37,7 +37,7 @@ pub enum ComponentValidationResult {
 /// The result of a conformance check for a node against a shape.
 /// Used by logical constraints like `sh:not`, `sh:and`, etc.
 #[derive(Debug, Clone)]
-pub enum ConformanceReport {
+pub(crate) enum ConformanceReport {
     /// The node conforms to the shape.
     Conforms,
     /// The node does not conform to the shape, with details of the first failure.
@@ -46,7 +46,7 @@ pub enum ConformanceReport {
 
 /// Details about a single validation failure.
 #[derive(Debug, Clone)]
-pub struct ValidationFailure {
+pub(crate) struct ValidationFailure {
     /// The ID of the component that was violated.
     pub component_id: ComponentID,
     /// The specific value node that failed validation, if applicable.
@@ -60,7 +60,7 @@ pub struct ValidationFailure {
 /// This is a utility trait to handle cases where a `Term` that is expected
 /// to be a subject (IRI or Blank Node) needs to be used in a context that
 /// requires a `SubjectRef`.
-pub trait ToSubjectRef {
+pub(crate) trait ToSubjectRef {
     /// Converts to `SubjectRef`, panicking if the term is a `Literal`.
     fn to_subject_ref(&self) -> SubjectRef<'_>;
     /// Tries to convert to `SubjectRef`, returning a `Result`.
@@ -102,7 +102,7 @@ impl<'a> ToSubjectRef for TermRef<'a> {
 /// This function iterates through all known SHACL constraint properties (e.g., `sh:class`, `sh:minCount`)
 /// and creates the corresponding `Component` structs if they are present on the `start` term.
 /// The created components are returned in a `HashMap` keyed by their `ComponentID`.
-pub fn parse_components(
+pub(crate) fn parse_components(
     start: TermRef,
     context: &mut ValidationContext,
 ) -> HashMap<ComponentID, Component> {
@@ -696,7 +696,7 @@ pub fn parse_components(
 }
 
 /// A trait for components that can be represented in Graphviz DOT format.
-pub trait GraphvizOutput {
+pub(crate) trait GraphvizOutput {
     /// Generates a Graphviz DOT string representation for the component.
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String;
     /// Returns the SHACL IRI for the component type (e.g., `sh:MinCountConstraintComponent`).
@@ -704,7 +704,7 @@ pub trait GraphvizOutput {
 }
 
 /// A trait for constraint components that can perform validation.
-pub trait ValidateComponent {
+pub(crate) trait ValidateComponent {
     /// Validates the given context against the component's logic.
     ///
     /// # Arguments
@@ -727,7 +727,7 @@ pub trait ValidateComponent {
 
 /// An enum representing any of the SHACL constraint components.
 #[derive(Debug)]
-pub enum Component {
+pub(crate) enum Component {
     /// `sh:node`
     NodeConstraint(NodeConstraintComponent),
     /// `sh:property`
@@ -804,7 +804,7 @@ pub enum Component {
 
 impl Component {
     /// Returns a human-readable label for the component type.
-    pub fn label(&self) -> String {
+    pub(crate) fn label(&self) -> String {
         match self {
             Component::NodeConstraint(_) => "NodeConstraint".to_string(),
             Component::PropertyConstraint(_) => "PropertyConstraint".to_string(),
@@ -846,7 +846,7 @@ impl Component {
     }
 
     /// Delegates to the inner component to get its SHACL IRI type.
-    pub fn component_type(&self) -> NamedNode {
+    pub(crate) fn component_type(&self) -> NamedNode {
         match self {
             Component::NodeConstraint(c) => c.component_type(),
             Component::PropertyConstraint(c) => c.component_type(),
@@ -881,7 +881,7 @@ impl Component {
     }
 
     /// Delegates to the inner component to generate its Graphviz representation.
-    pub fn to_graphviz_string(
+    pub(crate) fn to_graphviz_string(
         &self,
         component_id: ComponentID,
         context: &ValidationContext,
@@ -920,7 +920,7 @@ impl Component {
     }
 
     /// Delegates validation to the specific inner component.
-    pub fn validate(
+    pub(crate) fn validate(
         &self,
         component_id: ComponentID,
         c: &mut Context,
@@ -965,7 +965,7 @@ impl Component {
 /// Checks if a given node (represented by `node_as_context`) conforms to the `shape_to_check_against`.
 /// Returns a `ConformanceReport` indicating success or detailing the first validation failure.
 /// Returns `Err(String)` for an internal processing error.
-pub(super) fn check_conformance_for_node(
+pub(crate) fn check_conformance_for_node(
     node_as_context: &mut Context,
     shape_to_check_against: &NodeShape,
     main_validation_context: &ValidationContext,

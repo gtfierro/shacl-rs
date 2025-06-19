@@ -1,22 +1,23 @@
 #![allow(dead_code, unused_variables)]
 
-// Public modules defining the public API.
-pub mod context;
-pub mod report;
-pub mod test_utils; // Often pub for integration tests
+// Publicly visible items
+pub mod components;
+pub mod shape;
+pub mod types;
+
+pub use report::ValidationReport;
 
 // Internal modules.
-mod canonicalization;
-mod components;
-mod named_nodes;
-mod optimize;
-mod parser;
-mod shape;
-mod types;
-mod validate;
+pub(crate) mod canonicalization;
+pub(crate) mod context;
+pub(crate) mod named_nodes;
+pub(crate) mod optimize;
+pub(crate) mod parser;
+pub(crate) mod report;
+pub(crate) mod test_utils; // Often pub for integration tests
+pub(crate) mod validate;
 
 use context::ValidationContext;
-use report::ValidationReport;
 use std::error::Error;
 
 /// A simple facade for the SHACL validator.

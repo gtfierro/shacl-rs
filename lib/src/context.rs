@@ -4,7 +4,7 @@ use crate::optimize::Optimizer;
 use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TermID, ID};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TermID, TraceItem, ID};
 use log::{debug, error, info};
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
@@ -27,12 +27,12 @@ const SHAPE_GRAPH_IRI: &str = "urn:shape_graph";
 const DATA_GRAPH_IRI: &str = "urn:data_graph";
 
 /// Filters a string to keep only alphanumeric characters, for use in Graphviz identifiers.
-pub fn sanitize_graphviz_string(input: &str) -> String {
+pub(crate) fn sanitize_graphviz_string(input: &str) -> String {
     input.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
 /// Formats a `Term` for display in a Graphviz label, typically by extracting the local name of an IRI.
-pub fn format_term_for_label(term: &Term) -> String {
+pub(crate) fn format_term_for_label(term: &Term) -> String {
     match term {
         Term::NamedNode(nn) => {
             let iri_str = nn.as_str();
@@ -65,7 +65,7 @@ pub fn format_term_for_label(term: &Term) -> String {
 ///
 /// This is used to efficiently reference shapes and components using simple integer IDs
 /// instead of complex `Term` objects.
-pub struct IDLookupTable<IdType: Copy + Eq + Hash> {
+pub(crate) struct IDLookupTable<IdType: Copy + Eq + Hash> {
     id_map: std::collections::HashMap<Term, IdType>,
     id_to_term: std::collections::HashMap<IdType, Term>,
     next_id: u64, // Internal counter remains u64
@@ -73,7 +73,7 @@ pub struct IDLookupTable<IdType: Copy + Eq + Hash> {
 
 impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
     /// Creates a new, empty `IDLookupTable`.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         IDLookupTable {
             id_map: std::collections::HashMap::new(),
             id_to_term: std::collections::HashMap::new(),
@@ -82,7 +82,7 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
     }
 
     /// Returns an ID for the given term, creating a new ID if it doesn't exist.
-    pub fn get_or_create_id(&mut self, term: Term) -> IdType {
+    pub(crate) fn get_or_create_id(&mut self, term: Term) -> IdType {
         if let Some(&id) = self.id_map.get(&term) {
             id
         } else {
@@ -96,12 +96,12 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
     }
 
     /// Looks up the ID for a given term.
-    pub fn get(&self, term: &Term) -> Option<IdType> {
+    pub(crate) fn get(&self, term: &Term) -> Option<IdType> {
         self.id_map.get(term).map(|id| id.to_owned())
     }
 
     /// Returns the term associated with the given ID.
-    pub fn get_term(&self, id: IdType) -> Option<&Term> {
+    pub(crate) fn get_term(&self, id: IdType) -> Option<&Term> {
         self.id_to_term.get(&id)
     }
 }
@@ -111,32 +111,32 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
 /// It holds the shapes and data graphs, parsed shapes, and other
 /// contextual information needed for validation. This provides an
 /// advanced API for users who need more control than the simple `Validator` facade.
-pub struct ValidationContext {
+pub(crate) struct ValidationContext {
     /// Lookup table for node shape `Term`s to `ID`s.
-    pub nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
+    pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
     /// Lookup table for property shape `Term`s to `PropShapeID`s.
-    pub propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
+    pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
     /// Lookup table for component `Term`s to `ComponentID`s.
-    pub component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
+    pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
     /// The Oxigraph `Store` containing both shapes and data graphs.
-    pub store: Store,
+    pub(crate) store: Store,
     /// The `NamedNode` identifying the shapes graph.
-    pub shape_graph_iri: NamedNode,
+    pub(crate) shape_graph_iri: NamedNode,
     /// The `NamedNode` identifying the data graph.
-    pub data_graph_iri: NamedNode,
+    pub(crate) data_graph_iri: NamedNode,
     /// A map from `ID` to the parsed `NodeShape`.
-    pub node_shapes: HashMap<ID, NodeShape>,
+    pub(crate) node_shapes: HashMap<ID, NodeShape>,
     /// A map from `PropShapeID` to the parsed `PropertyShape`.
-    pub prop_shapes: HashMap<PropShapeID, PropertyShape>,
+    pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     /// A map from `ComponentID` to the parsed `Component`.
-    pub components: HashMap<ComponentID, Component>,
+    pub(crate) components: HashMap<ComponentID, Component>,
     term_to_hash: FastMap<TermID, Term>,
     env: OntoEnv,
 }
 
 impl ValidationContext {
     /// Creates a new `ValidationContext` with the given store and graph IRIs.
-    pub fn new(
+    pub(crate) fn new(
         store: Store,
         env: OntoEnv,
         shape_graph_iri: NamedNode,
@@ -158,7 +158,7 @@ impl ValidationContext {
     }
 
     /// Computes a hash for a `Term` and stores the mapping if not already present.
-    pub fn term_to_hash(&mut self, term: Term) -> TermID {
+    pub(crate) fn term_to_hash(&mut self, term: Term) -> TermID {
         let map = self.term_to_hash.pin();
         let hash = TermID(xxh3_64(term.to_string().as_bytes()));
         if !map.contains_key(&hash) {
@@ -169,14 +169,14 @@ impl ValidationContext {
     }
 
     /// Retrieves a `Term` from its hash.
-    pub fn hash_to_term(&self, hash: TermID) -> Option<Term> {
+    pub(crate) fn hash_to_term(&self, hash: TermID) -> Option<Term> {
         // Searches for a term with the given hash
         let map = self.term_to_hash.pin();
         map.get(&hash).cloned()
     }
 
     /// Validates the loaded data graph against the loaded shapes graph.
-    pub fn validate(&self) -> ValidationReportBuilder {
+    pub(crate) fn validate(&self) -> ValidationReportBuilder {
         let mut b = ValidationReportBuilder::new();
         info!("Validating NodeShapes and PropertyShapes in the context");
         for node_shape in self.node_shapes.values() {
@@ -193,7 +193,7 @@ impl ValidationContext {
     }
 
     /// Dumps the internal state of the parsed shapes for debugging.
-    pub fn dump(&self) {
+    pub(crate) fn dump(&self) {
         // print all of the shapes
         for shape in self.node_shapes.values() {
             debug!("{:?}", shape);
@@ -201,7 +201,7 @@ impl ValidationContext {
     }
 
     /// Generates a Graphviz DOT string representation of the shapes.
-    pub fn graphviz(&self) -> Result<String, String> {
+    pub(crate) fn graphviz(&self) -> Result<String, String> {
         let mut dot_string = String::new();
         // print all node shapes
         dot_string.push_str("digraph {\n");
@@ -286,7 +286,7 @@ impl ValidationContext {
     }
 
     /// Creates a new `ValidationContext` by loading shapes and data from files.
-    pub fn from_files(
+    pub(crate) fn from_files(
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
@@ -400,80 +400,80 @@ impl ValidationContext {
     }
 
     /// Parses an RDF list from the shapes graph, starting from the given head term.
-    pub fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
+    pub(crate) fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
         parser::parse_rdf_list(self, list_head_term)
     }
 
     /// Returns a reference to the underlying `Store`.
-    pub fn store(&self) -> &Store {
+    pub(crate) fn store(&self) -> &Store {
         &self.store
     }
 
     /// Returns a reference to the `OntoEnv`.
-    pub fn env(&self) -> &OntoEnv {
+    pub(crate) fn env(&self) -> &OntoEnv {
         &self.env
     }
 
     /// Returns the shapes graph IRI as a `GraphNameRef`.
-    pub fn shape_graph_iri_ref(&self) -> GraphNameRef<'_> {
+    pub(crate) fn shape_graph_iri_ref(&self) -> GraphNameRef<'_> {
         GraphNameRef::NamedNode(self.shape_graph_iri.as_ref())
     }
 
     /// Returns the data graph IRI as a `GraphNameRef`.
-    pub fn data_graph_iri_ref(&self) -> GraphNameRef<'_> {
+    pub(crate) fn data_graph_iri_ref(&self) -> GraphNameRef<'_> {
         GraphNameRef::NamedNode(self.data_graph_iri.as_ref())
     }
 
     /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
-    pub fn get_or_create_node_id(&self, term: Term) -> ID {
+    pub(crate) fn get_or_create_node_id(&self, term: Term) -> ID {
         self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     /// Returns an ID for the given term, creating a new one if necessary for a PropertyShape.
-    pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
+    pub(crate) fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
         self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
-    pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
+    pub(crate) fn get_or_create_component_id(&self, term: Term) -> ComponentID {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     /// Returns a reference to the node shape ID lookup table.
-    pub fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
+    pub(crate) fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
         &self.nodeshape_id_lookup
     }
 
     /// Returns a reference to the property shape ID lookup table.
-    pub fn propshape_id_lookup(&self) -> &RefCell<IDLookupTable<PropShapeID>> {
+    pub(crate) fn propshape_id_lookup(&self) -> &RefCell<IDLookupTable<PropShapeID>> {
         &self.propshape_id_lookup
     }
 
     /// Retrieves a component by its `ComponentID`.
-    pub fn get_component_by_id(&self, id: &ComponentID) -> Option<&Component> {
+    pub(crate) fn get_component_by_id(&self, id: &ComponentID) -> Option<&Component> {
         // Returns a reference to the component by its ID
         self.components.get(id)
     }
 
     /// Retrieves a property shape by its `PropShapeID`.
-    pub fn get_prop_shape_by_id(&self, id: &PropShapeID) -> Option<&PropertyShape> {
+    pub(crate) fn get_prop_shape_by_id(&self, id: &PropShapeID) -> Option<&PropertyShape> {
         // Returns a reference to the PropertyShape by its ID
         self.prop_shapes.get(id)
     }
 
     /// Retrieves a node shape by its `ID`.
-    pub fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
+    pub(crate) fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
         // Returns a reference to the NodeShape by its ID
         self.node_shapes.get(id)
     }
 
     /// Returns a reference to the map of node shapes.
-    pub fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
+    pub(crate) fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
         &self.node_shapes
     }
 
     /// Gets a human-readable label and type string for a `TraceItem`.
-    pub fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
+    pub(crate) fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
         match item {
             TraceItem::NodeShape(id) => {
                 let label = self.nodeshape_id_lookup.borrow().get_term(*id).map_or_else(
@@ -505,7 +505,7 @@ impl ValidationContext {
 
 /// Identifies the source shape that initiated a validation context, either a node or property shape.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum SourceShape {
+pub(crate) enum SourceShape {
     /// The source was a `NodeShape`.
     NodeShape(ID),
     /// The source was a `PropertyShape`.
@@ -523,21 +523,21 @@ impl fmt::Display for SourceShape {
 
 impl SourceShape {
     /// Returns the `PropShapeID` if the source is a property shape.
-    pub fn as_prop_id(&self) -> Option<&PropShapeID> {
+    pub(crate) fn as_prop_id(&self) -> Option<&PropShapeID> {
         match self {
             SourceShape::PropertyShape(id) => Some(id),
             _ => None,
         }
     }
     /// Returns the `ID` if the source is a node shape.
-    pub fn as_node_id(&self) -> Option<&ID> {
+    pub(crate) fn as_node_id(&self) -> Option<&ID> {
         match self {
             SourceShape::NodeShape(id) => Some(id),
             _ => None,
         }
     }
     /// Retrieves the original `Term` of the source shape from the context.
-    pub fn get_term(&self, ctx: &ValidationContext) -> Option<Term> {
+    pub(crate) fn get_term(&self, ctx: &ValidationContext) -> Option<Term> {
         match self {
             SourceShape::NodeShape(id) => ctx
                 .nodeshape_id_lookup()
@@ -553,37 +553,15 @@ impl SourceShape {
     }
 }
 
-/// An item in the execution trace of a validation, used for debugging and reporting.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TraceItem {
-    /// A `NodeShape` was visited.
-    NodeShape(ID),
-    /// A `PropertyShape` was visited.
-    PropertyShape(PropShapeID),
-    /// A `Component` was validated.
-    Component(ComponentID),
-}
-
-impl TraceItem {
-    /// Returns a string representation of the trace item.
-    pub fn to_string(&self) -> String {
-        match self {
-            TraceItem::NodeShape(id) => format!("NodeShape({})", id.to_graphviz_id()),
-            TraceItem::PropertyShape(id) => format!("PropertyShape({})", id.to_graphviz_id()),
-            TraceItem::Component(id) => format!("Component({})", id.to_graphviz_id()),
-        }
-    }
-}
-
 /// Represents the state of a validation process at a specific point.
 ///
 /// It contains the focus node, the path taken to reach the current value nodes,
 /// the value nodes themselves, and an execution trace for debugging.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Context {
+pub(crate) struct Context {
     focus_node: Term,
     /// The property path that led to the current value nodes.
-    pub result_path: Option<PShapePath>,
+    pub(crate) result_path: Option<PShapePath>,
     value_nodes: Option<Vec<Term>>,
     value: Option<Term>, // something that violated a component
     source_shape: SourceShape,
@@ -592,7 +570,7 @@ pub struct Context {
 
 impl Context {
     /// Creates a new `Context` for a validation process.
-    pub fn new(
+    pub(crate) fn new(
         focus_node: Term,
         result_path: Option<PShapePath>,
         value_nodes: Option<Vec<Term>>,
@@ -609,7 +587,7 @@ impl Context {
     }
 
     /// Adds value nodes to the context.
-    pub fn add_value_nodes(&mut self, value_nodes: &[Term]) {
+    pub(crate) fn add_value_nodes(&mut self, value_nodes: &[Term]) {
         if let Some(existing) = &mut self.value_nodes {
             existing.extend(value_nodes.iter().cloned());
         } else {
@@ -618,70 +596,70 @@ impl Context {
     }
 
     /// Sets the specific value that violated a constraint.
-    pub fn with_value(&mut self, value: Term) {
+    pub(crate) fn with_value(&mut self, value: Term) {
         self.value = Some(value);
     }
 
     /// Sets the result path for the context.
-    pub fn with_result_path(&mut self, result_path: Term) {
+    pub(crate) fn with_result_path(&mut self, result_path: Term) {
         // In our implementation, we use a Simple path containing the given term.
         self.result_path = Some(crate::types::Path::Simple(result_path));
     }
 
     /// Sets the execution trace for the context.
-    pub fn with_execution_trace(&mut self, trace: Vec<TraceItem>) {
+    pub(crate) fn with_execution_trace(&mut self, trace: Vec<TraceItem>) {
         self.execution_trace = trace;
     }
 
     /// Returns the specific value that violated a constraint, if any.
-    pub fn value(&self) -> Option<&Term> {
+    pub(crate) fn value(&self) -> Option<&Term> {
         self.value.as_ref()
     }
 
     /// Returns the focus node for the current validation.
-    pub fn focus_node(&self) -> &Term {
+    pub(crate) fn focus_node(&self) -> &Term {
         &self.focus_node
     }
 
     /// Returns the property path that led to the current value nodes.
-    pub fn result_path(&self) -> Option<&PShapePath> {
+    pub(crate) fn result_path(&self) -> Option<&PShapePath> {
         self.result_path.as_ref()
     }
 
     /// Returns the set of value nodes being validated.
-    pub fn value_nodes(&self) -> Option<&Vec<Term>> {
+    pub(crate) fn value_nodes(&self) -> Option<&Vec<Term>> {
         self.value_nodes.as_ref()
     }
 
     /// Returns the number of value nodes.
-    pub fn num_value_nodes(&self) -> usize {
+    pub(crate) fn num_value_nodes(&self) -> usize {
         self.value_nodes.as_ref().map_or(0, |v| v.len())
     }
 
     /// Returns the source shape that initiated this validation context.
-    pub fn source_shape(&self) -> SourceShape {
+    pub(crate) fn source_shape(&self) -> SourceShape {
         self.source_shape.clone()
     }
 
     /// Records that a `NodeShape` was visited in the execution trace.
-    pub fn record_node_shape_visit(&mut self, shape_id: ID) {
+    pub(crate) fn record_node_shape_visit(&mut self, shape_id: ID) {
         self.execution_trace.push(TraceItem::NodeShape(shape_id));
     }
 
     /// Records that a `PropertyShape` was visited in the execution trace.
-    pub fn record_property_shape_visit(&mut self, shape_id: PropShapeID) {
+    pub(crate) fn record_property_shape_visit(&mut self, shape_id: PropShapeID) {
         self.execution_trace
             .push(TraceItem::PropertyShape(shape_id));
     }
 
     /// Records that a `Component` was validated in the execution trace.
-    pub fn record_component_visit(&mut self, component_id: ComponentID) {
+    pub(crate) fn record_component_visit(&mut self, component_id: ComponentID) {
         self.execution_trace
             .push(TraceItem::Component(component_id));
     }
 
     /// Returns the execution trace.
-    pub fn execution_trace(&self) -> &Vec<TraceItem> {
+    pub(crate) fn execution_trace(&self) -> &Vec<TraceItem> {
         &self.execution_trace
     }
 }

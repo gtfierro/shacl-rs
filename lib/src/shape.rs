@@ -4,7 +4,7 @@ use crate::types::{ComponentID, PropShapeID, Severity, ID};
 use crate::types::{Path, Target};
 
 /// A trait for shapes that can be validated.
-pub trait ValidateShape {
+pub(crate) trait ValidateShape {
     /// Performs validation of the shape against the data in the `ValidationContext`.
     ///
     /// # Arguments
@@ -20,7 +20,7 @@ pub trait ValidateShape {
 
 /// An enum that can hold either a `NodeShape` or a `PropertyShape`.
 #[derive(Debug)]
-pub enum Shape {
+pub(crate) enum Shape {
     /// A node shape.
     NodeShape(NodeShape),
     /// A property shape.
