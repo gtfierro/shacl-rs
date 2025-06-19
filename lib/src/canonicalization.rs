@@ -49,7 +49,7 @@ fn node_equality(n1: &Term, n2: &Term) -> bool {
 /// This is done by converting both graphs to `petgraph` directed graphs and then
 /// using `petgraph::algo::is_isomorphic` to check for isomorphism, which correctly
 /// handles blank nodes.
-pub(crate) fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
+pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     let pg1 = oxigraph_to_petgraph(g1);
     let pg2 = oxigraph_to_petgraph(g2);
 
@@ -603,7 +603,7 @@ pub(crate) fn deskolemize(
 /// # Returns
 ///
 /// A new `Graph` with skolem IRIs replaced by blank nodes.
-pub(crate) fn deskolemize_graph(graph: &Graph, base_iri: &str) -> Graph {
+pub fn deskolemize_graph(graph: &Graph, base_iri: &str) -> Graph {
     let mut skolem_iris_to_bnode = HashMap::<NamedNode, BlankNode>::new();
     let mut new_graph = Graph::new();
 

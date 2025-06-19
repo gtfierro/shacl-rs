@@ -70,7 +70,7 @@ impl NodeShape {
     }
 
     /// Retrieves the name (Term) of the node shape from the validation context.
-    pub fn name(&self, context: &ValidationContext) -> String {
+    pub(crate) fn name(&self, context: &ValidationContext) -> String {
         context
             .nodeshape_id_lookup()
             .borrow()
@@ -129,7 +129,7 @@ impl PropertyShape {
         self.severity
     }
     /// Retrieves the name (Term) of the property shape from the validation context.
-    pub fn name(&self, context: &ValidationContext) -> String {
+    pub(crate) fn name(&self, context: &ValidationContext) -> String {
         context
             .propshape_id_lookup()
             .borrow()

@@ -64,13 +64,13 @@ impl<'a> ValidationReport<'a> {
 ///
 /// It collects validation results and can then be used to generate
 /// the final report in various formats.
-pub(crate) struct ValidationReportBuilder {
+pub struct ValidationReportBuilder {
     results: Vec<(Context, String)>,
 }
 
 impl ValidationReportBuilder {
     /// Creates a new, empty `ValidationReportBuilder`.
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         ValidationReportBuilder {
             results: Vec::new(),
         }
@@ -91,7 +91,7 @@ impl ValidationReportBuilder {
 
     /// Returns a slice of the validation results collected so far.
     /// Each item is a tuple containing the `Context` of the failure and the error message.
-    pub(crate) fn results(&self) -> &[(Context, String)] {
+    pub fn results(&self) -> &[(Context, String)] {
         &self.results
     }
 
@@ -127,7 +127,7 @@ impl ValidationReportBuilder {
     }
 
     /// Constructs an `oxigraph::model::Graph` representing the validation report.
-    pub(crate) fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
+    pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
         let sh = SHACL::new();

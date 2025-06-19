@@ -111,7 +111,7 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
 /// It holds the shapes and data graphs, parsed shapes, and other
 /// contextual information needed for validation. This provides an
 /// advanced API for users who need more control than the simple `Validator` facade.
-pub(crate) struct ValidationContext {
+pub struct ValidationContext {
     /// Lookup table for node shape `Term`s to `ID`s.
     pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
     /// Lookup table for property shape `Term`s to `PropShapeID`s.
@@ -179,7 +179,7 @@ impl ValidationContext {
     }
 
     /// Validates the loaded data graph against the loaded shapes graph.
-    pub(crate) fn validate(&self) -> ValidationReportBuilder {
+    pub fn validate(&self) -> ValidationReportBuilder {
         let mut b = ValidationReportBuilder::new();
         info!("Validating NodeShapes and PropertyShapes in the context");
         for node_shape in self.node_shapes.values() {
@@ -289,7 +289,7 @@ impl ValidationContext {
     }
 
     /// Creates a new `ValidationContext` by loading shapes and data from files.
-    pub(crate) fn from_files(
+    pub fn from_files(
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
