@@ -71,6 +71,7 @@ impl ValidateComponent for NotConstraintComponent {
                 None, // Path is not directly relevant for this sub-check's context
                 Some(vec![value_node_to_check.clone()]), // Value nodes for the sub-check
                 SourceShape::NodeShape(*negated_node_shape.identifier()), // Source shape is the one being checked against
+                c.trace_index(),
             );
 
             match check_conformance_for_node(
@@ -162,6 +163,7 @@ impl ValidateComponent for AndConstraintComponent {
                     None,
                     Some(vec![value_node_to_check.clone()]),
                     SourceShape::NodeShape(*conjunct_shape_id), // Source shape is the conjunct being checked
+                    c.trace_index(),
                 );
                 let Some(conjunct_node_shape) =
                     validation_context.get_node_shape_by_id(conjunct_shape_id)
@@ -278,6 +280,7 @@ impl ValidateComponent for OrConstraintComponent {
                     None,
                     Some(vec![value_node_to_check.clone()]),
                     SourceShape::NodeShape(*disjunct_shape_id), // Source shape is the disjunct being checked
+                    c.trace_index(),
                 );
                 let Some(disjunct_node_shape) =
                     validation_context.get_node_shape_by_id(disjunct_shape_id)
@@ -399,6 +402,7 @@ impl ValidateComponent for XoneConstraintComponent {
                     None,
                     Some(vec![value_node_to_check.clone()]),
                     SourceShape::NodeShape(*xone_shape_id), // Source shape is the xone option being checked
+                    c.trace_index(),
                 );
                 let Some(xone_node_shape) = validation_context.get_node_shape_by_id(xone_shape_id)
                 else {

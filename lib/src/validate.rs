@@ -1,13 +1,12 @@
 use crate::components::ComponentValidationResult;
 use crate::context::{Context, SourceShape, ValidationContext};
 use crate::report::ValidationReportBuilder;
-use crate::types::{PropShapeID, TraceItem};
-use std::collections::HashSet;
-
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
+use crate::types::{PropShapeID, TraceItem};
 use log::info;
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
+use std::collections::HashSet;
 
 impl ValidateShape for NodeShape {
     fn validate(
@@ -27,36 +26,42 @@ impl ValidateShape for NodeShape {
         }
 
         for mut target_context in target_contexts.into_iter() {
-            let mut trace = Vec::new();
-            trace.push(TraceItem::NodeShape(*self.identifier())); // Record NodeShape visit
+            let trace_index = {
+                let mut traces = context.execution_traces.borrow_mut();
+                traces.push(Vec::new());
+                traces.len() - 1
+            };
+            target_context.set_trace_index(trace_index);
 
-            // for each target, validate the constraints
-            for constraint_id in self.constraints() {
-                // constraint_id is &ComponentID
-                let comp = context
-                    .get_component_by_id(constraint_id)
-                    .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
+            {
+                let mut traces = context.execution_traces.borrow_mut();
+                let trace = &mut traces[trace_index];
+                trace.push(TraceItem::NodeShape(*self.identifier())); // Record NodeShape visit
 
-                // Call the component's own validation logic.
-                // It now takes component_id, &mut Context, &ValidationContext
-                // and returns Result<Vec<ComponentValidationResult>, String>
-                match comp.validate(*constraint_id, &mut target_context, context, &mut trace) {
-                    Ok(validation_results) => {
-                        use crate::components::ComponentValidationResult;
-                        for result in validation_results {
-                            if let ComponentValidationResult::Fail(ctx, failure) = result {
-                                rb.add_error(&ctx, failure.message);
+                // for each target, validate the constraints
+                for constraint_id in self.constraints() {
+                    // constraint_id is &ComponentID
+                    let comp = context
+                        .get_component_by_id(constraint_id)
+                        .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
+
+                    // Call the component's own validation logic.
+                    match comp.validate(*constraint_id, &mut target_context, context, trace) {
+                        Ok(validation_results) => {
+                            for result in validation_results {
+                                if let ComponentValidationResult::Fail(ctx, failure) = result {
+                                    rb.add_error(&ctx, failure.message);
+                                }
                             }
                         }
-                    }
-                    Err(e) => {
-                        // This error 'e' comes from the component's own validate method.
-                        // NodeShape is responsible for adding this to the report builder.
-                        rb.add_error(&target_context, e);
+                        Err(e) => {
+                            // This error 'e' comes from the component's own validate method.
+                            // NodeShape is responsible for adding this to the report builder.
+                            rb.add_error(&target_context, e);
+                        }
                     }
                 }
             }
-            context.execution_traces.borrow_mut().push(trace);
         }
         Ok(())
     }
@@ -159,6 +164,7 @@ impl PropertyShape {
                 Some(self.path().clone()),
                 value_nodes_opt,
                 SourceShape::PropertyShape(PropShapeID(self.identifier().0)),
+                focus_context.trace_index(),
             );
 
             for constraint_id in self.constraints() {

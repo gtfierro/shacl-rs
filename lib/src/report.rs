@@ -1,4 +1,4 @@
-use crate::context::{Context, ValidationContext};
+use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{Path, TraceItem};
 use oxigraph::io::{RdfFormat, RdfSerializer};
@@ -112,11 +112,15 @@ impl ValidationReportBuilder {
         validation_context: &ValidationContext,
     ) -> HashMap<(String, String, String), usize> {
         let mut frequencies: HashMap<(String, String, String), usize> = HashMap::new();
+        let traces = validation_context.execution_traces.borrow();
         for (context, _) in &self.results {
-            for item in context.execution_trace() {
-                let (label, item_type) = validation_context.get_trace_item_label_and_type(item);
-                let id = item.to_string();
-                *frequencies.entry((id, label, item_type)).or_insert(0) += 1;
+            if let Some(trace) = traces.get(context.trace_index()) {
+                for item in trace {
+                    let (label, item_type) =
+                        validation_context.get_trace_item_label_and_type(item);
+                    let id = item.to_string();
+                    *frequencies.entry((id, label, item_type)).or_insert(0) += 1;
+                }
             }
         }
         frequencies
@@ -176,24 +180,27 @@ impl ValidationReportBuilder {
                 let mut source_constraint_component_term = None;
 
                 // TODO: this could be property shape *OR* node shape
-                let source_shape_term = context.source_shape().get_term(&validation_context);
+                let source_shape_term = context.source_shape().get_term(validation_context);
 
-                for item in context.execution_trace().iter().rev() {
-                    println!("trace item: {:?}", item);
-                    match item {
-                        TraceItem::Component(id) => {
-                            if source_constraint_component_term.is_none() {
-                                source_constraint_component_term = Some(
-                                    validation_context
-                                        .components
-                                        .get(id)
-                                        .unwrap()
-                                        .component_type(),
-                                );
+                let traces = validation_context.execution_traces.borrow();
+                if let Some(trace) = traces.get(context.trace_index()) {
+                    for item in trace.iter().rev() {
+                        println!("trace item: {:?}", item);
+                        match item {
+                            TraceItem::Component(id) => {
+                                if source_constraint_component_term.is_none() {
+                                    source_constraint_component_term = Some(
+                                        validation_context
+                                            .components
+                                            .get(id)
+                                            .unwrap()
+                                            .component_type(),
+                                    );
+                                }
+                                break;
                             }
-                            break;
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
 
@@ -276,6 +283,7 @@ impl ValidationReportBuilder {
                 .push((context, error_message));
         }
 
+        let traces = validation_context.execution_traces.borrow();
         for (focus_node, context_error_pairs) in grouped_errors {
             println!("\nFocus Node: {}", focus_node);
             for (context, error) in context_error_pairs {
@@ -288,9 +296,12 @@ impl ValidationReportBuilder {
                 }
 
                 println!("    Trace:");
-                for item in context.execution_trace() {
-                    let (label, item_type) = validation_context.get_trace_item_label_and_type(item);
-                    println!("      - {} ({}) - {}", item.to_string(), item_type, label);
+                if let Some(trace) = traces.get(context.trace_index()) {
+                    for item in trace {
+                        let (label, item_type) =
+                            validation_context.get_trace_item_label_and_type(item);
+                        println!("      - {} ({}) - {}", item.to_string(), item_type, label);
+                    }
                 }
             }
         }

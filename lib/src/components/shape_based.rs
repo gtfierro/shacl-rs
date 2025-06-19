@@ -68,6 +68,7 @@ impl ValidateComponent for NodeConstraintComponent {
                 None,
                 Some(vec![value_node_to_check.clone()]),
                 SourceShape::NodeShape(*target_node_shape.identifier()),
+                c.trace_index(),
             );
 
             match check_conformance_for_node(
@@ -307,6 +308,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                 None,
                 Some(vec![value_node.clone()]),
                 SourceShape::NodeShape(*target_node_shape.identifier()),
+                c.trace_index(),
             );
 
             let conforms_to_target = match check_conformance_for_node(
@@ -334,6 +336,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                         None,
                         Some(vec![value_node.clone()]),
                         SourceShape::NodeShape(*sibling_shape.identifier()),
+                        c.trace_index(),
                     );
                     match check_conformance_for_node(
                         &mut sibling_check_context,

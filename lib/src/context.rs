@@ -568,6 +568,7 @@ pub(crate) struct Context {
     value_nodes: Option<Vec<Term>>,
     value: Option<Term>, // something that violated a component
     source_shape: SourceShape,
+    trace_index: usize,
 }
 
 impl Context {
@@ -577,6 +578,7 @@ impl Context {
         result_path: Option<PShapePath>,
         value_nodes: Option<Vec<Term>>,
         source_shape: SourceShape,
+        trace_index: usize,
     ) -> Self {
         Context {
             focus_node,
@@ -584,6 +586,7 @@ impl Context {
             value_nodes,
             source_shape,
             value: None,
+            trace_index,
         }
     }
 
@@ -635,5 +638,15 @@ impl Context {
     /// Returns the source shape that initiated this validation context.
     pub(crate) fn source_shape(&self) -> SourceShape {
         self.source_shape.clone()
+    }
+
+    /// Returns the index of the execution trace associated with this context.
+    pub(crate) fn trace_index(&self) -> usize {
+        self.trace_index
+    }
+
+    /// Sets the index of the execution trace for this context.
+    pub(crate) fn set_trace_index(&mut self, index: usize) {
+        self.trace_index = index;
     }
 }
