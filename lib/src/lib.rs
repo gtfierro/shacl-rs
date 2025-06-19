@@ -1,37 +1,70 @@
 #![allow(dead_code, unused_variables)]
-pub mod canonicalization;
-mod components;
+
+// Public modules defining the public API.
 pub mod context;
+pub mod report;
+pub mod test_utils; // Often pub for integration tests
+
+// Internal modules.
+mod canonicalization;
+mod components;
 mod named_nodes;
 mod optimize;
-pub mod parser;
-mod report;
+mod parser;
 mod shape;
-pub mod test_utils;
 mod types;
 mod validate;
 
-use components::Component;
-use shape::Shape;
-use std::collections::HashMap;
-use types::{ComponentID, ID}; // Added ComponentID
+use context::ValidationContext;
+use report::ValidationReport;
+use std::error::Error;
 
-pub struct Store {
-    shape_lookup: HashMap<ID, Shape>,
-    component_lookup: HashMap<ComponentID, Component>,
+/// A simple facade for the SHACL validator.
+///
+/// This provides a straightforward interface for common validation tasks.
+/// For more advanced control, use `ValidationContext` directly.
+pub struct Validator {
+    context: ValidationContext,
 }
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+impl Validator {
+    /// Creates a new Validator from shapes and data files.
+    ///
+    /// # Arguments
+    ///
+    /// * `shapes_file_path` - Path to the file containing the SHACL shapes.
+    /// * `data_file_path` - Path to the file containing the data to be validated.
+    pub fn from_files(
+        shapes_file_path: &str,
+        data_file_path: &str,
+    ) -> Result<Self, Box<dyn Error>> {
+        let context = ValidationContext::from_files(shapes_file_path, data_file_path)?;
+        Ok(Validator { context })
+    }
+
+    /// Validates the data graph against the shapes graph.
+    /// The returned report is tied to the lifetime of the Validator.
+    pub fn validate(&self) -> ValidationReport<'_> {
+        let report_builder = self.context.validate();
+        // The report needs the context to be able to serialize itself later.
+        ValidationReport::new(report_builder, &self.context)
+    }
+
+    /// Generates a Graphviz DOT string representation of the shapes.
+    pub fn to_graphviz(&self) -> Result<String, String> {
+        self.context.graphviz()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        // This test is a placeholder. A real test would use from_files and validate.
+        // For example:
+        // let validator = Validator::from_files("shapes.ttl", "data.ttl").unwrap();
+        // let report = validator.validate();
+        // assert!(report.conforms());
+        assert_eq!(2 + 2, 4);
     }
 }

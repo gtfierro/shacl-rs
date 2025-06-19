@@ -61,14 +61,14 @@ pub(crate) fn format_term_for_label(term: &Term) -> String {
     }
 }
 
-pub struct IDLookupTable<IdType: Copy + Eq + Hash> {
+pub(crate) struct IDLookupTable<IdType: Copy + Eq + Hash> {
     id_map: std::collections::HashMap<Term, IdType>,
     id_to_term: std::collections::HashMap<IdType, Term>,
     next_id: u64, // Internal counter remains u64
 }
 
 impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         IDLookupTable {
             id_map: std::collections::HashMap::new(),
             id_to_term: std::collections::HashMap::new(),
@@ -77,7 +77,7 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
     }
 
     // Returns an ID for the given term, creating a new ID if it doesn't exist
-    pub fn get_or_create_id(&mut self, term: Term) -> IdType {
+    pub(crate) fn get_or_create_id(&mut self, term: Term) -> IdType {
         if let Some(&id) = self.id_map.get(&term) {
             id
         } else {
@@ -90,16 +90,21 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
         }
     }
 
-    pub fn get(&self, term: &Term) -> Option<IdType> {
+    pub(crate) fn get(&self, term: &Term) -> Option<IdType> {
         self.id_map.get(term).map(|id| id.to_owned())
     }
 
     // Returns the term associated with the given ID
-    pub fn get_term(&self, id: IdType) -> Option<&Term> {
+    pub(crate) fn get_term(&self, id: IdType) -> Option<&Term> {
         self.id_to_term.get(&id)
     }
 }
 
+/// The central struct for managing the validation process.
+///
+/// It holds the shapes and data graphs, parsed shapes, and other
+/// contextual information needed for validation. This provides an
+/// advanced API for users who need more control than the simple `Validator` facade.
 pub struct ValidationContext {
     pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
     pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
@@ -115,7 +120,7 @@ pub struct ValidationContext {
 }
 
 impl ValidationContext {
-    pub fn new(
+    pub(crate) fn new(
         store: Store,
         env: OntoEnv,
         shape_graph_iri: NamedNode,
@@ -137,7 +142,7 @@ impl ValidationContext {
     }
 
     // compute the hash and store hash -> term if it's not there yet
-    pub fn term_to_hash(&mut self, term: Term) -> TermID {
+    pub(crate) fn term_to_hash(&mut self, term: Term) -> TermID {
         let map = self.term_to_hash.pin();
         let hash = TermID(xxh3_64(term.to_string().as_bytes()));
         if !map.contains_key(&hash) {
@@ -147,12 +152,13 @@ impl ValidationContext {
         hash
     }
 
-    pub fn hash_to_term(&self, hash: TermID) -> Option<Term> {
+    pub(crate) fn hash_to_term(&self, hash: TermID) -> Option<Term> {
         // Searches for a term with the given hash
         let map = self.term_to_hash.pin();
         map.get(&hash).cloned()
     }
 
+    /// Validates the loaded data graph against the loaded shapes graph.
     pub fn validate(&self) -> ValidationReportBuilder {
         let mut b = ValidationReportBuilder::new();
         info!("Validating NodeShapes and PropertyShapes in the context");
@@ -169,6 +175,7 @@ impl ValidationContext {
         b
     }
 
+    /// Dumps the internal state of the parsed shapes for debugging.
     pub fn dump(&self) {
         // print all of the shapes
         for shape in self.node_shapes.values() {
@@ -176,6 +183,7 @@ impl ValidationContext {
         }
     }
 
+    /// Generates a Graphviz DOT string representation of the shapes.
     pub fn graphviz(&self) -> Result<String, String> {
         let mut dot_string = String::new();
         // print all node shapes
@@ -260,6 +268,7 @@ impl ValidationContext {
         Ok(())
     }
 
+    /// Creates a new `ValidationContext` by loading shapes and data from files.
     pub fn from_files(
         shape_graph_path: &str,
         data_graph_path: &str,
@@ -374,69 +383,69 @@ impl ValidationContext {
     }
 
     // Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
-    pub fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
+    pub(crate) fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
         parser::parse_rdf_list(self, list_head_term)
     }
 
-    pub fn store(&self) -> &Store {
+    pub(crate) fn store(&self) -> &Store {
         &self.store
     }
 
-    pub fn env(&self) -> &OntoEnv {
+    pub(crate) fn env(&self) -> &OntoEnv {
         &self.env
     }
 
-    pub fn shape_graph_iri_ref(&self) -> GraphNameRef<'_> {
+    pub(crate) fn shape_graph_iri_ref(&self) -> GraphNameRef<'_> {
         GraphNameRef::NamedNode(self.shape_graph_iri.as_ref())
     }
 
-    pub fn data_graph_iri_ref(&self) -> GraphNameRef<'_> {
+    pub(crate) fn data_graph_iri_ref(&self) -> GraphNameRef<'_> {
         GraphNameRef::NamedNode(self.data_graph_iri.as_ref())
     }
 
     /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
-    pub fn get_or_create_node_id(&self, term: Term) -> ID {
+    pub(crate) fn get_or_create_node_id(&self, term: Term) -> ID {
         self.nodeshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
-    pub fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
+    pub(crate) fn get_or_create_prop_id(&self, term: Term) -> PropShapeID {
         self.propshape_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     /// Returns a ComponentID for the given term, creating a new one if necessary for a Component.
-    pub fn get_or_create_component_id(&self, term: Term) -> ComponentID {
+    pub(crate) fn get_or_create_component_id(&self, term: Term) -> ComponentID {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
 
     // Getter methods for ID lookup tables
-    pub fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
+    pub(crate) fn nodeshape_id_lookup(&self) -> &RefCell<IDLookupTable<ID>> {
         &self.nodeshape_id_lookup
     }
 
-    pub fn propshape_id_lookup(&self) -> &RefCell<IDLookupTable<PropShapeID>> {
+    pub(crate) fn propshape_id_lookup(&self) -> &RefCell<IDLookupTable<PropShapeID>> {
         &self.propshape_id_lookup
     }
 
-    pub fn get_component_by_id(&self, id: &ComponentID) -> Option<&Component> {
+    pub(crate) fn get_component_by_id(&self, id: &ComponentID) -> Option<&Component> {
         // Returns a reference to the component by its ID
         self.components.get(id)
     }
 
-    pub fn get_prop_shape_by_id(&self, id: &PropShapeID) -> Option<&PropertyShape> {
+    pub(crate) fn get_prop_shape_by_id(&self, id: &PropShapeID) -> Option<&PropertyShape> {
         // Returns a reference to the PropertyShape by its ID
         self.prop_shapes.get(id)
     }
 
-    pub fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
+    pub(crate) fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
         // Returns a reference to the NodeShape by its ID
         self.node_shapes.get(id)
     }
 
-    pub fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
+    pub(crate) fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
         &self.node_shapes
     }
 
-    pub fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
+    pub(crate) fn get_trace_item_label_and_type(&self, item: &TraceItem) -> (String, String) {
         match item {
             TraceItem::NodeShape(id) => {
                 let label = self.nodeshape_id_lookup.borrow().get_term(*id).map_or_else(
@@ -467,7 +476,7 @@ impl ValidationContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum SourceShape {
+pub(crate) enum SourceShape {
     NodeShape(ID),
     PropertyShape(PropShapeID),
 }
@@ -482,19 +491,19 @@ impl fmt::Display for SourceShape {
 }
 
 impl SourceShape {
-    pub fn as_prop_id(&self) -> Option<&PropShapeID> {
+    pub(crate) fn as_prop_id(&self) -> Option<&PropShapeID> {
         match self {
             SourceShape::PropertyShape(id) => Some(id),
             _ => None,
         }
     }
-    pub fn as_node_id(&self) -> Option<&ID> {
+    pub(crate) fn as_node_id(&self) -> Option<&ID> {
         match self {
             SourceShape::NodeShape(id) => Some(id),
             _ => None,
         }
     }
-    pub fn get_term(&self, ctx: &ValidationContext) -> Option<Term> {
+    pub(crate) fn get_term(&self, ctx: &ValidationContext) -> Option<Term> {
         match self {
             SourceShape::NodeShape(id) => ctx
                 .nodeshape_id_lookup()
@@ -511,14 +520,14 @@ impl SourceShape {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TraceItem {
+pub(crate) enum TraceItem {
     NodeShape(ID),
     PropertyShape(PropShapeID),
     Component(ComponentID),
 }
 
 impl TraceItem {
-    pub fn to_string(&self) -> String {
+    pub(crate) fn to_string(&self) -> String {
         match self {
             TraceItem::NodeShape(id) => format!("NodeShape({})", id.to_graphviz_id()),
             TraceItem::PropertyShape(id) => format!("PropertyShape({})", id.to_graphviz_id()),
@@ -528,7 +537,7 @@ impl TraceItem {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Context {
+pub(crate) struct Context {
     focus_node: Term,
     pub(crate) result_path: Option<PShapePath>,
     value_nodes: Option<Vec<Term>>,
@@ -538,7 +547,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(
+    pub(crate) fn new(
         focus_node: Term,
         result_path: Option<PShapePath>,
         value_nodes: Option<Vec<Term>>,
@@ -554,7 +563,7 @@ impl Context {
         }
     }
 
-    pub fn add_value_nodes(&mut self, value_nodes: &[Term]) {
+    pub(crate) fn add_value_nodes(&mut self, value_nodes: &[Term]) {
         if let Some(existing) = &mut self.value_nodes {
             existing.extend(value_nodes.iter().cloned());
         } else {
@@ -562,58 +571,58 @@ impl Context {
         }
     }
 
-    pub fn with_value(&mut self, value: Term) {
+    pub(crate) fn with_value(&mut self, value: Term) {
         self.value = Some(value);
     }
 
-    pub fn with_result_path(&mut self, result_path: Term) {
+    pub(crate) fn with_result_path(&mut self, result_path: Term) {
         // In our implementation, we use a Simple path containing the given term.
         self.result_path = Some(crate::types::Path::Simple(result_path));
     }
     
-    pub fn with_execution_trace(&mut self, trace: Vec<TraceItem>) {
+    pub(crate) fn with_execution_trace(&mut self, trace: Vec<TraceItem>) {
         self.execution_trace = trace;
     }
 
-    pub fn value(&self) -> Option<&Term> {
+    pub(crate) fn value(&self) -> Option<&Term> {
         self.value.as_ref()
     }
 
-    pub fn focus_node(&self) -> &Term {
+    pub(crate) fn focus_node(&self) -> &Term {
         &self.focus_node
     }
 
-    pub fn result_path(&self) -> Option<&PShapePath> {
+    pub(crate) fn result_path(&self) -> Option<&PShapePath> {
         self.result_path.as_ref()
     }
 
-    pub fn value_nodes(&self) -> Option<&Vec<Term>> {
+    pub(crate) fn value_nodes(&self) -> Option<&Vec<Term>> {
         self.value_nodes.as_ref()
     }
 
-    pub fn num_value_nodes(&self) -> usize {
+    pub(crate) fn num_value_nodes(&self) -> usize {
         self.value_nodes.as_ref().map_or(0, |v| v.len())
     }
 
-    pub fn source_shape(&self) -> SourceShape {
+    pub(crate) fn source_shape(&self) -> SourceShape {
         self.source_shape.clone()
     }
 
-    pub fn record_node_shape_visit(&mut self, shape_id: ID) {
+    pub(crate) fn record_node_shape_visit(&mut self, shape_id: ID) {
         self.execution_trace.push(TraceItem::NodeShape(shape_id));
     }
 
-    pub fn record_property_shape_visit(&mut self, shape_id: PropShapeID) {
+    pub(crate) fn record_property_shape_visit(&mut self, shape_id: PropShapeID) {
         self.execution_trace
             .push(TraceItem::PropertyShape(shape_id));
     }
 
-    pub fn record_component_visit(&mut self, component_id: ComponentID) {
+    pub(crate) fn record_component_visit(&mut self, component_id: ComponentID) {
         self.execution_trace
             .push(TraceItem::Component(component_id));
     }
 
-    pub fn execution_trace(&self) -> &Vec<TraceItem> {
+    pub(crate) fn execution_trace(&self) -> &Vec<TraceItem> {
         &self.execution_trace
     }
 }

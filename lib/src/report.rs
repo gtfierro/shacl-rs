@@ -7,29 +7,74 @@ use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term
 use std::collections::HashMap; // For using Term as a HashMap key
 use std::error::Error;
 
-pub struct ValidationReportBuilder {
+/// Represents the result of a SHACL validation.
+///
+/// This struct provides methods to inspect the validation outcome and
+/// serialize the report into various formats. The report is tied to the
+/// lifetime of the `Validator` or `ValidationContext` that created it.
+pub struct ValidationReport<'a> {
+    builder: ValidationReportBuilder,
+    context: &'a ValidationContext,
+}
+
+impl<'a> ValidationReport<'a> {
+    /// Creates a new ValidationReport.
+    /// This is intended for internal use by the library.
+    pub(crate) fn new(builder: ValidationReportBuilder, context: &'a ValidationContext) -> Self {
+        ValidationReport { builder, context }
+    }
+
+    /// Checks if the validation conformed.
+    ///
+    /// Returns `true` if there were no validation failures, `false` otherwise.
+    pub fn conforms(&self) -> bool {
+        self.builder.results.is_empty()
+    }
+
+    /// Returns the validation report as an `oxigraph::model::Graph`.
+    pub fn to_graph(&self) -> Graph {
+        self.builder.to_graph(self.context)
+    }
+
+    /// Serializes the validation report to a string in the specified RDF format.
+    pub fn to_rdf(&self, format: RdfFormat) -> Result<String, Box<dyn Error>> {
+        self.builder.to_rdf(self.context, format)
+    }
+
+    /// Serializes the validation report to a string in Turtle format.
+    pub fn to_turtle(&self) -> Result<String, Box<dyn Error>> {
+        self.builder.to_turtle(self.context)
+    }
+
+    /// Dumps a summary of the validation report to the console for debugging.
+    pub fn dump(&self) {
+        self.builder.dump()
+    }
+}
+
+pub(crate) struct ValidationReportBuilder {
     pub(crate) results: Vec<(Context, String)>, // Made pub(crate)
 }
 
 impl ValidationReportBuilder {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ValidationReportBuilder {
             results: Vec::new(),
         }
     }
 
-    pub fn add_error(&mut self, context: &Context, error: String) {
+    pub(crate) fn add_error(&mut self, context: &Context, error: String) {
         // Store the context by cloning it, as the original context might have a shorter lifetime.
         // The error string is moved.
         self.results.push((context.clone(), error));
         // The println! macro is removed as per the request to track errors instead of printing.
     }
 
-    pub fn results(&self) -> &[(Context, String)] {
+    pub(crate) fn results(&self) -> &[(Context, String)] {
         &self.results
     }
 
-    pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
+    pub(crate) fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
         let sh = SHACL::new();
@@ -134,7 +179,7 @@ impl ValidationReportBuilder {
         graph
     }
 
-    pub fn to_rdf(
+    pub(crate) fn to_rdf(
         &self,
         validation_context: &ValidationContext,
         format: RdfFormat,
@@ -154,14 +199,14 @@ impl ValidationReportBuilder {
         Ok(String::from_utf8(writer)?)
     }
 
-    pub fn to_turtle(
+    pub(crate) fn to_turtle(
         &self,
         validation_context: &ValidationContext,
     ) -> Result<String, Box<dyn Error>> {
         self.to_rdf(validation_context, RdfFormat::Turtle)
     }
 
-    pub fn dump(&self) {
+    pub(crate) fn dump(&self) {
         if self.results.is_empty() {
             println!("Validation report: No errors found.");
             return;
@@ -190,7 +235,7 @@ impl ValidationReportBuilder {
         println!("\n------------------");
     }
 
-    pub fn merge(&mut self, other: ValidationReportBuilder) {
+    pub(crate) fn merge(&mut self, other: ValidationReportBuilder) {
         self.results.extend(other.results);
     }
 }
