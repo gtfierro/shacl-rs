@@ -1,7 +1,7 @@
+use crate::components::ToSubjectRef;
 use oxigraph::model::{
     BlankNode, Graph, GraphNameRef, NamedNode, Quad, Subject, SubjectRef, Term, TermRef, Triple,
 };
-use crate::components::ToSubjectRef;
 use oxigraph::store::{StorageError, Store};
 use petgraph::algo::is_isomorphic;
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -47,7 +47,8 @@ fn node_equality(n1: &Term, n2: &Term) -> bool {
 /// Checks if two `oxigraph::model::Graph`s are isomorphic.
 ///
 /// This is done by converting both graphs to `petgraph` directed graphs and then
-/// using `petgraph::algo::is_isomorphic_matching` to check for isomorphism.
+/// using `petgraph::algo::is_isomorphic` to check for isomorphism, which correctly
+/// handles blank nodes.
 pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     let pg1 = oxigraph_to_petgraph(g1);
     let pg2 = oxigraph_to_petgraph(g2);
@@ -68,6 +69,7 @@ pub struct GraphDiff {
 }
 
 impl GraphDiff {
+    /// Prints the contents of the graph diff to the console for debugging.
     pub fn dump(&self) {
         println!("unique to first");
         for triple in self.in_first.iter() {

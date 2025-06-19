@@ -60,17 +60,28 @@ impl<'a> ValidationReport<'a> {
     }
 }
 
+/// A builder for creating a `ValidationReport`.
+///
+/// It collects validation results and can then be used to generate
+/// the final report in various formats.
 pub struct ValidationReportBuilder {
     results: Vec<(Context, String)>,
 }
 
 impl ValidationReportBuilder {
+    /// Creates a new, empty `ValidationReportBuilder`.
     pub fn new() -> Self {
         ValidationReportBuilder {
             results: Vec::new(),
         }
     }
 
+    /// Adds a validation failure to the report.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - The validation `Context` at the time of the failure.
+    /// * `error` - A string message describing the validation error.
     pub fn add_error(&mut self, context: &Context, error: String) {
         // Store the context by cloning it, as the original context might have a shorter lifetime.
         // The error string is moved.
@@ -78,10 +89,24 @@ impl ValidationReportBuilder {
         // The println! macro is removed as per the request to track errors instead of printing.
     }
 
+    /// Returns a slice of the validation results collected so far.
+    /// Each item is a tuple containing the `Context` of the failure and the error message.
     pub fn results(&self) -> &[(Context, String)] {
         &self.results
     }
 
+    /// Calculates the frequency of each component, node shape, and property shape invocation
+    /// across all validation failures.
+    ///
+    /// This is useful for debugging and identifying which constraints are triggered most often.
+    ///
+    /// # Arguments
+    ///
+    /// * `validation_context` - The `ValidationContext` needed to resolve IDs to labels.
+    ///
+    /// # Returns
+    ///
+    /// A `HashMap` where the key is a tuple of (ID String, Label, Type) and the value is the count.
     pub fn get_component_frequencies(
         &self,
         validation_context: &ValidationContext,
@@ -97,6 +122,7 @@ impl ValidationReportBuilder {
         frequencies
     }
 
+    /// Constructs an `oxigraph::model::Graph` representing the validation report.
     pub fn to_graph(&self, validation_context: &ValidationContext) -> Graph {
         let mut graph = Graph::new();
         let report_node: Subject = BlankNode::default().into();
@@ -202,6 +228,7 @@ impl ValidationReportBuilder {
         graph
     }
 
+    /// Serializes the validation report to a string in the specified RDF format.
     pub fn to_rdf(
         &self,
         validation_context: &ValidationContext,
@@ -222,6 +249,7 @@ impl ValidationReportBuilder {
         Ok(String::from_utf8(writer)?)
     }
 
+    /// Serializes the validation report to a string in Turtle format.
     pub fn to_turtle(
         &self,
         validation_context: &ValidationContext,
@@ -229,6 +257,7 @@ impl ValidationReportBuilder {
         self.to_rdf(validation_context, RdfFormat::Turtle)
     }
 
+    /// Dumps a summary of the validation report to the console for debugging.
     pub fn dump(&self, validation_context: &ValidationContext) {
         if self.results.is_empty() {
             println!("Validation report: No errors found.");
@@ -268,6 +297,7 @@ impl ValidationReportBuilder {
         println!("\n------------------");
     }
 
+    /// Merges results from another `ValidationReportBuilder` into this one.
     pub fn merge(&mut self, other: ValidationReportBuilder) {
         self.results.extend(other.results);
     }

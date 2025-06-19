@@ -5,9 +5,11 @@ use oxigraph::sparql::{Query, QueryOptions, QueryResults}; // Added Query
 use std::fmt; // Added for Display trait
 use std::hash::Hash; // Added Hash for derived traits
 
+/// A unique identifier for a `Term` within the validation context, derived from its hash.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TermID(pub u64);
 
+/// A unique identifier for a `NodeShape`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ID(pub u64);
 
@@ -24,11 +26,13 @@ impl fmt::Display for ID {
 }
 
 impl ID {
+    /// Converts the ID to a string suitable for use as a node identifier in Graphviz.
     pub fn to_graphviz_id(&self) -> String {
         format!("n{}", self.0)
     }
 }
 
+/// A unique identifier for a constraint `Component`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentID(pub u64);
 
@@ -36,7 +40,6 @@ impl From<u64> for ComponentID {
     fn from(item: u64) -> Self {
         ComponentID(item)
     }
-
 }
 
 impl fmt::Display for ComponentID {
@@ -46,14 +49,22 @@ impl fmt::Display for ComponentID {
 }
 
 impl ComponentID {
+    /// Converts the ComponentID to a string suitable for use as a node identifier in Graphviz.
     pub fn to_graphviz_id(&self) -> String {
         format!("c{}", self.0)
     }
+    /// Retrieves the name (Term) of the component from the validation context.
     pub fn name(&self, context: &ValidationContext) -> String {
-        context.component_id_lookup.borrow().get_term(*self).unwrap().to_string()
+        context
+            .component_id_lookup
+            .borrow()
+            .get_term(*self)
+            .unwrap()
+            .to_string()
     }
 }
 
+/// A unique identifier for a `PropertyShape`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PropShapeID(pub u64);
 
@@ -70,19 +81,28 @@ impl fmt::Display for PropShapeID {
 }
 
 impl PropShapeID {
+    /// Converts the PropShapeID to a string suitable for use as a node identifier in Graphviz.
     pub fn to_graphviz_id(&self) -> String {
         format!("p{}", self.0)
     }
 }
 
+/// Represents a SHACL Property Path.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Path {
-    Simple(Term), // An IRI
+    /// A simple path, which is a single IRI.
+    Simple(Term),
+    /// An inverse path (`sh:inversePath`).
     Inverse(Box<Path>),
+    /// A sequence of paths (`sh:sequencePath`).
     Sequence(Vec<Path>),
+    /// A set of alternative paths (`sh:alternativePath`).
     Alternative(Vec<Path>),
+    /// A path that can be traversed zero or more times (`sh:zeroOrMorePath`).
     ZeroOrMore(Box<Path>),
+    /// A path that can be traversed one or more times (`sh:oneOrMorePath`).
     OneOrMore(Box<Path>),
+    /// A path that can be traversed zero or one time (`sh:zeroOrOnePath`).
     ZeroOrOne(Box<Path>),
 }
 
@@ -92,6 +112,7 @@ impl Path {
         format!("<{}>", nn.as_str())
     }
 
+    /// Converts the SHACL path to its SPARQL 1.1 property path string representation.
     pub fn to_sparql_path(&self) -> Result<String, String> {
         match self {
             Path::Simple(term) => match term {
@@ -154,18 +175,27 @@ impl Path {
     }
 }
 
+/// Represents a SHACL target, which specifies the nodes to be validated against a shape.
 #[derive(Debug)]
 pub enum Target {
+    /// Targets all instances of a given class (`sh:targetClass`).
     Class(Term),
+    /// Targets a specific node (`sh:targetNode`).
     Node(Term),
+    /// Targets all subjects of triples with a given predicate (`sh:targetSubjectsOf`).
     SubjectsOf(Term),
+    /// Targets all objects of triples with a given predicate (`sh:targetObjectsOf`).
     ObjectsOf(Term),
 }
 
+/// Represents the severity level of a validation result, corresponding to `sh:severity`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Severity {
+    /// Corresponds to `sh:Info`.
     Info,
+    /// Corresponds to `sh:Warning`.
     Warning,
+    /// Corresponds to `sh:Violation`.
     Violation,
 }
 
@@ -176,6 +206,7 @@ impl Default for Severity {
 }
 
 impl Severity {
+    /// Creates a `Severity` from a `Term` if it matches a SHACL severity IRI.
     pub fn from_term(term: &Term) -> Option<Self> {
         let shacl = SHACL::new();
         if let Term::NamedNode(nn) = term {
@@ -196,6 +227,7 @@ impl Severity {
 }
 
 impl Target {
+    /// Creates a `Target` from a predicate and object `TermRef` if they correspond to a known SHACL target property.
     pub fn from_predicate_object(predicate: NamedNodeRef, object: TermRef) -> Option<Self> {
         let shacl = SHACL::new();
         if predicate == shacl.target_class {
@@ -211,6 +243,7 @@ impl Target {
         }
     }
 
+    /// Retrieves the set of focus nodes for this target from the data graph.
     pub fn get_target_nodes(
         &self,
         context: &ValidationContext,

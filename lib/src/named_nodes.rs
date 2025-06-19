@@ -1,5 +1,8 @@
 use oxigraph::model::NamedNodeRef;
 
+/// A struct holding static `NamedNodeRef`s for all SHACL vocabulary terms.
+///
+/// This provides a convenient and performant way to access SHACL IRIs.
 pub struct SHACL {
     pub class: NamedNodeRef<'static>,
     pub node: NamedNodeRef<'static>,
@@ -86,6 +89,7 @@ pub struct SHACL {
 }
 
 impl SHACL {
+    /// Creates a new `SHACL` instance with all terms initialized.
     pub fn new() -> Self {
         SHACL {
             class: NamedNodeRef::new("http://www.w3.org/ns/shacl#class").unwrap(),
@@ -200,6 +204,7 @@ impl SHACL {
     }
 }
 
+/// A struct holding static `NamedNodeRef`s for RDF vocabulary terms.
 pub struct RDF {
     pub type_: NamedNodeRef<'static>,
     pub subject: NamedNodeRef<'static>,
@@ -211,6 +216,7 @@ pub struct RDF {
 }
 
 impl RDF {
+    /// Creates a new `RDF` instance.
     pub fn new() -> Self {
         RDF {
             type_: NamedNodeRef::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").unwrap(),
@@ -226,6 +232,7 @@ impl RDF {
     }
 }
 
+/// A struct holding static `NamedNodeRef`s for RDFS vocabulary terms.
 pub struct RDFS {
     pub sub_class_of: NamedNodeRef<'static>,
     pub label: NamedNodeRef<'static>,
@@ -234,6 +241,7 @@ pub struct RDFS {
 }
 
 impl RDFS {
+    /// Creates a new `RDFS` instance.
     pub fn new() -> Self {
         RDFS {
             sub_class_of: NamedNodeRef::new("http://www.w3.org/2000/01/rdf-schema#subClassOf")
@@ -245,11 +253,13 @@ impl RDFS {
     }
 }
 
+/// A struct holding static `NamedNodeRef`s for OWL vocabulary terms.
 pub struct OWL {
     pub class: NamedNodeRef<'static>,
 }
 
 impl OWL {
+    /// Creates a new `OWL` instance.
     pub fn new() -> Self {
         OWL {
             class: NamedNodeRef::new("http://www.w3.org/2002/07/owl#Class").unwrap(),
@@ -257,6 +267,7 @@ impl OWL {
     }
 }
 
+/// A struct holding static `NamedNodeRef`s for W3C Test Manifest vocabulary terms.
 pub struct MF {
     pub manifest: NamedNodeRef<'static>,
     pub entries: NamedNodeRef<'static>,
@@ -267,6 +278,7 @@ pub struct MF {
 }
 
 impl MF {
+    /// Creates a new `MF` instance.
     pub fn new() -> Self {
         MF {
             manifest: NamedNodeRef::new(
@@ -297,6 +309,7 @@ impl MF {
     }
 }
 
+/// A struct holding static `NamedNodeRef`s for SHACL Test Suite vocabulary terms.
 pub struct SHT {
     pub validate: NamedNodeRef<'static>,
     pub data_graph: NamedNodeRef<'static>,
@@ -304,6 +317,7 @@ pub struct SHT {
 }
 
 impl SHT {
+    /// Creates a new `SHT` instance.
     pub fn new() -> Self {
         SHT {
             validate: NamedNodeRef::new("http://www.w3.org/ns/shacl-test#Validate").unwrap(),

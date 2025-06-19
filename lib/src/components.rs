@@ -25,27 +25,45 @@ pub use string_based::*;
 pub use value_range::*;
 pub use value_type::*;
 
+/// The result of validating a single value node against a constraint component.
 #[derive(Debug, Clone)]
 pub enum ComponentValidationResult {
+    /// Indicates that the validation passed. Contains the context of the validation.
     Pass(Context),
+    /// Indicates that the validation failed. Contains the context and details of the failure.
     Fail(Context, ValidationFailure),
 }
 
+/// The result of a conformance check for a node against a shape.
+/// Used by logical constraints like `sh:not`, `sh:and`, etc.
 #[derive(Debug, Clone)]
 pub enum ConformanceReport {
+    /// The node conforms to the shape.
     Conforms,
+    /// The node does not conform to the shape, with details of the first failure.
     NonConforms(ValidationFailure),
 }
 
+/// Details about a single validation failure.
 #[derive(Debug, Clone)]
 pub struct ValidationFailure {
+    /// The ID of the component that was violated.
     pub component_id: ComponentID,
+    /// The specific value node that failed validation, if applicable.
     pub failed_value_node: Option<Term>,
+    /// A human-readable message describing the failure.
     pub message: String,
 }
 
+/// A trait for converting `Term` or `TermRef` into `SubjectRef`.
+///
+/// This is a utility trait to handle cases where a `Term` that is expected
+/// to be a subject (IRI or Blank Node) needs to be used in a context that
+/// requires a `SubjectRef`.
 pub trait ToSubjectRef {
+    /// Converts to `SubjectRef`, panicking if the term is a `Literal`.
     fn to_subject_ref(&self) -> SubjectRef<'_>;
+    /// Tries to convert to `SubjectRef`, returning a `Result`.
     fn try_to_subject_ref(&self) -> Result<SubjectRef<'_>, String>;
 }
 
@@ -79,6 +97,11 @@ impl<'a> ToSubjectRef for TermRef<'a> {
     }
 }
 
+/// Parses all constraint components attached to a given shape subject (`start`) from the shapes graph.
+///
+/// This function iterates through all known SHACL constraint properties (e.g., `sh:class`, `sh:minCount`)
+/// and creates the corresponding `Component` structs if they are present on the `start` term.
+/// The created components are returned in a `HashMap` keyed by their `ComponentID`.
 pub fn parse_components(
     start: TermRef,
     context: &mut ValidationContext,
@@ -672,12 +695,28 @@ pub fn parse_components(
     new_components
 }
 
+/// A trait for components that can be represented in Graphviz DOT format.
 pub trait GraphvizOutput {
+    /// Generates a Graphviz DOT string representation for the component.
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String;
+    /// Returns the SHACL IRI for the component type (e.g., `sh:MinCountConstraintComponent`).
     fn component_type(&self) -> NamedNode;
 }
 
+/// A trait for constraint components that can perform validation.
 pub trait ValidateComponent {
+    /// Validates the given context against the component's logic.
+    ///
+    /// # Arguments
+    ///
+    /// * `component_id` - The ID of this component instance.
+    /// * `c` - The mutable `Context` for the current validation.
+    /// * `context` - The overall `ValidationContext`.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of `ComponentValidationResult`s on success,
+    /// or an error string on failure.
     fn validate(
         &self,
         component_id: ComponentID,
@@ -686,54 +725,85 @@ pub trait ValidateComponent {
     ) -> Result<Vec<ComponentValidationResult>, String>;
 }
 
+/// An enum representing any of the SHACL constraint components.
 #[derive(Debug)]
 pub enum Component {
+    /// `sh:node`
     NodeConstraint(NodeConstraintComponent),
+    /// `sh:property`
     PropertyConstraint(PropertyConstraintComponent),
+    /// `sh:qualifiedValueShape`
     QualifiedValueShape(QualifiedValueShapeComponent),
 
     // value type
+    /// `sh:class`
     ClassConstraint(ClassConstraintComponent),
+    /// `sh:datatype`
     DatatypeConstraint(DatatypeConstraintComponent),
+    /// `sh:nodeKind`
     NodeKindConstraint(NodeKindConstraintComponent),
 
     // cardinality constraints
+    /// `sh:minCount`
     MinCount(MinCountConstraintComponent),
+    /// `sh:maxCount`
     MaxCount(MaxCountConstraintComponent),
 
     // value range constraints
+    /// `sh:minExclusive`
     MinExclusiveConstraint(MinExclusiveConstraintComponent),
+    /// `sh:minInclusive`
     MinInclusiveConstraint(MinInclusiveConstraintComponent),
+    /// `sh:maxExclusive`
     MaxExclusiveConstraint(MaxExclusiveConstraintComponent),
+    /// `sh:maxInclusive`
     MaxInclusiveConstraint(MaxInclusiveConstraintComponent),
 
     // string-based constraints
+    /// `sh:minLength`
     MinLengthConstraint(MinLengthConstraintComponent),
+    /// `sh:maxLength`
     MaxLengthConstraint(MaxLengthConstraintComponent),
+    /// `sh:pattern`
     PatternConstraint(PatternConstraintComponent),
+    /// `sh:languageIn`
     LanguageInConstraint(LanguageInConstraintComponent),
+    /// `sh:uniqueLang`
     UniqueLangConstraint(UniqueLangConstraintComponent),
 
     // property pair constraints
+    /// `sh:equals`
     EqualsConstraint(EqualsConstraintComponent),
+    /// `sh:disjoint`
     DisjointConstraint(DisjointConstraintComponent),
+    /// `sh:lessThan`
     LessThanConstraint(LessThanConstraintComponent),
+    /// `sh:lessThanOrEquals`
     LessThanOrEqualsConstraint(LessThanOrEqualsConstraintComponent),
 
     // logical constraints
+    /// `sh:not`
     NotConstraint(NotConstraintComponent),
+    /// `sh:and`
     AndConstraint(AndConstraintComponent),
+    /// `sh:or`
     OrConstraint(OrConstraintComponent),
+    /// `sh:xone`
     XoneConstraint(XoneConstraintComponent),
 
     // other constraint components
+    /// `sh:closed`
     ClosedConstraint(ClosedConstraintComponent),
+    /// `sh:hasValue`
     HasValueConstraint(HasValueConstraintComponent),
+    /// `sh:in`
     InConstraint(InConstraintComponent),
+    /// `sh:sparql`
     SPARQLConstraint(SPARQLConstraintComponent),
 }
 
 impl Component {
+    /// Returns a human-readable label for the component type.
     pub fn label(&self) -> String {
         match self {
             Component::NodeConstraint(_) => "NodeConstraint".to_string(),
@@ -775,6 +845,7 @@ impl Component {
         }
     }
 
+    /// Delegates to the inner component to get its SHACL IRI type.
     pub fn component_type(&self) -> NamedNode {
         match self {
             Component::NodeConstraint(c) => c.component_type(),
@@ -809,6 +880,7 @@ impl Component {
         }
     }
 
+    /// Delegates to the inner component to generate its Graphviz representation.
     pub fn to_graphviz_string(
         &self,
         component_id: ComponentID,
@@ -847,6 +919,7 @@ impl Component {
         }
     }
 
+    /// Delegates validation to the specific inner component.
     pub fn validate(
         &self,
         component_id: ComponentID,

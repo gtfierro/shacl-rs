@@ -4,16 +4,20 @@ use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults};
 use std::collections::HashSet;
 
+/// A struct to hold statistics about the optimizations performed.
 #[derive(Default, Debug)]
 pub struct OptimizerStats {
+    /// The number of `sh:targetClass` targets removed because the class has no instances in the data graph.
     pub unreachable_targets_removed: u64,
 }
 
 impl OptimizerStats {
+    /// Creates a new `OptimizerStats` with all counters at zero.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Returns a formatted string of the optimizer statistics.
     pub fn display(&self) -> String {
         format!(
             "Optimizer Stats:\n- Unreachable targets removed: {}",
@@ -22,8 +26,11 @@ impl OptimizerStats {
     }
 }
 
+/// A struct that holds the `ValidationContext` and performs optimizations on it.
 pub struct Optimizer {
+    /// The `ValidationContext` to be optimized.
     pub ctx: ValidationContext,
+    /// Statistics collected during optimization.
     pub stats: OptimizerStats,
 }
 
@@ -32,6 +39,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT DISTINCT ?type WHERE { ?s rdf:type/rdfs:subClassOf* ?type . }";
 
 impl Optimizer {
+    /// Creates a new `Optimizer` for a given `ValidationContext`.
     pub fn new(ctx: ValidationContext) -> Self {
         Optimizer {
             ctx,
@@ -39,16 +47,19 @@ impl Optimizer {
         }
     }
 
+    /// Runs all optimization passes.
     pub fn optimize(&mut self) -> Result<(), String> {
         // Remove unreachable targets from node shapes
         self.remove_unreachable_targets()?;
         Ok(())
     }
 
+    /// Consumes the optimizer and returns the optimized `ValidationContext`.
     pub fn finish(self) -> ValidationContext {
         self.ctx
     }
 
+    /// Returns a formatted string of the optimizer statistics.
     pub fn display_stats(&self) -> String {
         self.stats.display()
     }

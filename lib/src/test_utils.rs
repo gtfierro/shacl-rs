@@ -7,18 +7,27 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use url::Url;
 
+/// Represents a single test case from a SHACL test suite manifest.
 #[derive(Debug)]
 pub struct TestCase {
+    /// The name of the test case.
     pub name: String,
+    /// Whether the data graph is expected to conform to the shapes graph.
     pub conforms: bool,
+    /// The path to the data graph file.
     pub data_graph_path: PathBuf,
+    /// The path to the shapes graph file.
     pub shapes_graph_path: PathBuf,
+    /// The expected validation report graph.
     pub expected_report: Graph,
 }
 
+/// Represents a parsed SHACL test suite manifest file.
 #[derive(Debug)]
 pub struct Manifest {
+    /// The path to the manifest file.
     pub path: PathBuf,
+    /// A vector of `TestCase`s included in the manifest.
     pub test_cases: Vec<TestCase>,
 }
 
@@ -71,7 +80,7 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
 
                 // Recursively handle sh:resultPath if it's a blank node
                 if triple.predicate == sh.result_path {
-                    if let  TermRef::BlankNode(_) = triple.object {
+                    if let TermRef::BlankNode(_) = triple.object {
                         let path_subject = triple.object.to_subject_ref();
                         extract_path_graph(manifest_graph, path_subject, &mut report_graph);
                     }
@@ -82,6 +91,7 @@ fn extract_report_graph(manifest_graph: &Graph, result_node: SubjectRef) -> Grap
     report_graph
 }
 
+/// Loads and parses a SHACL test suite manifest file from the given path.
 pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
     let manifest_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read manifest file {}: {}", path.display(), e))?;
