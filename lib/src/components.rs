@@ -98,7 +98,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .map(|q| q.object)
             .next();
 
-        let select_query = match select_query {
+        let mut select_query = match select_query {
             Some(Term::Literal(lit)) => lit.value().to_string(),
             _ => return Ok(vec![]),
         };
@@ -116,15 +116,13 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .collect();
 
         // TODO: Handle sh:prefixes
-        let substitutions = vec![(Variable::new("this").unwrap(), c.focus_node().clone())];
+        select_query = select_query.replace("$this", &c.focus_node().to_string());
 
         let mut results = vec![];
 
-        let query_results = context.store().query_opt_with_substituted_variables(
-            &select_query,
-            QueryOptions::default(),
-            substitutions,
-        );
+        let query_results = context
+            .store()
+            .query_opt(&select_query, QueryOptions::default());
 
         match query_results {
             Ok(QueryResults::Solutions(solutions)) => {
@@ -165,6 +163,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
 /// The result of validating a single value node against a constraint component.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub(crate) enum ComponentValidationResult {
     /// Indicates that the validation passed. Contains the context of the validation.
     Pass(Context),
@@ -184,6 +183,7 @@ pub(crate) enum ConformanceReport {
 
 /// Details about a single validation failure.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub(crate) struct ValidationFailure {
     /// The ID of the component that was violated.
     pub component_id: ComponentID,
