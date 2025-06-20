@@ -719,6 +719,28 @@ pub(crate) struct Context {
     trace_index: usize,
 }
 
+impl PartialEq for Context {
+    fn eq(&self, other: &Self) -> bool {
+        self.focus_node == other.focus_node
+            && self.result_path == other.result_path
+            && self.value_nodes == other.value_nodes
+            && self.value == other.value
+            && self.source_shape == other.source_shape
+    }
+}
+
+impl Eq for Context {}
+
+impl Hash for Context {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.focus_node.hash(state);
+        self.result_path.hash(state);
+        self.value_nodes.hash(state);
+        self.value.hash(state);
+        self.source_shape.hash(state);
+    }
+}
+
 impl Context {
     /// Creates a new `Context` for a validation process.
     pub(crate) fn new(
