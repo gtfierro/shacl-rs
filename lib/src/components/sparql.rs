@@ -236,6 +236,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
                 let mut error_context = c.clone();
                 error_context.with_value(failed_node.clone());
+                error_context.with_source_constraint(self.constraint_node.clone());
 
                 if let Some(path_term) = solution.get("path") {
                     if matches!(path_term, Term::NamedNode(_)) {

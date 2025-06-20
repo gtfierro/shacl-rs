@@ -748,6 +748,7 @@ pub(crate) struct Context {
     value: Option<Term>, // something that violated a component
     source_shape: SourceShape,
     trace_index: usize,
+    pub source_constraint: Option<Term>,
 }
 
 impl PartialEq for Context {
@@ -757,6 +758,7 @@ impl PartialEq for Context {
             && self.value_nodes == other.value_nodes
             && self.value == other.value
             && self.source_shape == other.source_shape
+            && self.source_constraint == other.source_constraint
     }
 }
 
@@ -769,6 +771,7 @@ impl Hash for Context {
         self.value_nodes.hash(state);
         self.value.hash(state);
         self.source_shape.hash(state);
+        self.source_constraint.hash(state);
     }
 }
 
@@ -788,6 +791,7 @@ impl Context {
             source_shape,
             value: None,
             trace_index,
+            source_constraint: None,
         }
     }
 
@@ -809,6 +813,11 @@ impl Context {
     pub(crate) fn with_result_path(&mut self, result_path: Term) {
         // In our implementation, we use a Simple path containing the given term.
         self.result_path = Some(crate::types::Path::Simple(result_path));
+    }
+
+    /// Sets the source constraint for the context.
+    pub(crate) fn with_source_constraint(&mut self, source_constraint: Term) {
+        self.source_constraint = Some(source_constraint);
     }
 
     /// Returns the specific value that violated a constraint, if any.
