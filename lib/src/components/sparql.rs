@@ -3,13 +3,12 @@ use super::{
 };
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
-use crate::shape::NodeShape;
 use crate::types::{ComponentID, PropShapeID, TraceItem};
 use ontoenv::api::ResolveTarget;
 use oxigraph::model::vocab::xsd;
-use oxigraph::model::{Literal, NamedNode, NamedNodeRef, Term, TermRef};
+use oxigraph::model::{Literal, NamedNode, NamedNodeRef, Term};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct SPARQLConstraintComponent {
@@ -239,7 +238,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
                 error_context.with_value(failed_node.clone());
 
                 if let Some(path_term) = solution.get("path") {
-                    if path_term.is_iri() {
+                    if matches!(path_term, Term::NamedNode(_)) {
                         error_context.with_result_path(path_term.clone());
                     }
                 }

@@ -466,7 +466,6 @@ impl ValidationContext {
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let store = Store::new().map_err(|e| Box::new(e) as Box<dyn Error>)?;
         let locations: Option<Vec<PathBuf>> = None;
         let mut env = OntoEnv::init(
             Config::new_with_default_matches(

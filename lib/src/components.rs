@@ -2,8 +2,7 @@ use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::shape::NodeShape;
 use crate::types::{ComponentID, ID, TraceItem};
-use oxigraph::model::{Literal, NamedNode, NamedNodeRef, SubjectRef, Term, TermRef};
-use oxigraph::sparql::{QueryOptions, QueryResults, Variable};
+use oxigraph::model::{Literal, NamedNode, SubjectRef, Term, TermRef};
 use std::collections::{HashMap, HashSet};
 
 mod cardinality;
