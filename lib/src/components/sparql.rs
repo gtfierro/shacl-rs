@@ -152,6 +152,11 @@ impl ValidateComponent for SPARQLConstraintComponent {
             query_str
         };
 
+        println!(
+            "Executing SPARQL constraint query for {:?}:\n{}",
+            self.constraint_node, final_query_str
+        );
+
         // 4. Parse query
         let mut query = Query::parse(&final_query_str, None).map_err(|e| {
             format!(
