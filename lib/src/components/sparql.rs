@@ -231,6 +231,12 @@ impl ValidateComponent for SPARQLConstraintComponent {
                 let mut error_context = c.clone();
                 error_context.with_value(failed_node.clone());
 
+                if let Some(path_term) = solution.get("path") {
+                    if path_term.is_iri() {
+                        error_context.with_result_path(path_term.clone());
+                    }
+                }
+
                 let failure = ValidationFailure {
                     component_id,
                     failed_value_node: Some(failed_node),
