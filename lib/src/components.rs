@@ -1,8 +1,8 @@
-use crate::context::{Context, SourceShape, ValidationContext};
+use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
-use crate::shape::{NodeShape, PropertyShape};
+use crate::shape::NodeShape;
 use crate::types::{ComponentID, ID, TraceItem};
-use oxigraph::model::{Literal, NamedNode, SubjectRef, Term, TermRef};
+use oxigraph::model::{Literal, NamedNode, NamedNodeRef, SubjectRef, Term, TermRef};
 use oxigraph::sparql::{QueryOptions, QueryResults, Variable};
 use std::collections::{HashMap, HashSet};
 
@@ -137,7 +137,7 @@ fn local_name(iri: &NamedNode) -> String {
             iri_str[slash_idx + 1..].to_string()
         } else {
             // trailing slash
-            let mut end = slash_idx;
+            let end = slash_idx;
             let mut start = slash_idx;
             if let Some(prev_slash) = iri_str[..end].rfind('/') {
                 start = prev_slash + 1;
@@ -156,12 +156,12 @@ fn parse_custom_constraint_components(
     HashMap<NamedNode, Vec<NamedNode>>,
 ) {
     let mut definitions = HashMap::new();
-    let mut param_to_component = HashMap::new();
+    let mut param_to_component: HashMap<NamedNode, Vec<NamedNode>> = HashMap::new();
     let shacl = SHACL::new();
 
     let query = "SELECT ?cc WHERE { ?cc a sh:ConstraintComponent }";
     if let Ok(QueryResults::Solutions(solutions)) =
-        context.store().query(query, QueryOptions::default())
+        context.store().query_opt(query, QueryOptions::default())
     {
         for solution in solutions {
             if let Some(Term::NamedNode(cc_iri)) = solution.unwrap().get("cc") {
@@ -171,8 +171,9 @@ fn parse_custom_constraint_components(
                     cc_iri.as_str()
                 );
 
-                if let Ok(QueryResults::Solutions(param_solutions)) =
-                    context.store().query(&param_query, QueryOptions::default())
+                if let Ok(QueryResults::Solutions(param_solutions)) = context
+                    .store()
+                    .query_opt(&param_query, QueryOptions::default())
                 {
                     for param_solution in param_solutions {
                         if let Ok(p_sol) = param_solution {
@@ -210,7 +211,7 @@ fn parse_custom_constraint_components(
                     );
 
                     if let Ok(QueryResults::Solutions(v_solutions)) =
-                        context.store().query(&v_query, QueryOptions::default())
+                        context.store().query_opt(&v_query, QueryOptions::default())
                     {
                         if let Some(Ok(v_sol)) = v_solutions.into_iter().next() {
                             if let Some(Term::Literal(query_lit)) = v_sol.get("query") {
@@ -234,22 +235,53 @@ fn parse_custom_constraint_components(
                     None
                 };
 
-                if let Some(v_term) = context.store().value_for_subject_predicate(
-                    &cc_iri.as_ref().into(),
-                    &shacl.validator.as_ref(),
-                ) {
+                let validator_prop =
+                    NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#validator");
+                let node_validator_prop =
+                    NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#nodeValidator");
+                let property_validator_prop =
+                    NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#propertyValidator");
+
+                if let Some(v_term) = context
+                    .store()
+                    .quads_for_pattern(
+                        Some(cc_iri.as_ref().into()),
+                        Some(validator_prop),
+                        None,
+                        Some(context.shape_graph_iri_ref()),
+                    )
+                    .filter_map(Result::ok)
+                    .map(|q| q.object)
+                    .next()
+                {
                     validator = parse_validator(&v_term, true);
                 }
-                if let Some(v_term) = context.store().value_for_subject_predicate(
-                    &cc_iri.as_ref().into(),
-                    &shacl.node_validator.as_ref(),
-                ) {
+                if let Some(v_term) = context
+                    .store()
+                    .quads_for_pattern(
+                        Some(cc_iri.as_ref().into()),
+                        Some(node_validator_prop),
+                        None,
+                        Some(context.shape_graph_iri_ref()),
+                    )
+                    .filter_map(Result::ok)
+                    .map(|q| q.object)
+                    .next()
+                {
                     node_validator = parse_validator(&v_term, false);
                 }
-                if let Some(v_term) = context.store().value_for_subject_predicate(
-                    &cc_iri.as_ref().into(),
-                    &shacl.property_validator.as_ref(),
-                ) {
+                if let Some(v_term) = context
+                    .store()
+                    .quads_for_pattern(
+                        Some(cc_iri.as_ref().into()),
+                        Some(property_validator_prop),
+                        None,
+                        Some(context.shape_graph_iri_ref()),
+                    )
+                    .filter_map(Result::ok)
+                    .map(|q| q.object)
+                    .next()
+                {
                     property_validator = parse_validator(&v_term, false);
                 }
 
@@ -539,7 +571,7 @@ pub(crate) fn parse_components(
 
     if let Some(pattern_terms) = pred_obj_pairs.get(&shacl.pattern.into_owned()) {
         processed_predicates.insert(shacl.pattern.into_owned());
-        if let Some(pattern_term @ Term::Literal(pattern_lit)) = pattern_terms.first() {
+        if let Some(Term::Literal(pattern_lit)) = pattern_terms.first() {
             // pattern_term is &Term
             let pattern_str = pattern_lit.value().to_string();
             let flags_str = pred_obj_pairs
@@ -1311,24 +1343,29 @@ impl ValidateComponent for CustomConstraintComponent {
         };
 
         let mut results = vec![];
-        let mut options = QueryOptions::default().with_binding(
-            "this",
+        let mut substitutions = vec![(
+            Variable::new_unchecked("this"),
             c.focus_node().clone(),
-        )?;
+        )];
 
         for (param_path, values) in &self.parameter_values {
             if let Some(value) = values.first() {
                 let param_name = local_name(param_path);
-                options = options.with_binding(param_name, value.clone())?;
+                substitutions.push((Variable::new_unchecked(param_name), value.clone()));
             }
         }
 
         if validator.is_ask {
             if let Some(value_nodes) = c.value_nodes() {
                 for value_node in value_nodes {
-                    let mut ask_options =
-                        options.clone().with_binding("value", value_node.clone())?;
-                    match context.store().query(&validator.query, ask_options) {
+                    let mut ask_substitutions = substitutions.clone();
+                    ask_substitutions
+                        .push((Variable::new_unchecked("value"), value_node.clone()));
+                    match context.store().query_opt_with_substituted_variables(
+                        &validator.query,
+                        QueryOptions::default(),
+                        ask_substitutions,
+                    ) {
                         Ok(QueryResults::Boolean(conforms)) => {
                             if !conforms {
                                 results.push(ComponentValidationResult::Fail(
@@ -1351,6 +1388,7 @@ impl ValidateComponent for CustomConstraintComponent {
                             }
                         }
                         Err(e) => return Err(format!("SPARQL query failed: {}", e)),
+                        _ => {} // Other query results types are ignored for ASK
                     }
                 }
             }
@@ -1366,7 +1404,11 @@ impl ValidateComponent for CustomConstraintComponent {
                 }
             }
 
-            match context.store().query(&query, options) {
+            match context.store().query_opt_with_substituted_variables(
+                &query,
+                QueryOptions::default(),
+                substitutions,
+            ) {
                 Ok(QueryResults::Solutions(solutions)) => {
                     for solution in solutions {
                         if let Ok(solution) = solution {
