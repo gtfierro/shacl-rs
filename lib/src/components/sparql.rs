@@ -168,7 +168,17 @@ impl ValidateComponent for SPARQLConstraintComponent {
         query.dataset_mut().set_default_graph_as_union();
 
         // 5. Pre-bind variables
-        let substitutions = vec![(Variable::new_unchecked("this"), c.focus_node().clone())];
+        let mut substitutions = vec![(Variable::new_unchecked("this"), c.focus_node().clone())];
+        if let Some(current_shape_term) = c.source_shape().get_term(context) {
+            substitutions.push((
+                Variable::new_unchecked("currentShape"),
+                current_shape_term,
+            ));
+        }
+        substitutions.push((
+            Variable::new_unchecked("shapesGraph"),
+            context.shape_graph_iri().clone().into(),
+        ));
 
         // 6. Execute query
         let results = context
@@ -549,6 +559,17 @@ impl ValidateComponent for CustomConstraintComponent {
             Variable::new_unchecked("this"),
             c.focus_node().clone(),
         )];
+
+        if let Some(current_shape_term) = c.source_shape().get_term(context) {
+            substitutions.push((
+                Variable::new_unchecked("currentShape"),
+                current_shape_term,
+            ));
+        }
+        substitutions.push((
+            Variable::new_unchecked("shapesGraph"),
+            context.shape_graph_iri().clone().into(),
+        ));
 
         for (param_path, values) in &self.parameter_values {
             if let Some(value) = values.first() {
