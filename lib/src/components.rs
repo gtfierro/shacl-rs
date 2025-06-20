@@ -43,7 +43,7 @@ impl GraphvizOutput for SPARQLConstraintComponent {
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
-                Some(shacl.select.as_ref()),
+                Some(shacl.select),
                 None,
                 Some(context.shape_graph_iri_ref()),
             )
@@ -71,7 +71,7 @@ impl GraphvizOutput for SPARQLConstraintComponent {
     }
 
     fn component_type(&self) -> NamedNode {
-        SHACL::new().sparql_constraint_component.into_owned()
+        NamedNode::new_unchecked("http://www.w3.org/ns/shacl#SPARQLConstraintComponent")
     }
 }
 
@@ -90,7 +90,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
-                Some(shacl.select.as_ref()),
+                Some(shacl.select),
                 None,
                 Some(context.shape_graph_iri_ref()),
             )
@@ -107,7 +107,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
-                Some(shacl.message.as_ref()),
+                Some(shacl.message),
                 None,
                 Some(context.shape_graph_iri_ref()),
             )
@@ -133,12 +133,12 @@ impl ValidateComponent for SPARQLConstraintComponent {
                         let value = solution.get("value").cloned();
                         let path_term = solution.get("path").cloned();
 
-                        let result_path = path_term.map(|p| crate::shape::Path::Simple(p));
+                        let result_path = path_term.map(|p| crate::types::Path::Simple(p));
 
                         let mut new_context = c.clone();
                         new_context.result_path = result_path;
                         if let Some(v) = &value {
-                            new_context.value = Some(v.clone());
+                            new_context.with_value(v.clone());
                         }
 
                         results.push(ComponentValidationResult::Fail(
