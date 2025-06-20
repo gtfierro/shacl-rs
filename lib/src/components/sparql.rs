@@ -229,14 +229,26 @@ impl ValidateComponent for SPARQLConstraintComponent {
                     )
                 };
 
-                let failed_node = solution
-                    .get("value")
-                    .cloned()
-                    .unwrap_or_else(|| c.focus_node().clone());
-
                 let mut error_context = c.clone();
-                error_context.with_value(failed_node.clone());
                 error_context.with_source_constraint(self.constraint_node.clone());
+
+                let failed_node = if let Some(value_term) = solution.get("value") {
+                    // Rule 1: Use the binding for the variable `value`
+                    Some(value_term.clone())
+                } else {
+                    // Rule 2: Use "the value node".
+                    // For a node shape, this is the focus node.
+                    // For a property shape, there's no single value node, so we leave it empty.
+                    if c.source_shape().as_node_id().is_some() {
+                        Some(c.focus_node().clone())
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(node) = &failed_node {
+                    error_context.with_value(node.clone());
+                }
 
                 if let Some(path_term) = solution.get("path") {
                     if matches!(path_term, Term::NamedNode(_)) {
@@ -246,7 +258,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
                 let failure = ValidationFailure {
                     component_id,
-                    failed_value_node: Some(failed_node),
+                    failed_value_node: failed_node,
                     message,
                 };
                 validation_results.push(ComponentValidationResult::Fail(error_context, failure));
