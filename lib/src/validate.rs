@@ -50,14 +50,13 @@ impl ValidateShape for NodeShape {
                         Ok(validation_results) => {
                             for result in validation_results {
                                 if let ComponentValidationResult::Fail(ctx, failure) = result {
-                                    rb.add_error(&ctx, failure.message);
+                                    rb.add_failure(&ctx, failure);
                                 }
                             }
                         }
                         Err(e) => {
-                            // This error 'e' comes from the component's own validate method.
-                            // NodeShape is responsible for adding this to the report builder.
-                            rb.add_error(&target_context, e);
+                            // This is a processing error, not a validation failure. Propagate it.
+                            return Err(e);
                         }
                     }
                 }
