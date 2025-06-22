@@ -313,6 +313,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
                             failed_value_node,
                             message,
                             result_path: result_path_override,
+                            source_constraint: Some(self.constraint_node.clone()),
                         },
                     ));
                 }
@@ -667,6 +668,7 @@ impl ValidateComponent for CustomConstraintComponent {
                                                 )
                                             }),
                                         result_path: None,
+                                        source_constraint: None,
                                     },
                                 ));
                             }
@@ -734,6 +736,7 @@ impl ValidateComponent for CustomConstraintComponent {
                                             )
                                         }),
                                     result_path: result_path_override,
+                                    source_constraint: None,
                                 },
                             ));
                         }

@@ -92,6 +92,7 @@ impl ValidateComponent for ClassConstraintComponent {
                             failed_value_node: Some(vn.clone()),
                             message,
                             result_path: None,
+                            source_constraint: None,
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                     }
@@ -249,6 +250,7 @@ impl ValidateComponent for DatatypeConstraintComponent {
                         failed_value_node: Some(value_node.clone()),
                         message,
                         result_path: None,
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -334,6 +336,7 @@ impl ValidateComponent for NodeKindConstraintComponent {
                         failed_value_node: Some(value_node.clone()),
                         message,
                         result_path: None,
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
