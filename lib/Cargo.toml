@@ -9,7 +9,7 @@ oxsdatatypes = "0.2.2"
 papaya = "0.2.1"
 xxhash-rust = { version = "0.8.15", features = ["xxh3"] }
 regex = { workspace = true }
-ontoenv = "0.2.2-a4"
+ontoenv = "0.2.2-a5"
 log = { workspace = true }
 url = { workspace = true }
 paste = "1.0.15"

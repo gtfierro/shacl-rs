@@ -194,11 +194,11 @@ impl ValidationReportBuilder {
                 ));
 
                 // sh:resultMessage
-                graph.insert(&Triple::new(
-                    result_node.clone(),
-                    sh.result_message,
-                    Term::from(Literal::new_simple_literal(&failure.message)),
-                ));
+                //graph.insert(&Triple::new(
+                //    result_node.clone(),
+                //    sh.result_message,
+                //    Term::from(Literal::new_simple_literal(&failure.message)),
+                //));
 
                 // sh:resultPath
                 let result_path_term = if let Some(path_override) = &failure.result_path {
