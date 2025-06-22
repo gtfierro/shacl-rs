@@ -1,3 +1,4 @@
+use crate::components::ValidationFailure;
 use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{Path, TraceItem};
@@ -93,7 +94,7 @@ impl<'a> ValidationReport<'a> {
 /// It collects validation results and can then be used to generate
 /// the final report in various formats.
 pub struct ValidationReportBuilder {
-    results: Vec<(Context, String)>,
+    results: Vec<(Context, ValidationFailure)>,
 }
 
 impl ValidationReportBuilder {
@@ -109,17 +110,14 @@ impl ValidationReportBuilder {
     /// # Arguments
     ///
     /// * `context` - The validation `Context` at the time of the failure.
-    /// * `error` - A string message describing the validation error.
-    pub(crate) fn add_error(&mut self, context: &Context, error: String) {
-        // Store the context by cloning it, as the original context might have a shorter lifetime.
-        // The error string is moved.
-        self.results.push((context.clone(), error));
-        // The println! macro is removed as per the request to track errors instead of printing.
+    /// * `failure` - A `ValidationFailure` struct with details about the error.
+    pub(crate) fn add_failure(&mut self, context: &Context, failure: ValidationFailure) {
+        self.results.push((context.clone(), failure));
     }
 
     /// Returns a slice of the validation results collected so far.
-    /// Each item is a tuple containing the `Context` of the failure and the error message.
-    pub fn results(&self) -> &[(Context, String)] {
+    /// Each item is a tuple containing the `Context` of the failure and the `ValidationFailure` details.
+    pub fn results(&self) -> &[(Context, ValidationFailure)] {
         &self.results
     }
 
@@ -174,7 +172,7 @@ impl ValidationReportBuilder {
         ));
 
         if !conforms {
-            for (context, _error_message) in &self.results {
+            for (context, failure) in &self.results {
                 let result_node: Subject = BlankNode::default().into();
                 graph.insert(&Triple::new(
                     report_node.clone(),
@@ -196,17 +194,19 @@ impl ValidationReportBuilder {
                 ));
 
                 // sh:resultMessage
-                // TODO: temporarily remove
-                // graph.insert(&Triple::new(
-                //     result_node.clone(),
-                //     sh.result_message,
-                //     Term::from(Literal::new_simple_literal(error_message)),
-                // ));
+                graph.insert(&Triple::new(
+                    result_node.clone(),
+                    sh.result_message,
+                    Term::from(Literal::new_simple_literal(&failure.message)),
+                ));
 
-                // Extract info from trace
-                let result_path_term = context.result_path().map(|p| path_to_rdf(p, &mut graph));
+                // sh:resultPath
+                let result_path_term = if let Some(path_override) = &failure.result_path {
+                    Some(path_to_rdf(path_override, &mut graph))
+                } else {
+                    context.result_path().map(|p| path_to_rdf(p, &mut graph))
+                };
 
-                // TODO: this could be property shape *OR* node shape
                 let source_shape_term = context.source_shape().get_term(validation_context);
 
                 let mut source_constraint_component_term = None;
@@ -226,7 +226,7 @@ impl ValidationReportBuilder {
                     }
                 }
 
-                if let Some(v) = context.value() {
+                if let Some(v) = &failure.failed_value_node {
                     graph.insert(&Triple::new(result_node.clone(), sh.value, v.clone()));
                 }
 
@@ -252,7 +252,7 @@ impl ValidationReportBuilder {
                     ));
                 }
 
-                if let Some(term) = &context.source_constraint {
+                if let Some(term) = &failure.source_constraint {
                     graph.insert(&Triple::new(
                         result_node.clone(),
                         sh.source_constraint,
@@ -313,20 +313,20 @@ impl ValidationReportBuilder {
         println!("Validation Report:");
         println!("------------------");
 
-        let mut grouped_errors: HashMap<Term, Vec<(&Context, &String)>> = HashMap::new();
+        let mut grouped_errors: HashMap<Term, Vec<(&Context, &ValidationFailure)>> = HashMap::new();
 
-        for (context, error_message) in &self.results {
+        for (context, failure) in &self.results {
             grouped_errors
                 .entry(context.focus_node().clone())
                 .or_default()
-                .push((context, error_message));
+                .push((context, failure));
         }
 
         let traces = validation_context.execution_traces.borrow();
-        for (focus_node, context_error_pairs) in grouped_errors {
+        for (focus_node, context_failure_pairs) in grouped_errors {
             println!("\nFocus Node: {}", focus_node);
-            for (context, error) in context_error_pairs {
-                println!("  - Error: {}", error);
+            for (context, failure) in context_failure_pairs {
+                println!("  - Error: {}", failure.message);
                 if let Some(source_shape_term) = context.source_shape().get_term(validation_context)
                 {
                     println!("    From shape: {}", source_shape_term);
