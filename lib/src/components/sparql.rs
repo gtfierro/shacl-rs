@@ -247,6 +247,11 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .map(|q| q.object)
             .collect();
 
+        println!(
+            "Executing SPARQL constraint query: {}",
+            full_query_str.replace('\n', " ")
+        );
+
         // 8. Execute query
         let query_results = context.store().query_opt_with_substituted_variables(
             query,
@@ -258,6 +263,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             Ok(QueryResults::Solutions(solutions)) => {
                 let mut results = vec![];
                 for solution_res in solutions {
+                    println!("Processing SPARQL solution: {:?}", solution_res);
                     let solution = solution_res.map_err(|e| e.to_string())?;
 
                     if let Some(Term::Literal(failure)) = solution.get("failure") {
@@ -312,7 +318,10 @@ impl ValidateComponent for SPARQLConstraintComponent {
                 }
                 Ok(results)
             }
-            Err(e) => Err(format!("SPARQL query failed: {}", e)),
+            Err(e) => {
+                println!("SPARQL query error: {}", e);
+                Err(format!("SPARQL query failed: {}", e))
+            }
             _ => Ok(vec![]), // Other query result types are ignored
         }
     }
