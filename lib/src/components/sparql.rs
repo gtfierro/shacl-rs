@@ -27,34 +27,39 @@ fn get_prefixes_for_sparql_node(
         .map(|q| q.object)
         .collect();
 
-    if prefixes_subjects.is_empty() {
-        // Fallback to ontology prefixes if sh:prefixes is not present
-        let graphid = context
-            .env()
-            .resolve(ResolveTarget::Graph(context.shape_graph_iri.clone()))
-            .ok_or_else(|| format!("Could not resolve graph IRI {}", context.shape_graph_iri))?;
-        let ont = context
-            .env()
-            .get_ontology(&graphid)
-            .map_err(|e| e.to_string())?;
-        let namespaces = ont.namespace_map();
-        let prefix_strs: Vec<String> = namespaces
-            .iter()
-            .map(|(prefix, iri)| format!("PREFIX {}: <{}>", prefix, iri))
-            .collect();
-        return Ok(prefix_strs.join("\n"));
-    }
+
+    //if prefixes_subjects.is_empty() {
+    //    // Fallback to ontology prefixes if sh:prefixes is not present
+    //    if let Some(graphid) = context.env().resolve(ResolveTarget::Graph(context.shape_graph_iri.clone())) {
+    //        // If the graph ID is an ontology, use its prefixes
+    //        if let Some(ontology) = context.env().get_ontology(&graphid).ok() {
+    //            let namespaces = ontology.namespace_map();
+    //            let prefix_strs: Vec<String> = namespaces
+    //                .iter()
+    //                .map(|(prefix, iri)| format!("PREFIX {}: <{}>", prefix, iri))
+    //                .collect();
+    //            return Ok(prefix_strs.join("\n"));
+    //        }
+    //    }
+    //}
 
     let mut collected_prefixes: HashMap<String, String> = HashMap::new();
 
     for prefixes_subject in prefixes_subjects {
+        println!(
+            "Processing sh:prefixes value: {}",
+            format_term_for_label(&prefixes_subject)
+        );
         // As per spec, sh:prefixes values can be ontology IRIs or nodes with sh:declare.
         // Per user request, we only handle ontology IRIs here.
         if let Term::NamedNode(ontology_iri) = &prefixes_subject {
             let graphid = context
                 .env()
-                .resolve(ResolveTarget::Graph(ontology_iri.clone()))
-                .ok_or_else(|| format!("Could not resolve ontology IRI {}", ontology_iri))?;
+                .resolve(ResolveTarget::Graph(ontology_iri.clone()));
+            let graphid = match graphid {
+                Some(id) => id,
+                None => { continue }
+            };
             if let Ok(ont) = context.env().get_ontology(&graphid) {
                 for (prefix, namespace) in ont.namespace_map().iter() {
                     if let Some(existing_namespace) = collected_prefixes.get(prefix.as_str()) {
@@ -145,22 +150,22 @@ impl ValidateComponent for SPARQLConstraintComponent {
         let constraint_subject = self.constraint_node.to_subject_ref();
 
         // 1. Check if deactivated
-        if let Some(Ok(deactivated_quad)) = context
-            .store()
-            .quads_for_pattern(
-                Some(constraint_subject),
-                Some(shacl.deactivated),
-                None,
-                Some(context.shape_graph_iri_ref()),
-            )
-            .next()
-        {
-            if let Term::Literal(lit) = &deactivated_quad.object {
-                if lit.datatype() == Some(xsd::BOOLEAN) && lit.value() == "true" {
-                    return Ok(vec![]);
-                }
-            }
-        }
+        // if let Some(Ok(deactivated_quad)) = context
+        //     .store()
+        //     .quads_for_pattern(
+        //         Some(constraint_subject),
+        //         Some(shacl.deactivated),
+        //         None,
+        //         Some(context.shape_graph_iri_ref()),
+        //     )
+        //     .next()
+        // {
+        //     if let Term::Literal(lit) = &deactivated_quad.object {
+        //         if lit.datatype() == Some(xsd::BOOLEAN) && lit.value() == "true" {
+        //             return Ok(vec![]);
+        //         }
+        //     }
+        // }
 
         // 2. Get SELECT query
         let mut select_query = if let Some(Ok(quad)) = context
@@ -197,9 +202,10 @@ impl ValidateComponent for SPARQLConstraintComponent {
                 "A SPARQL Constraint must not contain a federated query (SERVICE).".to_string(),
             );
         }
+        println!("SPARQL query: {}", select_query);
 
         // 4. Get prefixes
-        let prefixes = get_prefixes_for_sparql_node(self.constraint_node.as_ref(), context)?;
+        let prefixes = get_prefixes_for_sparql_node(self.constraint_node.as_ref(), context).unwrap();
 
         // 5. Handle $PATH substitution for property shapes
         if c.source_shape().as_prop_id().is_some() {
@@ -216,6 +222,8 @@ impl ValidateComponent for SPARQLConstraintComponent {
         } else {
             select_query
         };
+
+        println!("Full SPARQL query: {}", full_query);
 
         // 6. Prepare pre-bound variables
         let mut substitutions =
@@ -254,12 +262,13 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
         match query_results {
             Ok(QueryResults::Solutions(solutions)) => {
+                println!("SPARQL query executed: {}", full_query);
                 let mut results = vec![];
                 for solution_res in solutions {
                     let solution = solution_res.map_err(|e| e.to_string())?;
 
                     if let Some(Term::Literal(failure)) = solution.get("failure") {
-                        if failure.datatype() == Some(xsd::BOOLEAN) && failure.value() == "true" {
+                        if failure.datatype() == xsd::BOOLEAN && failure.value() == "true" {
                             return Err("SPARQL query reported a failure.".to_string());
                         }
                     }
