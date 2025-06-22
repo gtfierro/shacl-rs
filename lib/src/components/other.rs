@@ -34,6 +34,7 @@ impl ValidateComponent for InConstraintComponent {
                         c.value_nodes().unwrap_or(&Vec::new()) // Provide empty vec for formatting if None
                     ),
                     result_path: None,
+                    source_constraint: None,
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -54,6 +55,7 @@ impl ValidateComponent for InConstraintComponent {
                         failed_value_node: Some(vn.clone()),
                         message,
                         result_path: None,
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -198,6 +200,7 @@ impl ValidateComponent for ClosedConstraintComponent {
                         failed_value_node: Some(object),
                         message,
                         result_path: Some(Path::Simple(Term::NamedNode(predicate))),
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -260,6 +263,7 @@ impl ValidateComponent for HasValueConstraintComponent {
                             value_nodes, self.value
                         ),
                         result_path: None,
+                        source_constraint: None,
                     };
                     Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
                 }
@@ -274,6 +278,7 @@ impl ValidateComponent for HasValueConstraintComponent {
                         self.value
                     ),
                     result_path: None,
+                    source_constraint: None,
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             }

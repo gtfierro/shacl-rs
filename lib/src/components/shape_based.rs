@@ -89,6 +89,7 @@ impl ValidateComponent for NodeConstraintComponent {
                         failed_value_node: Some(value_node_to_check.clone()),
                         message: inner_failure.message,
                         result_path: None,
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -376,6 +377,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                         qualified_nodes_count, min
                     ),
                     result_path: None,
+                    source_constraint: None,
                 };
                 validation_results.push(ComponentValidationResult::Fail(c.clone(), failure));
             }
@@ -391,6 +393,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                         qualified_nodes_count, max
                     ),
                     result_path: None,
+                    source_constraint: None,
                 };
                 validation_results.push(ComponentValidationResult::Fail(c.clone(), failure));
             }

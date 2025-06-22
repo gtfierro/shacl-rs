@@ -98,6 +98,7 @@ impl ValidateComponent for NotConstraintComponent {
                         failed_value_node: Some(value_node_to_check.clone()),
                         message,
                         result_path: None,
+                        source_constraint: None,
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -206,6 +207,7 @@ impl ValidateComponent for AndConstraintComponent {
                             failed_value_node: Some(value_node_to_check.clone()),
                             message,
                             result_path: None,
+                            source_constraint: None,
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                         break 'conjunct_loop; // Fails one, fails all for this value node.
@@ -274,6 +276,7 @@ impl ValidateComponent for OrConstraintComponent {
                     failed_value_node: value_nodes.first().cloned(),
                     message: "sh:or with an empty list of shapes cannot be satisfied by any value node.".to_string(),
                     result_path: None,
+                    source_constraint: None,
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -336,6 +339,7 @@ impl ValidateComponent for OrConstraintComponent {
                     failed_value_node: Some(value_node_to_check.clone()),
                     message,
                     result_path: None,
+                    source_constraint: None,
                 };
                 results.push(ComponentValidationResult::Fail(error_context, failure));
             }
@@ -401,6 +405,7 @@ impl ValidateComponent for XoneConstraintComponent {
                     failed_value_node: value_nodes.first().cloned(),
                     message: "sh:xone with an empty list of shapes cannot be satisfied by any value node.".to_string(),
                     result_path: None,
+                    source_constraint: None,
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -462,6 +467,7 @@ impl ValidateComponent for XoneConstraintComponent {
                     failed_value_node: Some(value_node_to_check.clone()),
                     message,
                     result_path: None,
+                    source_constraint: None,
                 };
                 results.push(ComponentValidationResult::Fail(error_context, failure));
             }

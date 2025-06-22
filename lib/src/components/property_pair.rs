@@ -92,6 +92,7 @@ impl ValidateComponent for EqualsConstraintComponent {
                         equals_property.as_str()
                     ),
                     result_path: None,
+                    source_constraint: None,
                 },
             ));
         }
@@ -111,6 +112,7 @@ impl ValidateComponent for EqualsConstraintComponent {
                         equals_property.as_str()
                     ),
                     result_path: None,
+                    source_constraint: None,
                 },
             ));
         }
@@ -209,6 +211,7 @@ impl ValidateComponent for DisjointConstraintComponent {
                             disjoint_property.as_str()
                         ),
                         result_path: None,
+                        source_constraint: None,
                     },
                 ));
             }
@@ -319,6 +322,7 @@ impl ValidateComponent for LessThanConstraintComponent {
                                 less_than_property.as_str()
                             ),
                             result_path: None,
+                            source_constraint: None,
                         },
                     ));
                 }
@@ -430,6 +434,7 @@ impl ValidateComponent for LessThanOrEqualsConstraintComponent {
                                 lte_property.as_str()
                             ),
                             result_path: None,
+                            source_constraint: None,
                         },
                     ));
                 }
