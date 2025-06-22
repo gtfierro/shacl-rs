@@ -1,7 +1,7 @@
 use crate::context::{Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::shape::NodeShape;
-use crate::types::{ComponentID, ID, TraceItem};
+use crate::types::{ComponentID, ID, Path, TraceItem};
 use oxigraph::model::{Literal, NamedNode, SubjectRef, Term, TermRef};
 use std::collections::{HashMap, HashSet};
 
@@ -55,6 +55,8 @@ pub(crate) struct ValidationFailure {
     pub failed_value_node: Option<Term>,
     /// A human-readable message describing the failure.
     pub message: String,
+    /// The path of the validation result, which can be overridden by SPARQL-based constraints.
+    pub result_path: Option<Path>,
 }
 
 /// A trait for converting `Term` or `TermRef` into `SubjectRef`.

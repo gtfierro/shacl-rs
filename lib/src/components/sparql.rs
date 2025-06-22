@@ -3,7 +3,7 @@ use super::{
 };
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
-use crate::types::{ComponentID, TraceItem};
+use crate::types::{ComponentID, Path, TraceItem};
 use ontoenv::api::ResolveTarget;
 use oxigraph::model::vocab::xsd;
 use oxigraph::model::{Literal, NamedNode, NamedNodeRef, Term, TermRef};
@@ -274,9 +274,14 @@ impl ValidateComponent for SPARQLConstraintComponent {
                         }
                     }
 
-                    // The path for the validation result is taken from the context `c`.
-                    // The spec allows for `?path` to be bound in the query to override this,
-                    // but this is not implemented here to maintain consistency with `CustomConstraintComponent`.
+                    // The path for the validation result is taken from the ?path variable if bound,
+                    // otherwise it's taken from the context `c`.
+                    let result_path_override =
+                        if let Some(Term::NamedNode(path_iri)) = solution.get("path") {
+                            Some(Path::Simple(Term::NamedNode(path_iri.clone())))
+                        } else {
+                            None
+                        };
 
                     results.push(ComponentValidationResult::Fail(
                         c.clone(),
@@ -284,6 +289,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
                             component_id,
                             failed_value_node,
                             message,
+                            result_path: result_path_override,
                         },
                     ));
                 }
@@ -634,6 +640,7 @@ impl ValidateComponent for CustomConstraintComponent {
                                                     self.definition.iri
                                                 )
                                             }),
+                                        result_path: None,
                                     },
                                 ));
                             }
@@ -675,6 +682,14 @@ impl ValidateComponent for CustomConstraintComponent {
                             } else {
                                 None
                             };
+
+                            let result_path_override =
+                                if let Some(Term::NamedNode(path_iri)) = solution.get("path") {
+                                    Some(Path::Simple(Term::NamedNode(path_iri.clone())))
+                                } else {
+                                    None
+                                };
+
                             results.push(ComponentValidationResult::Fail(
                                 c.clone(),
                                 ValidationFailure {
@@ -692,6 +707,7 @@ impl ValidateComponent for CustomConstraintComponent {
                                                 self.definition.iri
                                             )
                                         }),
+                                    result_path: result_path_override,
                                 },
                             ));
                         }
