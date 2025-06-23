@@ -247,7 +247,7 @@ impl Target {
     pub(crate) fn get_target_nodes(
         &self,
         context: &ValidationContext,
-        source_shape_id: ID,
+        source_shape: SourceShape,
     ) -> Result<Vec<Context>, String> {
         match self {
             Target::Node(t) => {
@@ -256,7 +256,7 @@ impl Target {
                     t.clone(),
                     None,
                     Some(vec![t.clone()]),
-                    SourceShape::NodeShape(source_shape_id),
+                    source_shape,
                     trace_index,
                 )])
             }
@@ -300,7 +300,7 @@ impl Target {
                                         term_ref.to_owned(),
                                         None,
                                         Some(vec![term_ref.clone()]),
-                                        SourceShape::NodeShape(source_shape_id),
+                                        source_shape.clone(),
                                         trace_index,
                                     )
                                 })
@@ -347,7 +347,7 @@ impl Target {
                                             term_ref.to_owned(),
                                             None,
                                             Some(vec![term_ref.clone()]),
-                                            SourceShape::NodeShape(source_shape_id),
+                                            source_shape.clone(),
                                             trace_index,
                                         )
                                     })
@@ -394,7 +394,7 @@ impl Target {
                                             term_ref.to_owned(),
                                             None,
                                             Some(vec![term_ref.clone()]),
-                                            SourceShape::NodeShape(source_shape_id),
+                                            source_shape.clone(),
                                             trace_index,
                                         )
                                     })

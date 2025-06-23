@@ -22,7 +22,10 @@ impl ValidateShape for NodeShape {
                 target,
                 self.identifier()
             );
-            target_contexts.extend(target.get_target_nodes(context, *self.identifier())?);
+            target_contexts.extend(target.get_target_nodes(
+                context,
+                SourceShape::NodeShape(*self.identifier()),
+            )?);
         }
 
         for mut target_context in target_contexts.into_iter() {
@@ -80,7 +83,10 @@ impl ValidateShape for PropertyShape {
                 target,
                 self.identifier()
             );
-            target_contexts.extend(target.get_target_nodes(context, *self.identifier())?);
+            target_contexts.extend(target.get_target_nodes(
+                context,
+                SourceShape::PropertyShape(*self.identifier()),
+            )?);
         }
 
         for mut target_context in target_contexts.into_iter() {
