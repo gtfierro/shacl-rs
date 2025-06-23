@@ -262,7 +262,7 @@ fn parse_property_shape(
     let path = parse_shacl_path_recursive(context, path_object_term.as_ref())?;
 
     // get the targets
-    let mut targets: Vec<crate::types::Target> = context
+    let targets: Vec<crate::types::Target> = context
         .store()
         .quads_for_pattern(Some(subject), None, None, Some(ps_shape_graph_name.as_ref()))
         .filter_map(Result::ok)

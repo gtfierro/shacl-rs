@@ -21,7 +21,7 @@ pub(crate) mod validate;
 use crate::context::ValidationContext;
 use crate::parser as shacl_parser;
 use ontoenv::api::OntoEnv;
-use oxigraph::model::{GraphName, NamedNode};
+use oxigraph::model::NamedNode;
 use oxigraph::store::Store;
 use std::error::Error;
 
@@ -72,7 +72,7 @@ impl Validator {
     ) -> Result<Self, Box<dyn Error>> {
         let store = Store::new()?;
         for (graph_id, ontology) in env.ontologies() {
-            if let Some(graph) = ontology.graph() {
+            if let Ok(graph) = ontology.graph() {
                 let graph_name = NamedNode::new(graph_id.to_string())?;
                 for triple in graph.iter() {
                     store.insert(triple.in_graph(graph_name.as_ref()))?;
