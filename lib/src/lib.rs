@@ -19,6 +19,10 @@ pub mod test_utils; // Often pub for integration tests
 pub(crate) mod validate;
 
 use crate::context::ValidationContext;
+use crate::parser as shacl_parser;
+use ontoenv::api::OntoEnv;
+use oxigraph::model::{GraphName, NamedNode};
+use oxigraph::store::Store;
 use std::error::Error;
 
 /// A simple facade for the SHACL validator.
@@ -48,6 +52,43 @@ impl Validator {
         data_file_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
         let context = ValidationContext::from_files(shapes_file_path, data_file_path)?;
+        Ok(Validator { context })
+    }
+
+    /// Creates a new Validator from graphs within an OntoEnv.
+    ///
+    /// This method initializes the underlying `ValidationContext` using graphs
+    /// identified by their URIs from the provided `OntoEnv`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - An `OntoEnv` instance containing the necessary graphs. This is consumed.
+    /// * `shapes_graph_uri` - The URI of the shapes graph.
+    /// * `data_graph_uri` - The URI of the data graph.
+    pub fn from_graphs(
+        env: OntoEnv,
+        shapes_graph_uri: &NamedNode,
+        data_graph_uri: &NamedNode,
+    ) -> Result<Self, Box<dyn Error>> {
+        let store = Store::new()?;
+        for (graph_id, ontology) in env.ontologies() {
+            if let Some(graph) = ontology.graph() {
+                let graph_name = NamedNode::new(graph_id.to_string())?;
+                for triple in graph.iter() {
+                    store.insert(triple.in_graph(graph_name.as_ref()))?;
+                }
+            }
+        }
+
+        let mut context = ValidationContext::new(
+            store,
+            env,
+            shapes_graph_uri.clone(),
+            data_graph_uri.clone(),
+        );
+
+        shacl_parser::run_parser(&mut context)?;
+
         Ok(Validator { context })
     }
 
