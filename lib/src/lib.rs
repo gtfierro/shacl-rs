@@ -21,7 +21,7 @@ pub(crate) mod validate;
 use crate::context::ValidationContext;
 use crate::parser as shacl_parser;
 use ontoenv::api::OntoEnv;
-use oxigraph::io::RdfFormat;
+use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::NamedNode;
 use oxigraph::store::Store;
 use std::error::Error;
@@ -67,14 +67,16 @@ impl Validator {
         // If any source is a graph URI, we need to load an OntoEnv to find it.
         if matches!(shapes_source, Source::Graph(_)) || matches!(data_source, Source::Graph(_)) {
             let onto_env = OntoEnv::load_from_directory(PathBuf::from("."), false)?;
+            let mut all_quads = vec![];
             for (graph_id, ontology) in onto_env.ontologies() {
                 if let Ok(graph) = ontology.graph() {
                     let graph_name = NamedNode::new(graph_id.to_string())?;
                     for triple in graph.iter() {
-                        store.insert(triple.in_graph(graph_name.as_ref()))?;
+                        all_quads.push(triple.in_graph(graph_name.as_ref()).into_owned());
                     }
                 }
             }
+            store.bulk_loader().load_quads(all_quads)?;
             env = Some(onto_env);
         }
 
@@ -89,7 +91,10 @@ impl Validator {
                 .ok_or("Could not determine RDF format from file extension")?;
             let file = File::open(path)?;
             let reader = BufReader::new(file);
-            store.load_graph(reader, format, graph_uri.as_ref().into(), None)?;
+            let parser = RdfParser::from_format(format)
+                .without_named_graphs()
+                .with_default_graph(graph_uri.as_ref());
+            store.bulk_loader().load_from_reader(parser, reader)?;
             Ok(graph_uri)
         };
 
@@ -104,7 +109,10 @@ impl Validator {
         };
 
         // If we didn't load an OntoEnv, create a temporary empty one.
-        let final_env = env.unwrap();
+        let final_env = match env {
+            Some(e) => e,
+            None => OntoEnv::load_from_directory(PathBuf::from("."), false)?,
+        };
 
         let mut context =
             ValidationContext::new(store, final_env, shapes_graph_uri, data_graph_uri);
