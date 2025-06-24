@@ -3,7 +3,7 @@ use env_logger;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use oxigraph::io::RdfFormat;
-use shacl::Validator;
+use shacl::{Source, Validator};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -14,26 +14,56 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Parser)]
-struct GraphvizArgs {
+#[derive(Parser, Debug)]
+#[clap(group(
+    clap::ArgGroup::new("shapes_source")
+        .required(true)
+        .args(&["shapes_file", "shapes_graph"]),
+))]
+struct ShapesSourceCli {
     /// Path to the shapes file
     #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
+    shapes_file: Option<PathBuf>,
 
+    /// URI of the shapes graph
+    #[arg(long, value_name = "URI")]
+    shapes_graph: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+#[clap(group(
+    clap::ArgGroup::new("data_source")
+        .required(true)
+        .args(&["data_file", "data_graph"]),
+))]
+struct DataSourceCli {
     /// Path to the data file
     #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    data_file: Option<PathBuf>,
+
+    /// URI of the data graph
+    #[arg(long, value_name = "URI")]
+    data_graph: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+struct CommonArgs {
+    #[clap(flatten)]
+    shapes: ShapesSourceCli,
+    #[clap(flatten)]
+    data: DataSourceCli,
+}
+
+#[derive(Parser)]
+struct GraphvizArgs {
+    #[clap(flatten)]
+    common: CommonArgs,
 }
 
 #[derive(Parser)]
 struct PdfArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 
     /// Path to the output PDF file
     #[arg(short, long, value_name = "FILE")]
@@ -51,13 +81,8 @@ enum ValidateOutputFormat {
 
 #[derive(Parser)]
 struct ValidateArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 
     /// The output format for the validation report
     #[arg(long, value_enum, default_value_t = ValidateOutputFormat::Turtle)]
@@ -66,24 +91,14 @@ struct ValidateArgs {
 
 #[derive(Parser)]
 struct HeatArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 }
 
 #[derive(Parser)]
 struct GraphvizHeatmapArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 
     /// Include all shapes and components, even those not executed
     #[arg(long)]
@@ -92,13 +107,8 @@ struct GraphvizHeatmapArgs {
 
 #[derive(Parser)]
 struct PdfHeatmapArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 
     /// Path to the output PDF file
     #[arg(short, long, value_name = "FILE")]
@@ -111,13 +121,8 @@ struct PdfHeatmapArgs {
 
 #[derive(Parser)]
 struct TraceArgs {
-    /// Path to the shapes file
-    #[arg(short, long, value_name = "FILE")]
-    shapes_file: PathBuf,
-
-    /// Path to the data file
-    #[arg(short, long, value_name = "FILE")]
-    data_file: PathBuf,
+    #[clap(flatten)]
+    common: CommonArgs,
 }
 
 #[derive(clap::Subcommand)]
@@ -140,34 +145,35 @@ enum Commands {
     Trace(TraceArgs),
 }
 
+fn get_validator(common: &CommonArgs) -> Result<Validator, Box<dyn std::error::Error>> {
+    let shapes_source = if let Some(path) = &common.shapes.shapes_file {
+        Source::File(path.clone())
+    } else {
+        Source::Graph(common.shapes.shapes_graph.clone().unwrap())
+    };
+
+    let data_source = if let Some(path) = &common.data.data_file {
+        Source::File(path.clone())
+    } else {
+        Source::Graph(common.data.data_graph.clone().unwrap())
+    };
+
+    Validator::from_sources(shapes_source, data_source)
+        .map_err(|e| format!("Error creating validator: {}", e).into())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Graphviz(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
+            let validator = get_validator(&args.common)?;
             let dot_string = validator.to_graphviz()?;
             println!("{}", dot_string);
         }
         Commands::Pdf(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
+            let validator = get_validator(&args.common)?;
             let dot_string = validator.to_graphviz()?;
 
             let output_format = Format::Pdf;
@@ -187,15 +193,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("PDF generated at: {}", args.output_file.display());
         }
         Commands::Validate(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
+            let validator = get_validator(&args.common)?;
             let report = validator.validate();
 
             match args.format {
@@ -217,16 +215,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Commands::Heat(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
-
+            let validator = get_validator(&args.common)?;
             let report = validator.validate();
 
             let frequencies: HashMap<(String, String, String), usize> =
@@ -241,16 +230,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Commands::GraphvizHeatmap(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
-
+            let validator = get_validator(&args.common)?;
             // Run validation to populate execution traces
             let _report = validator.validate();
 
@@ -258,16 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", dot_string);
         }
         Commands::PdfHeatmap(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
-
+            let validator = get_validator(&args.common)?;
             // Run validation to populate execution traces
             let _report = validator.validate();
 
@@ -290,16 +261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("PDF heatmap generated at: {}", args.output_file.display());
         }
         Commands::Trace(args) => {
-            let validator = Validator::from_files(
-                args.shapes_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid shapes file path")?,
-                args.data_file
-                    .to_str()
-                    .ok_or_else(|| "Invalid data file path")?,
-            )
-            .map_err(|e| format!("Error loading files: {}", e))?;
-
+            let validator = get_validator(&args.common)?;
             // Run validation to populate execution traces
             let report = validator.validate();
 

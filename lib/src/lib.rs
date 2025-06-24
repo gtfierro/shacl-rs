@@ -21,9 +21,22 @@ pub(crate) mod validate;
 use crate::context::ValidationContext;
 use crate::parser as shacl_parser;
 use ontoenv::api::OntoEnv;
+use oxigraph::io::RdfFormat;
 use oxigraph::model::NamedNode;
 use oxigraph::store::Store;
 use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
+
+/// Represents the source of shapes or data, which can be either a local file or a named graph from an `OntoEnv`.
+#[derive(Debug)]
+pub enum Source {
+    /// A local file path.
+    File(PathBuf),
+    /// The URI of a named graph.
+    Graph(String),
+}
 
 /// A simple facade for the SHACL validator.
 ///
@@ -38,54 +51,63 @@ pub struct Validator {
 }
 
 impl Validator {
-    /// Creates a new Validator from shapes and data files.
+    /// Creates a new Validator from the given shapes and data sources.
     ///
-    /// This method initializes the underlying `ValidationContext`, loads the specified
-    /// files into the store, and parses the SHACL shapes.
-    ///
-    /// # Arguments
-    ///
-    /// * `shapes_file_path` - Path to the file containing the SHACL shapes (e.g., in Turtle format).
-    /// * `data_file_path` - Path to the file containing the data to be validated.
-    pub fn from_files(
-        shapes_file_path: &str,
-        data_file_path: &str,
-    ) -> Result<Self, Box<dyn Error>> {
-        let context = ValidationContext::from_files(shapes_file_path, data_file_path)?;
-        Ok(Validator { context })
-    }
-
-    /// Creates a new Validator from graphs within an OntoEnv.
-    ///
-    /// This method initializes the underlying `ValidationContext` using graphs
-    /// identified by their URIs from the provided `OntoEnv`.
+    /// This method initializes the underlying `ValidationContext`, loading data from files
+    /// or an `OntoEnv` as specified.
     ///
     /// # Arguments
     ///
-    /// * `env` - An `OntoEnv` instance containing the necessary graphs. This is consumed.
-    /// * `shapes_graph_uri` - The URI of the shapes graph.
-    /// * `data_graph_uri` - The URI of the data graph.
-    pub fn from_graphs(
-        env: OntoEnv,
-        shapes_graph_uri: &NamedNode,
-        data_graph_uri: &NamedNode,
-    ) -> Result<Self, Box<dyn Error>> {
+    /// * `shapes_source` - The source for the SHACL shapes.
+    /// * `data_source` - The source for the data to be validated.
+    pub fn from_sources(shapes_source: Source, data_source: Source) -> Result<Self, Box<dyn Error>> {
         let store = Store::new()?;
-        for (graph_id, ontology) in env.ontologies() {
-            if let Ok(graph) = ontology.graph() {
-                let graph_name = NamedNode::new(graph_id.to_string())?;
-                for triple in graph.iter() {
-                    store.insert(triple.in_graph(graph_name.as_ref()))?;
+        let mut env: Option<OntoEnv> = None;
+
+        // If any source is a graph URI, we need to load an OntoEnv to find it.
+        if matches!(shapes_source, Source::Graph(_)) || matches!(data_source, Source::Graph(_)) {
+            let onto_env = OntoEnv::load_from_directory(PathBuf::from("."), false)?;
+            for (graph_id, ontology) in onto_env.ontologies() {
+                if let Ok(graph) = ontology.graph() {
+                    let graph_name = NamedNode::new(graph_id.to_string())?;
+                    for triple in graph.iter() {
+                        store.insert(triple.in_graph(graph_name.as_ref()))?;
+                    }
                 }
             }
+            env = Some(onto_env);
         }
 
-        let mut context = ValidationContext::new(
-            store,
-            env,
-            shapes_graph_uri.clone(),
-            data_graph_uri.clone(),
-        );
+        // Helper to load a file into a named graph in the store.
+        // The graph name is derived from the file's canonical path.
+        let load_file_to_store = |path: &Path, store: &Store| -> Result<NamedNode, Box<dyn Error>> {
+            let canonical_path = path.canonicalize()?;
+            let graph_uri_str =
+                format!("file://{}", canonical_path.to_str().ok_or("Invalid path")?);
+            let graph_uri = NamedNode::new(graph_uri_str)?;
+            let format = RdfFormat::from_path(&canonical_path)
+                .ok_or("Could not determine RDF format from file extension")?;
+            let file = File::open(path)?;
+            let reader = BufReader::new(file);
+            store.load_graph(reader, format, graph_uri.as_ref().into(), None)?;
+            Ok(graph_uri)
+        };
+
+        let shapes_graph_uri = match shapes_source {
+            Source::File(path) => load_file_to_store(&path, &store)?,
+            Source::Graph(uri) => NamedNode::new(uri)?,
+        };
+
+        let data_graph_uri = match data_source {
+            Source::File(path) => load_file_to_store(&path, &store)?,
+            Source::Graph(uri) => NamedNode::new(uri)?,
+        };
+
+        // If we didn't load an OntoEnv, create a temporary empty one.
+        let final_env = env.unwrap_or(OntoEnv::new_temporary()?);
+
+        let mut context =
+            ValidationContext::new(store, final_env, shapes_graph_uri, data_graph_uri);
 
         shacl_parser::run_parser(&mut context)?;
 
