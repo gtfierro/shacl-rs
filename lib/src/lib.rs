@@ -87,8 +87,13 @@ impl Validator {
             let graph_uri_str =
                 format!("file://{}", canonical_path.to_str().ok_or("Invalid path")?);
             let graph_uri = NamedNode::new(graph_uri_str)?;
-            let format = RdfFormat::from_path(&canonical_path)
-                .ok_or("Could not determine RDF format from file extension")?;
+            let format = RdfFormat::from_extension(
+                canonical_path
+                    .extension()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .ok_or("Could not get file extension")?,
+            )
+            .ok_or("Could not determine RDF format from file extension")?;
             let file = File::open(path)?;
             let reader = BufReader::new(file);
             let parser = RdfParser::from_format(format)
