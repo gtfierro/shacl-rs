@@ -445,14 +445,7 @@ impl ValidationContext {
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let mut env = OntoEnv::init(
-            Config::new_with_default_matches(
-                PathBuf::from("."), // root
-            )
-            .unwrap(),
-            false,
-        )
-        .expect("Failed to create OntoEnv with default configuration");
+        let mut env = OntoEnv::new_in_memory_online_with_search()?;
 
         let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
         info!("Added shape graph: {}", shape_graph_location);
