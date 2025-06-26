@@ -34,15 +34,6 @@ pub(crate) fn oxigraph_to_petgraph(ox_graph: &Graph) -> DiGraph<Term, NamedNode>
     pg_graph
 }
 
-fn node_equality(n1: &Term, n2: &Term) -> bool {
-    match (n1, n2) {
-        (Term::BlankNode(_), Term::BlankNode(_)) => true,
-        (Term::BlankNode(_), Term::NamedNode(_)) => n1 == n2,
-        (Term::NamedNode(_), Term::BlankNode(_)) => n1 == n2,
-        (n1, n2) => n1 == n2,
-    }
-}
-
 /// Checks if two `oxigraph::model::Graph`s are isomorphic.
 ///
 /// This is done by converting both graphs to `petgraph` directed graphs and then
@@ -54,69 +45,7 @@ pub fn are_isomorphic(g1: &Graph, g2: &Graph) -> bool {
     let cg2 = to_canonical_graph(g2);
     let pg2 = oxigraph_to_petgraph(&cg2);
 
-    //is_isomorphic_matching(&pg1, &pg2, |n1, n2| node_equality(n1, n2), |e1, e2| e1 == e2)
-    //is_isomorphic_subgraph(&pg1, &pg2) && is_isomorphic_subgraph(&pg2, &pg1)
     is_isomorphic(&pg1, &pg2)
-}
-
-/// Contains the results of a graph diff operation.
-pub(crate) struct GraphDiff {
-    /// Triples that are in both graphs.
-    pub(crate) in_both: Graph,
-    /// Triples that are only in the first graph.
-    pub(crate) in_first: Graph,
-    /// Triples that are only in the second graph.
-    pub(crate) in_second: Graph,
-}
-
-impl GraphDiff {
-    /// Prints the contents of the graph diff to the console for debugging.
-    pub(crate) fn dump(&self) {
-        println!("unique to first");
-        for triple in self.in_first.iter() {
-            println!("{:?}", triple);
-        }
-        println!("unique to second");
-        for triple in self.in_second.iter() {
-            println!("{:?}", triple);
-        }
-    }
-}
-
-/// Computes the difference between two graphs, considering blank node isomorphism.
-///
-/// This function canonicalizes blank nodes in both graphs before comparing them.
-/// It returns a `GraphDiff` struct containing three graphs:
-/// - `in_both`: triples present in both graphs.
-/// - `in_first`: triples present only in the first graph.
-/// - `in_second`: triples present only in the second graph.
-pub(crate) fn graph_diff(g1: &Graph, g2: &Graph) -> GraphDiff {
-    let cg1 = to_canonical_graph(g1);
-    let cg2 = to_canonical_graph(g2);
-
-    let triples1: HashSet<_> = cg1.iter().map(|t| t.into_owned()).collect();
-    let triples2: HashSet<_> = cg2.iter().map(|t| t.into_owned()).collect();
-
-    let mut in_both = Graph::new();
-    for t in triples1.intersection(&triples2) {
-        in_both.insert(t.as_ref());
-    }
-
-    let mut in_first = Graph::new();
-    for t in triples1.difference(&triples2) {
-        in_first.insert(t.as_ref());
-    }
-
-    let mut in_second = Graph::new();
-    for t in triples2.difference(&triples1) {
-        in_second.insert(t.as_ref());
-    }
-
-    GraphDiff {
-        in_both,
-        in_first,
-        in_second,
-    }
 }
 
 /// Creates a canonical version of a graph by replacing blank node identifiers
@@ -526,107 +455,6 @@ pub(crate) fn skolemize(
                     NamedNode::new_unchecked(format!("{}{}", base_iri, bn.as_str()))
                 });
                 Term::from(skolem_iri.clone())
-            } else {
-                quad.object.clone()
-            };
-
-            quads_to_add.push(Quad::new(
-                new_subject,
-                quad.predicate.clone(),
-                new_object,
-                quad.graph_name.clone(),
-            ));
-        }
-    }
-
-    if quads_to_add.is_empty() {
-        return Ok(()); // Nothing to do
-    }
-
-    store.transaction(|mut transaction| {
-        for quad in &quads_to_remove {
-            transaction.remove(quad.as_ref())?;
-        }
-        for quad in &quads_to_add {
-            transaction.insert(quad.as_ref())?;
-        }
-        Ok(())
-    })
-}
-
-/// Replaces skolem IRIs in a graph with blank nodes (Deskolemization).
-///
-/// This is the reverse operation of `skolemize`. It looks for IRIs that start with
-/// a given `base_iri` and replaces them with blank nodes. The identifier for the
-/// new blank node is taken from the part of the IRI that follows the `base_iri`.
-///
-/// The replacement is done within a single transaction to ensure atomicity. The deskolemization
-/// is deterministic: the same skolem IRI will always be mapped to the same blank node for a given
-/// base IRI.
-///
-/// # Arguments
-///
-/// * `store` - The `oxigraph::store::Store` containing the graph to modify.
-/// * `graph_name` - The name of the graph to perform deskolemization on.
-/// * `base_iri` - The base IRI that was used for generating skolem IRIs.
-///
-/// # Errors
-///
-/// Returns a `StorageError` if there are issues with the underlying store during the transaction.
-pub(crate) fn deskolemize(
-    store: &Store,
-    graph_name: GraphNameRef,
-    base_iri: &str,
-) -> Result<(), StorageError> {
-    let mut skolem_iris_to_bnode = HashMap::<NamedNode, BlankNode>::new();
-    let mut quads_to_remove = Vec::<Quad>::new();
-    let mut quads_to_add = Vec::<Quad>::new();
-
-    let quads_in_graph: Vec<Quad> = store
-        .quads_for_pattern(None, None, None, Some(graph_name))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    for quad in &quads_in_graph {
-        let mut has_skolem_iri = false;
-
-        if let Subject::NamedNode(nn) = &quad.subject {
-            if nn.as_str().starts_with(base_iri) {
-                has_skolem_iri = true;
-            }
-        }
-        if let Term::NamedNode(nn) = &quad.object {
-            if nn.as_str().starts_with(base_iri) {
-                has_skolem_iri = true;
-            }
-        }
-
-        if has_skolem_iri {
-            quads_to_remove.push(quad.clone());
-
-            let new_subject = if let Subject::NamedNode(nn) = &quad.subject {
-                if nn.as_str().starts_with(base_iri) {
-                    let bnode = skolem_iris_to_bnode.entry(nn.clone()).or_insert_with(|| {
-                        let bnode_id = &nn.as_str()[base_iri.len()..];
-                        BlankNode::new_unchecked(bnode_id)
-                    });
-                    Subject::from(bnode.clone())
-                } else {
-                    quad.subject.clone()
-                }
-            } else {
-                quad.subject.clone()
-            };
-
-            let new_object = if let Term::NamedNode(nn) = &quad.object {
-                if nn.as_str().starts_with(base_iri) {
-                    let bnode = skolem_iris_to_bnode.entry(nn.clone()).or_insert_with(|| {
-                        let bnode_id = &nn.as_str()[base_iri.len()..];
-                        BlankNode::new_unchecked(bnode_id)
-                    });
-                    Term::from(bnode.clone())
-                } else {
-                    quad.object.clone()
-                }
             } else {
                 quad.object.clone()
             };

@@ -23,9 +23,6 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use xxhash_rust::xxh3::xxh3_64;
 
-const SHAPE_GRAPH_IRI: &str = "urn:shape_graph";
-const DATA_GRAPH_IRI: &str = "urn:data_graph";
-
 /// Filters a string to keep only alphanumeric characters, for use in Graphviz identifiers.
 pub(crate) fn sanitize_graphviz_string(input: &str) -> String {
     input.chars().filter(|c| c.is_alphanumeric()).collect()
@@ -130,7 +127,6 @@ pub struct ValidationContext {
     pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     /// A map from `ComponentID` to the parsed `Component`.
     pub(crate) components: HashMap<ComponentID, Component>,
-    term_to_hash: FastMap<TermID, Term>,
     env: OntoEnv,
     /// A collection of all execution traces generated during validation.
     pub(crate) execution_traces: RefCell<Vec<Vec<TraceItem>>>,
@@ -154,28 +150,9 @@ impl ValidationContext {
             node_shapes: HashMap::new(),
             prop_shapes: HashMap::new(),
             components: HashMap::new(),
-            term_to_hash: FastMap::default(),
             env,
             execution_traces: RefCell::new(Vec::new()),
         }
-    }
-
-    /// Computes a hash for a `Term` and stores the mapping if not already present.
-    pub(crate) fn term_to_hash(&mut self, term: Term) -> TermID {
-        let map = self.term_to_hash.pin();
-        let hash = TermID(xxh3_64(term.to_string().as_bytes()));
-        if !map.contains_key(&hash) {
-            // If the hash is not already in the map, insert it
-            map.insert(hash, term.clone());
-        }
-        hash
-    }
-
-    /// Retrieves a `Term` from its hash.
-    pub(crate) fn hash_to_term(&self, hash: TermID) -> Option<Term> {
-        // Searches for a term with the given hash
-        let map = self.term_to_hash.pin();
-        map.get(&hash).cloned()
     }
 
     /// Validates the loaded data graph against the loaded shapes graph.
@@ -205,14 +182,6 @@ impl ValidationContext {
             }
         }
         b
-    }
-
-    /// Dumps the internal state of the parsed shapes for debugging.
-    pub(crate) fn dump(&self) {
-        // print all of the shapes
-        for shape in self.node_shapes.values() {
-            debug!("{:?}", shape);
-        }
     }
 
     /// Generates a Graphviz DOT string representation of the shapes.
@@ -478,7 +447,6 @@ impl ValidationContext {
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let locations: Option<Vec<PathBuf>> = None;
         let mut env = OntoEnv::init(
             Config::new_with_default_matches(
                 PathBuf::from("."), // root
@@ -490,7 +458,7 @@ impl ValidationContext {
 
         let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
         info!("Added shape graph: {}", shape_graph_location);
-        let shape_ids = env.add(shape_graph_location, true)?;
+        let shape_ids = env.add(shape_graph_location, false)?;
         let shape_id = shape_ids.first().ok_or_else(|| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -498,9 +466,10 @@ impl ValidationContext {
             ))
         })?;
         let shape_graph_iri = env.get_ontology(shape_id).unwrap().name().clone();
+
         let data_graph_location = OntologyLocation::from_str(data_graph_path)?;
         info!("Added data graph: {}", data_graph_location);
-        let data_ids = env.add(data_graph_location, true)?;
+        let data_ids = env.add(data_graph_location, false)?;
         let data_id = data_ids.first().ok_or_else(|| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -510,6 +479,38 @@ impl ValidationContext {
         let data_graph_iri = env.get_ontology(data_id).unwrap().name().clone();
 
         let store = env.io().store().clone();
+
+        info!("Loading shape graph with bulk loader: {}", shape_graph_path);
+        Self::load_graph_into_store(
+            &store,
+            shape_graph_path,
+            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
+        )
+        .map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Error loading shape graph from '{}' into <{}>: {}",
+                    shape_graph_path, shape_graph_iri, e
+                ),
+            ))
+        })?;
+
+        info!("Loading data graph with bulk loader: {}", data_graph_path);
+        Self::load_graph_into_store(
+            &store,
+            data_graph_path,
+            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
+        )
+        .map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Error loading data graph from '{}' into <{}>: {}",
+                    data_graph_path, data_graph_iri, e
+                ),
+            ))
+        })?;
 
         let shape_graph_base_iri =
             format!("{}/.well-known/skolem/", shape_graph_iri.as_str().trim_end_matches('/'));
@@ -534,35 +535,6 @@ impl ValidationContext {
             GraphNameRef::NamedNode(data_graph_iri.as_ref()),
             &data_graph_base_iri,
         )?;
-        //Self::load_graph_into_store(
-        //    &store,
-        //    shape_graph_path,
-        //    GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
-        //)
-        //.map_err(|e| {
-        //    Box::new(std::io::Error::new(
-        //        std::io::ErrorKind::Other,
-        //        format!(
-        //            "Error loading shape graph from '{}' into <{}>: {}",
-        //            shape_graph_path, SHAPE_GRAPH_IRI, e
-        //        ),
-        //    ))
-        //})?;
-
-        //Self::load_graph_into_store(
-        //    &store,
-        //    data_graph_path,
-        //    GraphNameRef::NamedNode(data_graph_iri.as_ref()),
-        //)
-        //.map_err(|e| {
-        //    Box::new(std::io::Error::new(
-        //        std::io::ErrorKind::Other,
-        //        format!(
-        //            "Error loading data graph from '{}' into <{}>: {}",
-        //            data_graph_path, DATA_GRAPH_IRI, e
-        //        ),
-        //    ))
-        //})?;
 
         info!(
             "Optimizing store with shape graph <{}> and data graph <{}>",
@@ -666,11 +638,6 @@ impl ValidationContext {
     pub(crate) fn get_node_shape_by_id(&self, id: &ID) -> Option<&NodeShape> {
         // Returns a reference to the NodeShape by its ID
         self.node_shapes.get(id)
-    }
-
-    /// Returns a reference to the map of node shapes.
-    pub(crate) fn node_shapes(&self) -> &HashMap<ID, NodeShape> {
-        &self.node_shapes
     }
 
     /// Gets a human-readable label and type string for a `TraceItem`.
@@ -814,15 +781,6 @@ impl Context {
         }
     }
 
-    /// Adds value nodes to the context.
-    pub(crate) fn add_value_nodes(&mut self, value_nodes: &[Term]) {
-        if let Some(existing) = &mut self.value_nodes {
-            existing.extend(value_nodes.iter().cloned());
-        } else {
-            self.value_nodes = Some(value_nodes.to_vec());
-        }
-    }
-
     /// Sets the specific value that violated a constraint.
     pub(crate) fn with_value(&mut self, value: Term) {
         self.value = Some(value);
@@ -832,16 +790,6 @@ impl Context {
     pub(crate) fn with_result_path(&mut self, result_path: Term) {
         // In our implementation, we use a Simple path containing the given term.
         self.result_path = Some(crate::types::Path::Simple(result_path));
-    }
-
-    /// Sets the source constraint for the context.
-    pub(crate) fn with_source_constraint(&mut self, source_constraint: Term) {
-        self.source_constraint = Some(source_constraint);
-    }
-
-    /// Returns the specific value that violated a constraint, if any.
-    pub(crate) fn value(&self) -> Option<&Term> {
-        self.value.as_ref()
     }
 
     /// Returns the focus node for the current validation.
@@ -857,11 +805,6 @@ impl Context {
     /// Returns the set of value nodes being validated.
     pub(crate) fn value_nodes(&self) -> Option<&Vec<Term>> {
         self.value_nodes.as_ref()
-    }
-
-    /// Returns the number of value nodes.
-    pub(crate) fn num_value_nodes(&self) -> usize {
-        self.value_nodes.as_ref().map_or(0, |v| v.len())
     }
 
     /// Returns the source shape that initiated this validation context.
