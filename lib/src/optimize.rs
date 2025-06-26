@@ -16,14 +16,6 @@ impl OptimizerStats {
     pub(crate) fn new() -> Self {
         Self::default()
     }
-
-    /// Returns a formatted string of the optimizer statistics.
-    pub(crate) fn display(&self) -> String {
-        format!(
-            "Optimizer Stats:\n- Unreachable targets removed: {}",
-            self.unreachable_targets_removed
-        )
-    }
 }
 
 /// A struct that holds the `ValidationContext` and performs optimizations on it.
@@ -57,11 +49,6 @@ impl Optimizer {
     /// Consumes the optimizer and returns the optimized `ValidationContext`.
     pub(crate) fn finish(self) -> ValidationContext {
         self.ctx
-    }
-
-    /// Returns a formatted string of the optimizer statistics.
-    pub(crate) fn display_stats(&self) -> String {
-        self.stats.display()
     }
 
     // Add methods for optimization logic here

@@ -4,15 +4,14 @@ use crate::optimize::Optimizer;
 use crate::parser;
 use crate::report::ValidationReportBuilder;
 use crate::shape::{NodeShape, PropertyShape, ValidateShape};
-use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TermID, TraceItem, ID};
-use log::{debug, error, info};
+use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TraceItem, ID};
+use log::{error, info};
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{GraphNameRef, NamedNode, Term};
 use oxigraph::store::Store;
-use papaya::HashMap as FastMap;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
@@ -21,7 +20,6 @@ use std::fs::File;
 use std::hash::Hash;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use xxhash_rust::xxh3::xxh3_64;
 
 /// Filters a string to keep only alphanumeric characters, for use in Graphviz identifiers.
 pub(crate) fn sanitize_graphviz_string(input: &str) -> String {

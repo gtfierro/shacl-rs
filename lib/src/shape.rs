@@ -19,15 +19,6 @@ pub(crate) trait ValidateShape {
     ) -> Result<(), String>;
 }
 
-/// An enum that can hold either a `NodeShape` or a `PropertyShape`.
-#[derive(Debug)]
-pub(crate) enum Shape {
-    /// A node shape.
-    NodeShape(NodeShape),
-    /// A property shape.
-    PropertyShape(PropertyShape),
-}
-
 /// Represents a SHACL Node Shape.
 #[derive(Debug)]
 pub struct NodeShape {
@@ -68,16 +59,6 @@ impl NodeShape {
     /// Returns the severity level for this node shape.
     pub fn severity(&self) -> Severity {
         self.severity
-    }
-
-    /// Retrieves the name (Term) of the node shape from the validation context.
-    pub(crate) fn name(&self, context: &ValidationContext) -> String {
-        context
-            .nodeshape_id_lookup()
-            .borrow()
-            .get_term(*self.identifier())
-            .unwrap()
-            .to_string()
     }
 }
 
@@ -132,14 +113,5 @@ impl PropertyShape {
     /// Returns the severity level for this property shape.
     pub fn severity(&self) -> Severity {
         self.severity
-    }
-    /// Retrieves the name (Term) of the property shape from the validation context.
-    pub(crate) fn name(&self, context: &ValidationContext) -> String {
-        context
-            .propshape_id_lookup()
-            .borrow()
-            .get_term(*self.identifier())
-            .unwrap()
-            .to_string()
     }
 }

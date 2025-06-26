@@ -48,6 +48,22 @@ pub struct Validator {
 }
 
 impl Validator {
+    /// Creates a new Validator from local files.
+    ///
+    /// This method initializes the underlying `ValidationContext` by loading data from files.
+    ///
+    /// # Arguments
+    ///
+    /// * `shape_graph_path` - The file path for the SHACL shapes.
+    /// * `data_graph_path` - The file path for the data to be validated.
+    pub fn from_files(
+        shape_graph_path: &str,
+        data_graph_path: &str,
+    ) -> Result<Self, Box<dyn Error>> {
+        let context = ValidationContext::from_files(shape_graph_path, data_graph_path)?;
+        Ok(Validator { context })
+    }
+
     /// Creates a new Validator from the given shapes and data sources.
     ///
     /// This method initializes the underlying `ValidationContext`, loading data from files
@@ -57,7 +73,10 @@ impl Validator {
     ///
     /// * `shapes_source` - The source for the SHACL shapes.
     /// * `data_source` - The source for the data to be validated.
-    pub fn from_sources(shapes_source: Source, data_source: Source) -> Result<Self, Box<dyn Error>> {
+    pub fn from_sources(
+        shapes_source: Source,
+        data_source: Source,
+    ) -> Result<Self, Box<dyn Error>> {
         let store = Store::new()?;
         let mut env: OntoEnv = OntoEnv::new_in_memory_online_with_search()?;
 
@@ -73,8 +92,12 @@ impl Validator {
         let shapes_graph_uri = shapes_uris.first().cloned().unwrap();
         let data_graph_uri = datas_uris.first().cloned().unwrap();
 
-        let mut context =
-            ValidationContext::new(store, env, shapes_graph_uri.name().into(), data_graph_uri.name().into());
+        let mut context = ValidationContext::new(
+            store,
+            env,
+            shapes_graph_uri.name().into(),
+            data_graph_uri.name().into(),
+        );
 
         shacl_parser::run_parser(&mut context)?;
 

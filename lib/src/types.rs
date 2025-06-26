@@ -5,10 +5,6 @@ use oxigraph::sparql::{Query, QueryOptions, QueryResults}; // Added Query
 use std::fmt; // Added for Display trait
 use std::hash::Hash; // Added Hash for derived traits
 
-/// A unique identifier for a `Term` within the validation context, derived from its hash.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TermID(pub u64);
-
 /// A unique identifier for a `NodeShape`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ID(pub u64);
@@ -52,15 +48,6 @@ impl ComponentID {
     /// Converts the ComponentID to a string suitable for use as a node identifier in Graphviz.
     pub fn to_graphviz_id(&self) -> String {
         format!("c{}", self.0)
-    }
-    /// Retrieves the name (Term) of the component from the validation context.
-    pub(crate) fn name(&self, context: &ValidationContext) -> String {
-        context
-            .component_id_lookup
-            .borrow()
-            .get_term(*self)
-            .unwrap()
-            .to_string()
     }
 }
 
