@@ -21,6 +21,7 @@ pub(crate) mod validate;
 use crate::context::ValidationContext;
 use crate::parser as shacl_parser;
 use ontoenv::api::OntoEnv;
+use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::store::Store;
 use std::error::Error;
@@ -78,7 +79,13 @@ impl Validator {
         data_source: Source,
     ) -> Result<Self, Box<dyn Error>> {
         let store = Store::new()?;
-        let mut env: OntoEnv = OntoEnv::new_in_memory_online_with_search()?;
+        let config = Config::builder()
+            .root(std::env::current_dir()?)
+            .offline(true)
+            .no_search(true)
+            .temporary(true)
+            .build()?;
+        let mut env: OntoEnv = OntoEnv::init(config, false)?;
 
         let shapes_uris = match shapes_source {
             Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
