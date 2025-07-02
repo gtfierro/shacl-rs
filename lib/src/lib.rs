@@ -18,7 +18,7 @@ pub(crate) mod report;
 pub mod test_utils; // Often pub for integration tests
 pub(crate) mod validate;
 
-use crate::canonicalization;
+use crate::canonicalization::skolemize;
 use crate::context::ValidationContext;
 use crate::optimize::Optimizer;
 use crate::parser as shacl_parser;
@@ -112,7 +112,7 @@ impl Validator {
             "Skolemizing shape graph <{}> with base IRI <{}>",
             shape_graph_iri, shape_graph_base_iri
         );
-        canonicalization::skolemize(
+        skolemize(
             &store,
             GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
             &shape_graph_base_iri,
@@ -124,7 +124,7 @@ impl Validator {
             "Skolemizing data graph <{}> with base IRI <{}>",
             data_graph_iri, data_graph_base_iri
         );
-        canonicalization::skolemize(
+        skolemize(
             &store,
             GraphNameRef::NamedNode(data_graph_iri.as_ref()),
             &data_graph_base_iri,
