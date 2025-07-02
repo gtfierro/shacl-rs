@@ -496,11 +496,11 @@ impl ValidationContext {
             "Skolemizing shape graph <{}> with base IRI <{}>",
             shape_graph_iri, shape_graph_base_iri
         );
-        canonicalization::skolemize(
-            &store,
-            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
-            &shape_graph_base_iri,
-        )?;
+        //canonicalization::skolemize(
+        //    &store,
+        //    GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
+        //    &shape_graph_base_iri,
+        //)?;
 
         let data_graph_base_iri =
             format!("{}/.well-known/skolem/", data_graph_iri.as_str().trim_end_matches('/'));
@@ -508,11 +508,11 @@ impl ValidationContext {
             "Skolemizing data graph <{}> with base IRI <{}>",
             data_graph_iri, data_graph_base_iri
         );
-        canonicalization::skolemize(
-            &store,
-            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
-            &data_graph_base_iri,
-        )?;
+        //canonicalization::skolemize(
+        //    &store,
+        //    GraphNameRef::NamedNode(data_graph_iri.as_ref()),
+        //    &data_graph_base_iri,
+        //)?;
 
         info!(
             "Optimizing store with shape graph <{}> and data graph <{}>",
