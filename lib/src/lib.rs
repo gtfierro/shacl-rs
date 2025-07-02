@@ -18,11 +18,15 @@ pub(crate) mod report;
 pub mod test_utils; // Often pub for integration tests
 pub(crate) mod validate;
 
+use crate::canonicalization;
 use crate::context::ValidationContext;
+use crate::optimize::Optimizer;
 use crate::parser as shacl_parser;
+use log::info;
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
+use oxigraph::model::GraphNameRef;
 use oxigraph::store::Store;
 use std::error::Error;
 use std::path::PathBuf;
@@ -78,7 +82,6 @@ impl Validator {
         shapes_source: Source,
         data_source: Source,
     ) -> Result<Self, Box<dyn Error>> {
-        let store = Store::new()?;
         let config = Config::builder()
             .root(std::env::current_dir()?)
             .offline(true)
@@ -87,23 +90,66 @@ impl Validator {
             .build()?;
         let mut env: OntoEnv = OntoEnv::init(config, false)?;
 
-        let shapes_graph_uri = match shapes_source {
+        let shapes_graph_id = match shapes_source {
             Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
             Source::File(path) => env.add(OntologyLocation::File(path.clone()), true)?,
         };
-        let data_graph_uri = match data_source {
-            Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
-            Source::File(path) => env.add(OntologyLocation::File(path.clone()), true)?,
-        };
+        let shape_graph_iri = env.get_ontology(&shapes_graph_id).unwrap().name().clone();
+        info!("Added shape graph: {}", shape_graph_iri);
 
-        let mut context = ValidationContext::new(
-            store,
-            env,
-            shapes_graph_uri.name().into(),
-            data_graph_uri.name().into(),
+        let data_graph_id = match data_source {
+            Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
+            Source::File(path) => env.add(OntologyLocation::File(path.clone()), true)?,
+        };
+        let data_graph_iri = env.get_ontology(&data_graph_id).unwrap().name().clone();
+        info!("Added data graph: {}", data_graph_iri);
+
+        let store = env.io().store().clone();
+
+        let shape_graph_base_iri =
+            format!("{}/.well-known/skolem/", shape_graph_iri.as_str().trim_end_matches('/'));
+        info!(
+            "Skolemizing shape graph <{}> with base IRI <{}>",
+            shape_graph_iri, shape_graph_base_iri
         );
+        canonicalization::skolemize(
+            &store,
+            GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
+            &shape_graph_base_iri,
+        )?;
+
+        let data_graph_base_iri =
+            format!("{}/.well-known/skolem/", data_graph_iri.as_str().trim_end_matches('/'));
+        info!(
+            "Skolemizing data graph <{}> with base IRI <{}>",
+            data_graph_iri, data_graph_base_iri
+        );
+        canonicalization::skolemize(
+            &store,
+            GraphNameRef::NamedNode(data_graph_iri.as_ref()),
+            &data_graph_base_iri,
+        )?;
+
+        info!(
+            "Optimizing store with shape graph <{}> and data graph <{}>",
+            shape_graph_iri, data_graph_iri
+        );
+        store.optimize().map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Error optimizing store: {}", e),
+            ))
+        })?;
+
+        let mut context = ValidationContext::new(store, env, shape_graph_iri, data_graph_iri);
 
         shacl_parser::run_parser(&mut context)?;
+
+        info!("Optimizing shape graph");
+        let mut o = Optimizer::new(context);
+        o.optimize()?;
+        info!("Finished parsing shapes and optimizing context");
+        let context = o.finish();
 
         Ok(Validator { context })
     }
