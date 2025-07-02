@@ -12,11 +12,13 @@ pub(crate) fn run_parser(context: &mut ValidationContext) -> Result<(), String> 
     // parses the shape graph to get all of the shapes and components defined within
     let shapes = get_node_shapes(context);
     for shape in shapes {
+        println!("Parsing node shape: {:?}", shape);
         parse_node_shape(context, shape.as_ref())?;
     }
 
     let pshapes = get_property_shapes(context);
     for pshape in pshapes {
+        println!("Parsing property shape: {:?}", pshape);
         parse_property_shape(context, pshape.as_ref())?;
     }
     Ok(())
