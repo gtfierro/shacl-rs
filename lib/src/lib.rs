@@ -185,7 +185,7 @@ impl Validator {
     /// The report contains the outcome of the validation (conformity) and detailed
     /// results for any failures. The returned report is tied to the lifetime of the Validator.
     pub fn validate(&self) -> ValidationReport<'_> {
-        let report_builder = validate::validate(&self.context);
+        let report_builder = validate::validate(&self.context).unwrap();
         // The report needs the context to be able to serialize itself later.
         ValidationReport::new(report_builder, &self.context)
     }

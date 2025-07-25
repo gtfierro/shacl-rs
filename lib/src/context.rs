@@ -116,7 +116,7 @@ pub struct ShapesModel {
     pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     /// A map from `ComponentID` to the parsed `Component`.
     pub(crate) components: HashMap<ComponentID, Component>,
-    env: OntoEnv,
+    pub(crate) env: OntoEnv,
 }
 
 impl ShapesModel {

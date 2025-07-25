@@ -13,17 +13,16 @@ use std::collections::{HashMap, HashSet};
 // TODO : stop grabbing prefixes/declaratiosn from *everywhere*
 fn get_prefixes_for_sparql_node(
     sparql_node: TermRef,
-    context: &ValidationContext,
+    context: &ParsingContext,
 ) -> Result<String, String> {
     let shacl = SHACL::new();
     let mut prefixes_subjects: HashSet<Term> = context
-        .model
-        .store()
+        .store
         .quads_for_pattern(
             Some(sparql_node.try_to_subject_ref()?),
             Some(shacl.prefixes),
             None,
-            Some(context.model.shape_graph_iri_ref()),
+            Some(context.shape_graph_iri_ref()),
         )
         .filter_map(Result::ok)
         .map(|q| q.object)
@@ -32,8 +31,7 @@ fn get_prefixes_for_sparql_node(
     // extend with sh:declare subjects
     prefixes_subjects.extend(
         context
-            .model
-            .store()
+            .store
             .quads_for_pattern(
                 None,
                 Some(shacl.declare),
@@ -49,8 +47,7 @@ fn get_prefixes_for_sparql_node(
     for prefixes_subject in prefixes_subjects {
         // Handle sh:declare on the prefixes_subject
         let declarations: Vec<Term> = context
-            .model
-            .store()
+            .store
             .quads_for_pattern(
                 Some(prefixes_subject.try_to_subject_ref()?),
                 Some(shacl.declare),
@@ -73,8 +70,7 @@ fn get_prefixes_for_sparql_node(
             };
 
             let prefix_val = context
-                .model
-                .store()
+                .store
                 .quads_for_pattern(
                     Some(decl_subject),
                     Some(shacl.prefix),
@@ -86,8 +82,7 @@ fn get_prefixes_for_sparql_node(
                 .map(|q| q.object);
 
             let namespace_val = context
-                .model
-                .store()
+                .store
                 .quads_for_pattern(
                     Some(decl_subject),
                     Some(shacl.namespace),
@@ -124,14 +119,13 @@ fn get_prefixes_for_sparql_node(
         // Handle ontology IRI with ontoenv
         if let Term::NamedNode(ontology_iri) = &prefixes_subject {
             let graphid = context
-                .model
-                .env()
+                .env
                 .resolve(ResolveTarget::Graph(ontology_iri.clone()));
             let graphid = match graphid {
                 Some(id) => id,
                 None => continue,
             };
-            if let Ok(ont) = context.model.env().get_ontology(&graphid) {
+            if let Ok(ont) = context.env.get_ontology(&graphid) {
                 for (prefix, namespace) in ont.namespace_map().iter() {
                     if let Some(existing_namespace) = collected_prefixes.get(prefix.as_str()) {
                         if existing_namespace != namespace {
@@ -477,7 +471,7 @@ fn local_name(iri: &NamedNode) -> String {
 }
 
 pub(crate) fn parse_custom_constraint_components(
-    context: &ValidationContext,
+    context: &ParsingContext,
 ) -> (
     HashMap<NamedNode, CustomConstraintComponentDefinition>,
     HashMap<NamedNode, Vec<NamedNode>>,
@@ -487,7 +481,7 @@ pub(crate) fn parse_custom_constraint_components(
 
     let query = "SELECT ?cc WHERE { ?cc a sh:ConstraintComponent }";
     if let Ok(QueryResults::Solutions(solutions)) =
-        context.model.store().query_opt(query, QueryOptions::default())
+        context.store.query_opt(query, QueryOptions::default())
     {
         for solution_res in solutions {
             if let Ok(solution) = solution_res {
@@ -499,8 +493,7 @@ pub(crate) fn parse_custom_constraint_components(
                     );
 
                     if let Ok(QueryResults::Solutions(param_solutions)) = context
-                        .model
-                        .store()
+                        .store
                         .query_opt(&param_query, QueryOptions::default())
                     {
                         for param_solution in param_solutions {
@@ -532,7 +525,7 @@ pub(crate) fn parse_custom_constraint_components(
 
                     // Helper to parse a validator
                     let parse_validator =
-                        |v_term: &Term, is_ask: bool, context: &ValidationContext| -> Option<SPARQLValidator> {
+                        |v_term: &Term, is_ask: bool, context: &ParsingContext| -> Option<SPARQLValidator> {
                             let query_prop = if is_ask { "ask" } else { "select" };
                             let v_query = format!(
                             "SELECT ?query (GROUP_CONCAT(?msg; separator='|||') as ?messages) WHERE {{ <{}> sh:{} ?query . OPTIONAL {{ <{}> sh:message ?msg }} }} GROUP BY ?query",
@@ -540,7 +533,7 @@ pub(crate) fn parse_custom_constraint_components(
                         );
 
                             if let Ok(QueryResults::Solutions(v_solutions)) =
-                                context.model.store().query_opt(&v_query, QueryOptions::default())
+                                context.store.query_opt(&v_query, QueryOptions::default())
                             {
                                 if let Some(Ok(v_sol)) = v_solutions.into_iter().next() {
                                     if let Some(Term::Literal(query_lit)) = v_sol.get("query") {
@@ -578,13 +571,12 @@ pub(crate) fn parse_custom_constraint_components(
                         NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#propertyValidator");
 
                     if let Some(v_term) = context
-                        .model
-                        .store()
+                        .store
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(validator_prop),
                             None,
-                            Some(context.model.shape_graph_iri_ref()),
+                            Some(context.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
@@ -593,13 +585,12 @@ pub(crate) fn parse_custom_constraint_components(
                         validator = parse_validator(&v_term, true, context);
                     }
                     if let Some(v_term) = context
-                        .model
-                        .store()
+                        .store
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(node_validator_prop),
                             None,
-                            Some(context.model.shape_graph_iri_ref()),
+                            Some(context.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
@@ -608,13 +599,12 @@ pub(crate) fn parse_custom_constraint_components(
                         node_validator = parse_validator(&v_term, false, context);
                     }
                     if let Some(v_term) = context
-                        .model
-                        .store()
+                        .store
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(property_validator_prop),
                             None,
-                            Some(context.model.shape_graph_iri_ref()),
+                            Some(context.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
