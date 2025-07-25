@@ -1,24 +1,19 @@
-use crate::canonicalization;
 use crate::components::Component;
 use crate::optimize::Optimizer;
 use crate::parser;
-use crate::report::ValidationReportBuilder;
-use crate::shape::{NodeShape, PropertyShape, ValidateShape};
+use crate::shape::{NodeShape, PropertyShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TraceItem, ID};
-use log::{error, info};
+use log::info;
 use ontoenv::api::OntoEnv;
 use ontoenv::ontology::OntologyLocation;
-use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{GraphNameRef, NamedNode, Term};
 use oxigraph::store::Store;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use std::fs::File;
 use std::hash::Hash;
-use std::io::BufReader;
-use std::path::Path;
+use std::rc::Rc;
 
 /// Filters a string to keep only alphanumeric characters, for use in Graphviz identifiers.
 pub(crate) fn sanitize_graphviz_string(input: &str) -> String {
@@ -260,15 +255,6 @@ impl ShapesModel {
         Ok(dot_string)
     }
 
-    /// Parses an RDF list from the shapes graph, starting from the given head term.
-    pub(crate) fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
-        // This function call will need to be adapted once the parser is refactored.
-        // For now, we can't create a `ParsingContext` here.
-        // Let's return an empty Vec as a placeholder.
-        // parser::parse_rdf_list(self, list_head_term) // This will be fixed later.
-        vec![]
-    }
-
     /// Returns a reference to the underlying `Store`.
     pub(crate) fn store(&self) -> &Store {
         &self.store
@@ -314,16 +300,16 @@ impl ShapesModel {
 ///
 /// It holds a reference to the `ShapesModel`, the data graph being validated, and
 /// other contextual information needed for validation.
-pub struct ValidationContext<'a> {
-    pub(crate) model: &'a ShapesModel,
+pub struct ValidationContext {
+    pub(crate) model: Rc<ShapesModel>,
     pub(crate) data_graph_iri: NamedNode,
     /// A collection of all execution traces generated during validation.
     pub(crate) execution_traces: RefCell<Vec<Vec<TraceItem>>>,
 }
 
-impl<'a> ValidationContext<'a> {
+impl ValidationContext {
     /// Creates a new `ValidationContext` for a validation run.
-    pub(crate) fn new(model: &'a ShapesModel, data_graph_iri: NamedNode) -> Self {
+    pub(crate) fn new(model: Rc<ShapesModel>, data_graph_iri: NamedNode) -> Self {
         ValidationContext {
             model,
             data_graph_iri,
@@ -377,60 +363,6 @@ impl<'a> ValidationContext<'a> {
             }
         }
     }
-}
-
-/// The central struct for managing the validation process.
-///
-/// It holds the shapes and data graphs, parsed shapes, and other
-/// contextual information needed for validation. This provides an
-/// advanced API for users who need more control than the simple `Validator` facade.
-pub(crate) struct ParsingContext {
-    /// Lookup table for node shape `Term`s to `ID`s.
-    pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
-    /// Lookup table for property shape `Term`s to `PropShapeID`s.
-    pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
-    /// Lookup table for component `Term`s to `ComponentID`s.
-    pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
-    /// The Oxigraph `Store` containing both shapes and data graphs.
-    pub(crate) store: Store,
-    /// The `NamedNode` identifying the shapes graph.
-    pub(crate) shape_graph_iri: NamedNode,
-    /// The `NamedNode` identifying the data graph.
-    pub(crate) data_graph_iri: NamedNode,
-    /// A map from `ID` to the parsed `NodeShape`.
-    pub(crate) node_shapes: HashMap<ID, NodeShape>,
-    /// A map from `PropShapeID` to the parsed `PropertyShape`.
-    pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
-    /// A map from `ComponentID` to the parsed `Component`.
-    pub(crate) components: HashMap<ComponentID, Component>,
-    env: OntoEnv,
-    /// A collection of all execution traces generated during validation.
-    pub(crate) execution_traces: RefCell<Vec<Vec<TraceItem>>>,
-}
-
-impl ParsingContext {
-    /// Creates a new `ValidationContext` with the given store and graph IRIs.
-    pub(crate) fn new(
-        store: Store,
-        env: OntoEnv,
-        shape_graph_iri: NamedNode,
-        data_graph_iri: NamedNode,
-    ) -> Self {
-        ValidationContext {
-            nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
-            propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
-            component_id_lookup: RefCell::new(IDLookupTable::<ComponentID>::new()),
-            store,
-            shape_graph_iri,
-            data_graph_iri,
-            node_shapes: HashMap::new(),
-            prop_shapes: HashMap::new(),
-            components: HashMap::new(),
-            env,
-            execution_traces: RefCell::new(Vec::new()),
-        }
-    }
-
 
     /// Generates a Graphviz DOT string representation of the shapes, with nodes colored by execution frequency.
     pub(crate) fn graphviz_heatmap(
@@ -464,7 +396,7 @@ impl ParsingContext {
         dot_string.push_str("    node [style=filled];\n");
 
         // Node Shapes
-        for shape in self.node_shapes.values() {
+        for shape in self.model.node_shapes.values() {
             let trace_item = TraceItem::NodeShape(*shape.identifier());
             let count = frequencies.get(&trace_item).copied().unwrap_or(0);
 
@@ -480,6 +412,7 @@ impl ParsingContext {
             };
 
             let name = self
+                .model
                 .nodeshape_id_lookup
                 .borrow()
                 .id_to_term
@@ -511,7 +444,7 @@ impl ParsingContext {
         }
 
         // Property Shapes
-        for pshape in self.prop_shapes.values() {
+        for pshape in self.model.prop_shapes.values() {
             let trace_item = TraceItem::PropertyShape(*pshape.identifier());
             let count = frequencies.get(&trace_item).copied().unwrap_or(0);
 
@@ -527,6 +460,7 @@ impl ParsingContext {
             };
 
             let _name = self
+                .model
                 .propshape_id_lookup
                 .borrow()
                 .id_to_term
@@ -561,7 +495,7 @@ impl ParsingContext {
         }
 
         // Components
-        for (ident, comp) in self.components.iter() {
+        for (ident, comp) in self.model.components.iter() {
             let trace_item = TraceItem::Component(*ident);
             let count = frequencies.get(&trace_item).copied().unwrap_or(0);
 
@@ -604,8 +538,61 @@ impl ParsingContext {
         dot_string.push_str("}\n");
         Ok(dot_string)
     }
+}
 
+/// The central struct for managing the validation process.
+///
+/// It holds the shapes and data graphs, parsed shapes, and other
+/// contextual information needed for validation. This provides an
+/// advanced API for users who need more control than the simple `Validator` facade.
+pub(crate) struct ParsingContext {
+    /// Lookup table for node shape `Term`s to `ID`s.
+    pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
+    /// Lookup table for property shape `Term`s to `PropShapeID`s.
+    pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
+    /// Lookup table for component `Term`s to `ComponentID`s.
+    pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
+    /// The Oxigraph `Store` containing both shapes and data graphs.
+    pub(crate) store: Store,
+    /// The `NamedNode` identifying the shapes graph.
+    pub(crate) shape_graph_iri: NamedNode,
+    /// The `NamedNode` identifying the data graph.
+    pub(crate) data_graph_iri: NamedNode,
+    /// A map from `ID` to the parsed `NodeShape`.
+    pub(crate) node_shapes: HashMap<ID, NodeShape>,
+    /// A map from `PropShapeID` to the parsed `PropertyShape`.
+    pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
+    /// A map from `ComponentID` to the parsed `Component`.
+    pub(crate) components: HashMap<ComponentID, Component>,
+    env: OntoEnv,
+}
 
+impl ParsingContext {
+    /// Returns the shapes graph IRI as a `GraphNameRef`.
+    pub(crate) fn shape_graph_iri_ref(&self) -> GraphNameRef<'_> {
+        GraphNameRef::NamedNode(self.shape_graph_iri.as_ref())
+    }
+
+    /// Creates a new `ParsingContext` with the given store and graph IRIs.
+    pub(crate) fn new(
+        store: Store,
+        env: OntoEnv,
+        shape_graph_iri: NamedNode,
+        data_graph_iri: NamedNode,
+    ) -> Self {
+        ParsingContext {
+            nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
+            propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
+            component_id_lookup: RefCell::new(IDLookupTable::<ComponentID>::new()),
+            store,
+            shape_graph_iri,
+            data_graph_iri,
+            node_shapes: HashMap::new(),
+            prop_shapes: HashMap::new(),
+            components: HashMap::new(),
+            env,
+        }
+    }
 
     /// Returns an ID for the given term, creating a new one if necessary for a NodeShape.
     pub(crate) fn get_or_create_node_id(&self, term: Term) -> ID {
@@ -621,7 +608,6 @@ impl ParsingContext {
     pub(crate) fn get_or_create_component_id(&self, term: Term) -> ComponentID {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
     }
-
 }
 
 /// Identifies the source shape that initiated a validation context, either a node or property shape.

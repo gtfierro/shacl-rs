@@ -8,11 +8,24 @@ use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 use std::collections::HashSet;
 
+pub(crate) fn validate(context: &ValidationContext) -> Result<ValidationReportBuilder, String> {
+    let mut report_builder = ValidationReportBuilder::new();
+    // Validate all node shapes
+    for shape in context.model.node_shapes.values() {
+        shape.process_targets(context, &mut report_builder)?;
+    }
+    // Validate all property shapes
+    for shape in context.model.prop_shapes.values() {
+        shape.process_targets(context, &mut report_builder)?;
+    }
+    Ok(report_builder)
+}
+
 impl ValidateShape for NodeShape {
     fn process_targets(
         &self,
         context: &ValidationContext,
-        rb: &mut ValidationReportBuilder,
+        report_builder: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         // first gather all of the targets
         let mut target_contexts = HashSet::new();
@@ -45,6 +58,7 @@ impl ValidateShape for NodeShape {
                 for constraint_id in self.constraints() {
                     // constraint_id is &ComponentID
                     let comp = context
+                        .model
                         .get_component_by_id(constraint_id)
                         .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
 
@@ -53,7 +67,7 @@ impl ValidateShape for NodeShape {
                         Ok(validation_results) => {
                             for result in validation_results {
                                 if let ComponentValidationResult::Fail(ctx, failure) = result {
-                                    rb.add_failure(&ctx, failure);
+                                    report_builder.add_failure(&ctx, failure);
                                 }
                             }
                         }
@@ -73,7 +87,7 @@ impl ValidateShape for PropertyShape {
     fn process_targets(
         &self,
         context: &ValidationContext,
-        rb: &mut ValidationReportBuilder,
+        report_builder: &mut ValidationReportBuilder,
     ) -> Result<(), String> {
         // first gather all of the targets
         let mut target_contexts = HashSet::new();
@@ -105,7 +119,7 @@ impl ValidateShape for PropertyShape {
                     Ok(validation_results) => {
                         for result in validation_results {
                             if let ComponentValidationResult::Fail(ctx, failure) = result {
-                                rb.add_failure(&ctx, failure);
+                                report_builder.add_failure(&ctx, failure);
                             }
                         }
                     }
@@ -162,6 +176,7 @@ impl PropertyShape {
             query.dataset_mut().set_default_graph_as_union();
 
             let results = context
+                .model
                 .store()
                 .query_opt(query, QueryOptions::default())
                 .map_err(|e| {
@@ -222,6 +237,7 @@ impl PropertyShape {
 
             for constraint_id in self.constraints() {
                 let component = context
+                    .model
                     .get_component_by_id(constraint_id)
                     .ok_or_else(|| format!("Component not found: {}", constraint_id))?;
 
