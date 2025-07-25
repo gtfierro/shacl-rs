@@ -100,6 +100,96 @@ impl<IdType: Copy + Eq + Hash + From<u64>> IDLookupTable<IdType> {
     }
 }
 
+/// A container for a parsed and optimized shapes graph.
+///
+/// This struct holds all the static information about node shapes, property shapes,
+/// components, and the ontology environment, parsed from a SHACL shapes graph.
+pub struct ShapesModel {
+    /// Lookup table for node shape `Term`s to `ID`s.
+    pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
+    /// Lookup table for property shape `Term`s to `PropShapeID`s.
+    pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
+    /// Lookup table for component `Term`s to `ComponentID`s.
+    pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
+    /// The Oxigraph `Store` containing the shapes graph.
+    pub(crate) store: Store,
+    /// The `NamedNode` identifying the shapes graph.
+    pub(crate) shape_graph_iri: NamedNode,
+    /// A map from `ID` to the parsed `NodeShape`.
+    pub(crate) node_shapes: HashMap<ID, NodeShape>,
+    /// A map from `PropShapeID` to the parsed `PropertyShape`.
+    pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
+    /// A map from `ComponentID` to the parsed `Component`.
+    pub(crate) components: HashMap<ComponentID, Component>,
+    env: OntoEnv,
+}
+
+impl ShapesModel {
+    /// Creates a new `ShapesModel` by loading and parsing shapes from a file.
+    pub fn from_file(shape_graph_path: &str) -> Result<Self, Box<dyn Error>> {
+        let mut env = OntoEnv::new_in_memory_online_with_search()?;
+
+        let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
+        info!("Added shape graph: {}", shape_graph_location);
+        let shape_id = env.add(shape_graph_location, false)?;
+        let shape_graph_iri = env.get_ontology(&shape_id).unwrap().name().clone();
+
+        // Data graph is not loaded here. We create a dummy one for the legacy ValidationContext.
+        let dummy_data_graph_iri = NamedNode::new("urn:dummy:data_graph")?;
+
+        let store = env.io().store().clone();
+
+        let shape_graph_base_iri = format!(
+            "{}/.well-known/skolem/",
+            shape_graph_iri.as_str().trim_end_matches('/')
+        );
+        info!(
+            "Skolemizing shape graph <{}> with base IRI <{}>",
+            shape_graph_iri, shape_graph_base_iri
+        );
+        //canonicalization::skolemize(...) remains commented out
+
+        info!("Optimizing store with shape graph <{}>", shape_graph_iri);
+        store.optimize().map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Error optimizing store: {}", e),
+            ))
+        })?;
+
+        // This is temporary until the parser and optimizer are refactored to not depend on ValidationContext
+        let mut ctx =
+            ValidationContext::new(store, env, shape_graph_iri.clone(), dummy_data_graph_iri);
+        info!(
+            "Parsing shapes from graph <{}> into context",
+            ctx.shape_graph_iri_ref()
+        );
+        parser::run_parser(&mut ctx).map_err(|e| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Error parsing shapes: {}", e),
+            ))
+        })?;
+        info!("Optimizing shape graph");
+        let mut o = Optimizer::new(ctx);
+        o.optimize()?;
+        info!("Finished parsing shapes and optimizing context");
+        let final_ctx = o.finish();
+
+        Ok(ShapesModel {
+            nodeshape_id_lookup: final_ctx.nodeshape_id_lookup,
+            propshape_id_lookup: final_ctx.propshape_id_lookup,
+            component_id_lookup: final_ctx.component_id_lookup,
+            store: final_ctx.store,
+            shape_graph_iri: final_ctx.shape_graph_iri,
+            node_shapes: final_ctx.node_shapes,
+            prop_shapes: final_ctx.prop_shapes,
+            components: final_ctx.components,
+            env: final_ctx.env,
+        })
+    }
+}
+
 /// The central struct for managing the validation process.
 ///
 /// It holds the shapes and data graphs, parsed shapes, and other
@@ -416,77 +506,6 @@ impl ValidationContext {
         Ok(dot_string)
     }
 
-    /// Creates a new `ValidationContext` by loading shapes and data from files.
-    pub fn from_files(
-        shape_graph_path: &str,
-        data_graph_path: &str,
-    ) -> Result<Self, Box<dyn Error>> {
-        let mut env = OntoEnv::new_in_memory_online_with_search()?;
-
-        let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
-        info!("Added shape graph: {}", shape_graph_location);
-        let shape_id = env.add(shape_graph_location, false)?;
-        let shape_graph_iri = env.get_ontology(&shape_id).unwrap().name().clone();
-
-        let data_graph_location = OntologyLocation::from_str(data_graph_path)?;
-        info!("Added data graph: {}", data_graph_location);
-        let data_id = env.add(data_graph_location, false)?;
-        let data_graph_iri = env.get_ontology(&data_id).unwrap().name().clone();
-
-        let store = env.io().store().clone();
-
-        let shape_graph_base_iri =
-            format!("{}/.well-known/skolem/", shape_graph_iri.as_str().trim_end_matches('/'));
-        info!(
-            "Skolemizing shape graph <{}> with base IRI <{}>",
-            shape_graph_iri, shape_graph_base_iri
-        );
-        //canonicalization::skolemize(
-        //    &store,
-        //    GraphNameRef::NamedNode(shape_graph_iri.as_ref()),
-        //    &shape_graph_base_iri,
-        //)?;
-
-        let data_graph_base_iri =
-            format!("{}/.well-known/skolem/", data_graph_iri.as_str().trim_end_matches('/'));
-        info!(
-            "Skolemizing data graph <{}> with base IRI <{}>",
-            data_graph_iri, data_graph_base_iri
-        );
-        //canonicalization::skolemize(
-        //    &store,
-        //    GraphNameRef::NamedNode(data_graph_iri.as_ref()),
-        //    &data_graph_base_iri,
-        //)?;
-
-        info!(
-            "Optimizing store with shape graph <{}> and data graph <{}>",
-            shape_graph_iri, data_graph_iri
-        );
-        store.optimize().map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error optimizing store: {}", e),
-            ))
-        })?;
-
-        let mut ctx = Self::new(store, env, shape_graph_iri, data_graph_iri);
-        info!(
-            "Parsing shapes from graph <{}> into context",
-            ctx.shape_graph_iri_ref()
-        );
-        parser::run_parser(&mut ctx).map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error parsing shapes: {}", e),
-            ))
-        })?;
-        info!("Optimizing shape graph");
-        let mut o = Optimizer::new(ctx);
-        o.optimize()?;
-        info!("Finished parsing shapes and optimizing context");
-        Ok(o.finish())
-    }
 
     /// Parses an RDF list from the shapes graph, starting from the given head term.
     pub(crate) fn parse_rdf_list(&self, list_head_term: Term) -> Vec<Term> {
