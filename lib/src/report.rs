@@ -219,6 +219,7 @@ impl ValidationReportBuilder {
                             // The component type (e.g., sh:MinCountConstraintComponent) is the
                             // value for sh:sourceConstraintComponent.
                             source_constraint_component_term = validation_context
+                                .model
                                 .get_component_by_id(id)
                                 .map(|c| c.component_type());
                             break;

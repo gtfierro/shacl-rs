@@ -1,5 +1,5 @@
 use crate::components::{parse_components, ToSubjectRef};
-use crate::context::ValidationContext;
+use crate::context::ParsingContext;
 use crate::named_nodes::{OWL, RDF, RDFS, SHACL};
 use crate::shape::{NodeShape, PropertyShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, ID};
@@ -7,8 +7,8 @@ use oxigraph::model::{GraphName, GraphNameRef, QuadRef, SubjectRef, Term, TermRe
 use std::collections::HashSet;
 
 /// Runs the parser to discover all shapes and components from the shapes graph
-/// and populates them into the `ValidationContext`.
-pub(crate) fn run_parser(context: &mut ValidationContext) -> Result<(), String> {
+/// and populates them into the `ParsingContext`.
+pub(crate) fn run_parser(context: &mut ParsingContext) -> Result<(), String> {
     // parses the shape graph to get all of the shapes and components defined within
     let shapes = get_node_shapes(context);
     for shape in shapes {
@@ -24,14 +24,14 @@ pub(crate) fn run_parser(context: &mut ValidationContext) -> Result<(), String> 
     Ok(())
 }
 
-fn get_property_shapes(context: &ValidationContext) -> Vec<Term> {
+fn get_property_shapes(context: &ParsingContext) -> Vec<Term> {
     let rdf = RDF::new();
     let sh = SHACL::new();
     let mut prop_shapes = HashSet::new();
     let shape_graph_name_ref = GraphNameRef::NamedNode(context.shape_graph_iri.as_ref());
 
     // - <pshape> a sh:PropertyShape
-    for quad_res in context.store().quads_for_pattern(
+    for quad_res in context.store.quads_for_pattern(
         None,
         Some(rdf.type_),
         Some(sh.property_shape.into()),
@@ -45,7 +45,7 @@ fn get_property_shapes(context: &ValidationContext) -> Vec<Term> {
     // - ? sh:property <pshape>
     for quad_res in
         context
-            .store()
+            .store
             .quads_for_pattern(None, Some(sh.property), None, Some(shape_graph_name_ref))
     {
         if let Ok(quad) = quad_res {
@@ -56,7 +56,7 @@ fn get_property_shapes(context: &ValidationContext) -> Vec<Term> {
     prop_shapes.into_iter().collect()
 }
 
-fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
+fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
     // here are all the ways to get a node shape:
     // - <shape> rdf:type sh:NodeShape
     // - ? sh:node <shape>
@@ -73,7 +73,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     let mut node_shapes = HashSet::new();
 
     // <shape> rdf:type sh:NodeShape
-    for quad_res in context.store().quads_for_pattern(
+    for quad_res in context.store.quads_for_pattern(
         None,
         Some(rdf.type_),
         Some(shacl.node_shape.into()),
@@ -87,7 +87,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     // ? sh:node <shape>
     for quad_res in
         context
-            .store()
+            .store
             .quads_for_pattern(None, Some(shacl.node), None, Some(shape_graph_name_ref))
     {
         if let Ok(quad) = quad_res {
@@ -96,7 +96,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     }
 
     // ? sh:qualifiedValueShape <shape>
-    for quad_res in context.store().quads_for_pattern(
+    for quad_res in context.store.quads_for_pattern(
         None,
         Some(shacl.qualified_value_shape),
         None,
@@ -110,7 +110,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     // ? sh:not <shape>
     for quad_res in
         context
-            .store()
+            .store
             .quads_for_pattern(None, Some(shacl.not), None, Some(shape_graph_name_ref))
     {
         if let Ok(quad) = quad_res {
@@ -120,7 +120,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
 
     // Helper to process lists for logical constraints
     let mut process_list_constraint = |predicate_ref| {
-        for quad_res in context.store().quads_for_pattern(
+        for quad_res in context.store.quads_for_pattern(
             None,
             Some(predicate_ref),
             None,
@@ -148,7 +148,7 @@ fn get_node_shapes(context: &ValidationContext) -> Vec<Term> {
     node_shapes.into_iter().collect()
 }
 
-fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<ID, String> {
+fn parse_node_shape(context: &mut ParsingContext, shape: TermRef) -> Result<ID, String> {
     // Parses a shape from the shape graph and returns its ID.
     // Adds the shape to the node_shapes map.
     let id = context.get_or_create_node_id(shape.into());
@@ -159,7 +159,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
 
     // get the targets
     let mut targets: Vec<crate::types::Target> = context
-        .store()
+        .store
         .quads_for_pattern(Some(subject), None, None, Some(shape_graph_name.as_ref()))
         .filter_map(Result::ok)
         .filter_map(|quad| {
@@ -177,7 +177,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
     let rdfs = RDFS::new();
     let owl = OWL::new();
     let is_rdfs_class = context
-        .store()
+        .store
         .contains(QuadRef::new(
             subject,
             rdf.type_,
@@ -186,7 +186,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
         ))
         .map_err(|e| e.to_string())?;
     let is_owl_class = context
-        .store()
+        .store
         .contains(QuadRef::new(
             subject,
             rdf.type_,
@@ -208,7 +208,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
     }
 
     let _property_shapes: Vec<PropShapeID> = context // This seems to be about sh:property linking to PropertyShapes.
-        .store() // It was collected but not used in NodeShape::new.
+        .store // It was collected but not used in NodeShape::new.
         .quads_for_pattern(
             Some(subject),
             Some(sh.property),
@@ -221,7 +221,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
     // TODO: property_shapes are collected but not used in NodeShape::new. This might be an existing oversight or for future use.
 
     let severity_term_opt = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(subject),
             Some(sh.severity),
@@ -240,7 +240,7 @@ fn parse_node_shape(context: &mut ValidationContext, shape: TermRef) -> Result<I
 }
 
 fn parse_property_shape(
-    context: &mut ValidationContext,
+    context: &mut ParsingContext,
     pshape: TermRef,
 ) -> Result<PropShapeID, String> {
     let id = context.get_or_create_prop_id(pshape.into_owned());
@@ -249,7 +249,7 @@ fn parse_property_shape(
     let ps_shape_graph_name = GraphName::NamedNode(context.shape_graph_iri.clone());
 
     let path_object_term: Term = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(subject),
             Some(shacl.path),
@@ -265,7 +265,7 @@ fn parse_property_shape(
 
     // get the targets
     let targets: Vec<crate::types::Target> = context
-        .store()
+        .store
         .quads_for_pattern(Some(subject), None, None, Some(ps_shape_graph_name.as_ref()))
         .filter_map(Result::ok)
         .filter_map(|quad| {
@@ -286,7 +286,7 @@ fn parse_property_shape(
     }
 
     let severity_term_opt = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(subject),
             Some(shacl.severity),
@@ -306,7 +306,7 @@ fn parse_property_shape(
 
 // Helper function to recursively parse SHACL paths
 fn parse_shacl_path_recursive(
-    context: &ValidationContext,
+    context: &ParsingContext,
     path_term_ref: TermRef,
 ) -> Result<PShapePath, String> {
     let shacl = SHACL::new();
@@ -315,7 +315,7 @@ fn parse_shacl_path_recursive(
 
     // Check for sh:inversePath
     if let Some(inverse_path_obj) = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(path_term_ref.to_subject_ref()),
             Some(shacl.inverse_path),
@@ -332,7 +332,7 @@ fn parse_shacl_path_recursive(
 
     // Check for sh:alternativePath (RDF list)
     if let Some(alt_list_head) = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(path_term_ref.to_subject_ref()),
             Some(shacl.alternative_path),
@@ -353,7 +353,7 @@ fn parse_shacl_path_recursive(
 
     // Check for sh:zeroOrMorePath
     if let Some(zom_path_obj) = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(path_term_ref.to_subject_ref()),
             Some(shacl.zero_or_more_path),
@@ -370,7 +370,7 @@ fn parse_shacl_path_recursive(
 
     // Check for sh:oneOrMorePath
     if let Some(oom_path_obj) = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(path_term_ref.to_subject_ref()),
             Some(shacl.one_or_more_path),
@@ -387,7 +387,7 @@ fn parse_shacl_path_recursive(
 
     // Check for sh:zeroOrOnePath
     if let Some(zoo_path_obj) = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(path_term_ref.to_subject_ref()),
             Some(shacl.zero_or_one_path),
@@ -422,7 +422,7 @@ fn parse_shacl_path_recursive(
 }
 
 /// Parses an RDF list starting from list_head_term (owned Term) and returns a Vec of owned Terms.
-pub(crate) fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) -> Vec<Term> {
+pub(crate) fn parse_rdf_list(context: &ParsingContext, list_head_term: Term) -> Vec<Term> {
     let mut items: Vec<Term> = Vec::new();
     let rdf = RDF::new();
     let mut current_term = list_head_term;
@@ -437,7 +437,7 @@ pub(crate) fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) 
         };
 
         let first_val_opt: Option<Term> = context
-            .store()
+            .store
             .quads_for_pattern(
                 Some(subject_ref),
                 Some(rdf.first),
@@ -455,7 +455,7 @@ pub(crate) fn parse_rdf_list(context: &ValidationContext, list_head_term: Term) 
         }
 
         let rest_node_opt: Option<Term> = context
-            .store()
+            .store
             .quads_for_pattern(
                 Some(subject_ref),
                 Some(rdf.rest),

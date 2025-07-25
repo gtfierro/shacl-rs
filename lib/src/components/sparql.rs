@@ -17,12 +17,13 @@ fn get_prefixes_for_sparql_node(
 ) -> Result<String, String> {
     let shacl = SHACL::new();
     let mut prefixes_subjects: HashSet<Term> = context
+        .model
         .store()
         .quads_for_pattern(
             Some(sparql_node.try_to_subject_ref()?),
             Some(shacl.prefixes),
             None,
-            Some(context.shape_graph_iri_ref()),
+            Some(context.model.shape_graph_iri_ref()),
         )
         .filter_map(Result::ok)
         .map(|q| q.object)
@@ -31,6 +32,7 @@ fn get_prefixes_for_sparql_node(
     // extend with sh:declare subjects
     prefixes_subjects.extend(
         context
+            .model
             .store()
             .quads_for_pattern(
                 None,
@@ -47,6 +49,7 @@ fn get_prefixes_for_sparql_node(
     for prefixes_subject in prefixes_subjects {
         // Handle sh:declare on the prefixes_subject
         let declarations: Vec<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(prefixes_subject.try_to_subject_ref()?),
@@ -70,6 +73,7 @@ fn get_prefixes_for_sparql_node(
             };
 
             let prefix_val = context
+                .model
                 .store()
                 .quads_for_pattern(
                     Some(decl_subject),
@@ -82,6 +86,7 @@ fn get_prefixes_for_sparql_node(
                 .map(|q| q.object);
 
             let namespace_val = context
+                .model
                 .store()
                 .quads_for_pattern(
                     Some(decl_subject),
@@ -119,13 +124,14 @@ fn get_prefixes_for_sparql_node(
         // Handle ontology IRI with ontoenv
         if let Term::NamedNode(ontology_iri) = &prefixes_subject {
             let graphid = context
+                .model
                 .env()
                 .resolve(ResolveTarget::Graph(ontology_iri.clone()));
             let graphid = match graphid {
                 Some(id) => id,
                 None => continue,
             };
-            if let Ok(ont) = context.env().get_ontology(&graphid) {
+            if let Ok(ont) = context.model.env().get_ontology(&graphid) {
                 for (prefix, namespace) in ont.namespace_map().iter() {
                     if let Some(existing_namespace) = collected_prefixes.get(prefix.as_str()) {
                         if existing_namespace != namespace {
@@ -169,12 +175,13 @@ impl GraphvizOutput for SPARQLConstraintComponent {
         let shacl = SHACL::new();
         let subject = self.constraint_node.to_subject_ref();
         let select_query_opt = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(subject),
                 Some(shacl.select),
                 None,
-                Some(context.shape_graph_iri_ref()),
+                Some(context.model.shape_graph_iri_ref()),
             )
             .next()
             .and_then(|res| res.ok())
@@ -211,12 +218,13 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
         // 1. Check if deactivated
         if let Some(Ok(deactivated_quad)) = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
                 Some(shacl.deactivated),
                 None,
-                Some(context.shape_graph_iri_ref()),
+                Some(context.model.shape_graph_iri_ref()),
             )
             .next()
         {
@@ -229,12 +237,13 @@ impl ValidateComponent for SPARQLConstraintComponent {
 
         // 2. Get SELECT query
         let mut select_query = if let Some(Ok(quad)) = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
                 Some(shacl.select),
                 None,
-                Some(context.shape_graph_iri_ref()),
+                Some(context.model.shape_graph_iri_ref()),
             )
             .next()
         {
@@ -269,7 +278,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
         // 5. Handle $PATH substitution for property shapes
         if c.source_shape().as_prop_id().is_some() {
             if let Some(prop_id) = c.source_shape().as_prop_id() {
-                if let Some(prop_shape) = context.get_prop_shape_by_id(prop_id) {
+                if let Some(prop_shape) = context.model.get_prop_shape_by_id(prop_id) {
                     let path_str = prop_shape.sparql_path();
                     select_query = select_query.replace("$PATH", &path_str);
                 }
@@ -310,25 +319,26 @@ impl ValidateComponent for SPARQLConstraintComponent {
             // Only add if the query uses it
             substitutions.push((
                 Variable::new_unchecked("shapesGraph"),
-                context.shape_graph_iri.clone().into(),
+                context.model.shape_graph_iri.clone().into(),
             ));
         }
 
         // 7. Get messages
         let messages: Vec<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(constraint_subject),
                 Some(shacl.message),
                 None,
-                Some(context.shape_graph_iri_ref()),
+                Some(context.model.shape_graph_iri_ref()),
             )
             .filter_map(Result::ok)
             .map(|q| q.object)
             .collect();
 
         // 8. Execute query
-        let query_results = context.store().query_opt_with_substituted_variables(
+        let query_results = context.model.store().query_opt_with_substituted_variables(
             query,
             QueryOptions::default(),
             substitutions,
@@ -477,7 +487,7 @@ pub(crate) fn parse_custom_constraint_components(
 
     let query = "SELECT ?cc WHERE { ?cc a sh:ConstraintComponent }";
     if let Ok(QueryResults::Solutions(solutions)) =
-        context.store().query_opt(query, QueryOptions::default())
+        context.model.store().query_opt(query, QueryOptions::default())
     {
         for solution_res in solutions {
             if let Ok(solution) = solution_res {
@@ -489,6 +499,7 @@ pub(crate) fn parse_custom_constraint_components(
                     );
 
                     if let Ok(QueryResults::Solutions(param_solutions)) = context
+                        .model
                         .store()
                         .query_opt(&param_query, QueryOptions::default())
                     {
@@ -529,7 +540,7 @@ pub(crate) fn parse_custom_constraint_components(
                         );
 
                             if let Ok(QueryResults::Solutions(v_solutions)) =
-                                context.store().query_opt(&v_query, QueryOptions::default())
+                                context.model.store().query_opt(&v_query, QueryOptions::default())
                             {
                                 if let Some(Ok(v_sol)) = v_solutions.into_iter().next() {
                                     if let Some(Term::Literal(query_lit)) = v_sol.get("query") {
@@ -567,12 +578,13 @@ pub(crate) fn parse_custom_constraint_components(
                         NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#propertyValidator");
 
                     if let Some(v_term) = context
+                        .model
                         .store()
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(validator_prop),
                             None,
-                            Some(context.shape_graph_iri_ref()),
+                            Some(context.model.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
@@ -581,12 +593,13 @@ pub(crate) fn parse_custom_constraint_components(
                         validator = parse_validator(&v_term, true, context);
                     }
                     if let Some(v_term) = context
+                        .model
                         .store()
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(node_validator_prop),
                             None,
-                            Some(context.shape_graph_iri_ref()),
+                            Some(context.model.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
@@ -595,12 +608,13 @@ pub(crate) fn parse_custom_constraint_components(
                         node_validator = parse_validator(&v_term, false, context);
                     }
                     if let Some(v_term) = context
+                        .model
                         .store()
                         .quads_for_pattern(
                             Some(cc_iri.as_ref().into()),
                             Some(property_validator_prop),
                             None,
-                            Some(context.shape_graph_iri_ref()),
+                            Some(context.model.shape_graph_iri_ref()),
                         )
                         .filter_map(Result::ok)
                         .map(|q| q.object)
@@ -702,7 +716,7 @@ impl ValidateComponent for CustomConstraintComponent {
         }
         substitutions.push((
             Variable::new_unchecked("shapesGraph"),
-            context.shape_graph_iri.clone().into(),
+            context.model.shape_graph_iri.clone().into(),
         ));
 
         for (param_path, values) in &self.parameter_values {
@@ -725,7 +739,7 @@ impl ValidateComponent for CustomConstraintComponent {
                         query_str.insert_str(0, &validator.prefixes);
                     }
 
-                    match context.store().query_opt_with_substituted_variables(
+                    match context.model.store().query_opt_with_substituted_variables(
                         &query_str,
                         QueryOptions::default(),
                         ask_substitutions,
@@ -763,7 +777,7 @@ impl ValidateComponent for CustomConstraintComponent {
             let mut query = validator.query.clone();
             if is_prop_shape {
                 if let Some(prop_id) = c.source_shape().as_prop_id() {
-                    if let Some(prop_shape) = context.get_prop_shape_by_id(prop_id) {
+                    if let Some(prop_shape) = context.model.get_prop_shape_by_id(prop_id) {
                         let path_str = prop_shape.sparql_path();
                         query = query.replace("$PATH", &path_str);
                     }
@@ -775,7 +789,7 @@ impl ValidateComponent for CustomConstraintComponent {
                 query.insert_str(0, &validator.prefixes);
             }
 
-            match context.store().query_opt_with_substituted_variables(
+            match context.model.store().query_opt_with_substituted_variables(
                 &query,
                 QueryOptions::default(),
                 substitutions,

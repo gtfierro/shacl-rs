@@ -74,7 +74,7 @@ impl ValidateComponent for ClassConstraintComponent {
         let vns = c.value_nodes().cloned().unwrap();
 
         for vn in vns.iter() {
-            match context.store().query_opt_with_substituted_variables(
+            match context.model.store().query_opt_with_substituted_variables(
                 self.query.clone(),
                 QueryOptions::default(),
                 [(cc_var.clone(), vn.clone())],

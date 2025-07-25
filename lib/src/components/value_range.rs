@@ -57,7 +57,7 @@ impl ValidateComponent for MinExclusiveConstraintComponent {
             // For each value node v where the SPARQL expression $minExclusive < v does not return true, there is a validation result.
             let query_str = format!("ASK {{ FILTER({} < {}) }}", self.min_exclusive, value_node);
 
-            let is_valid = match context.store().query(&query_str) {
+            let is_valid = match context.model.store().query(&query_str) {
                 Ok(QueryResults::Boolean(b)) => b,
                 Ok(_) => false, // Should not happen for ASK
                 Err(_) => false, // Incomparable values
@@ -139,7 +139,7 @@ impl ValidateComponent for MinInclusiveConstraintComponent {
             // For each value node v where the SPARQL expression $minInclusive <= v does not return true, there is a validation result.
             let query_str = format!("ASK {{ FILTER({} <= {}) }}", self.min_inclusive, value_node);
 
-            let is_valid = match context.store().query(&query_str) {
+            let is_valid = match context.model.store().query(&query_str) {
                 Ok(QueryResults::Boolean(b)) => b,
                 Ok(_) => false, // Should not happen for ASK
                 Err(_) => false, // Incomparable values
@@ -221,7 +221,7 @@ impl ValidateComponent for MaxExclusiveConstraintComponent {
             // For each value node v where the SPARQL expression $maxExclusive > v does not return true, there is a validation result.
             let query_str = format!("ASK {{ FILTER({} > {}) }}", self.max_exclusive, value_node);
 
-            let is_valid = match context.store().query(&query_str) {
+            let is_valid = match context.model.store().query(&query_str) {
                 Ok(QueryResults::Boolean(b)) => b,
                 Ok(_) => false, // Should not happen for ASK
                 Err(_) => false, // Incomparable values
@@ -303,7 +303,7 @@ impl ValidateComponent for MaxInclusiveConstraintComponent {
             // For each value node v where the SPARQL expression $maxInclusive >= v does not return true, there is a validation result.
             let query_str = format!("ASK {{ FILTER({} >= {}) }}", self.max_inclusive, value_node);
 
-            let is_valid = match context.store().query(&query_str) {
+            let is_valid = match context.model.store().query(&query_str) {
                 Ok(QueryResults::Boolean(b)) => b,
                 Ok(_) => false, // Should not happen for ASK
                 Err(_) => false, // Incomparable values

@@ -1,4 +1,4 @@
-use crate::context::{Context, ValidationContext};
+use crate::context::{Context, ParsingContext, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::shape::NodeShape;
 use crate::types::{ComponentID, ID, Path, TraceItem};
@@ -110,7 +110,7 @@ impl<'a> ToSubjectRef for TermRef<'a> {
 /// The created components are returned in a `HashMap` keyed by their `ComponentID`.
 pub(crate) fn parse_components(
     start: TermRef,
-    context: &mut ValidationContext,
+    context: &mut ParsingContext,
 ) -> HashMap<ComponentID, Component> {
     let mut new_components = HashMap::new();
     let shacl = SHACL::new();
@@ -119,7 +119,7 @@ pub(crate) fn parse_components(
     // The key is NamedNode (predicate), value is Vec<Term> (objects)
     // These pairs are read from the shape graph.
     let pred_obj_pairs: HashMap<NamedNode, Vec<Term>> = context
-        .store()
+        .store
         .quads_for_pattern(
             Some(start.to_subject_ref()),
             None,
@@ -407,7 +407,7 @@ pub(crate) fn parse_components(
         processed_predicates.insert(shacl.language_in.into_owned());
         if let Some(list_head_term) = language_in_terms.first() {
             // list_head_term is &Term
-            let list_items = context.parse_rdf_list(list_head_term.clone()); // parse_rdf_list takes Term, returns Vec<Term>
+            let list_items = crate::parser::parse_rdf_list(context, list_head_term.clone()); // parse_rdf_list takes Term, returns Vec<Term>
             let languages: Vec<String> = list_items
                 .into_iter() // Iterates over Term
                 .filter_map(|term| {
@@ -542,7 +542,7 @@ pub(crate) fn parse_components(
         processed_predicates.insert(shacl.and_.into_owned());
         if let Some(list_head_term) = and_terms.first() {
             // list_head_term is &Term
-            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_list_terms = crate::parser::parse_rdf_list(context, list_head_term.clone()); // Vec<Term>
             let shape_ids: Vec<ID> = shape_list_terms
                 .iter() // Iterates over &Term
                 .map(|term| context.get_or_create_node_id(term.clone()))
@@ -557,7 +557,7 @@ pub(crate) fn parse_components(
         processed_predicates.insert(shacl.or_.into_owned());
         if let Some(list_head_term) = or_terms.first() {
             // list_head_term is &Term
-            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_list_terms = crate::parser::parse_rdf_list(context, list_head_term.clone()); // Vec<Term>
             let shape_ids: Vec<ID> = shape_list_terms
                 .iter()
                 .map(|term| context.get_or_create_node_id(term.clone()))
@@ -572,7 +572,7 @@ pub(crate) fn parse_components(
         processed_predicates.insert(shacl.xone.into_owned());
         if let Some(list_head_term) = xone_terms.first() {
             // list_head_term is &Term
-            let shape_list_terms = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let shape_list_terms = crate::parser::parse_rdf_list(context, list_head_term.clone()); // Vec<Term>
             let shape_ids: Vec<ID> = shape_list_terms
                 .iter()
                 .map(|term| context.get_or_create_node_id(term.clone()))
@@ -677,8 +677,7 @@ pub(crate) fn parse_components(
                     let ignored_properties_terms: Vec<Term> =
                         if let Some(list_head) = ignored_properties_list_opt {
                             // list_head is Term
-                            context
-                                .parse_rdf_list(list_head) // parse_rdf_list takes Term, returns Vec<Term>
+                            crate::parser::parse_rdf_list(context, list_head) // parse_rdf_list takes Term, returns Vec<Term>
                                 .into_iter() // Iterates Term
                                 // .map(|t| t) // No .into_owned() needed as it's already Term
                                 .collect()
@@ -727,7 +726,7 @@ pub(crate) fn parse_components(
         processed_predicates.insert(shacl.in_.into_owned());
         if let Some(list_head_term) = in_terms.first() {
             // list_head_term is &Term
-            let list_items = context.parse_rdf_list(list_head_term.clone()); // Vec<Term>
+            let list_items = crate::parser::parse_rdf_list(context, list_head_term.clone()); // Vec<Term>
             let values: Vec<Term> = list_items.into_iter().collect(); // Already Vec<Term>
 
             let component = Component::InConstraint(InConstraintComponent::new(values));
@@ -1096,6 +1095,7 @@ pub(crate) fn check_conformance_for_node(
 
     for constraint_id in shape_to_check_against.constraints() {
         let component = main_validation_context
+            .model
             .get_component_by_id(constraint_id)
             .ok_or_else(|| format!("Logical check: Component not found: {}", constraint_id))?;
 

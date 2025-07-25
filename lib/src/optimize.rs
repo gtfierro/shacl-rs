@@ -1,4 +1,4 @@
-use crate::context::ValidationContext;
+use crate::context::ParsingContext;
 use crate::types::Target;
 use oxigraph::model::Term;
 use oxigraph::sparql::{Query, QueryOptions, QueryResults};
@@ -18,10 +18,10 @@ impl OptimizerStats {
     }
 }
 
-/// A struct that holds the `ValidationContext` and performs optimizations on it.
+/// A struct that holds the `ParsingContext` and performs optimizations on it.
 pub(crate) struct Optimizer {
-    /// The `ValidationContext` to be optimized.
-    pub(crate) ctx: ValidationContext,
+    /// The `ParsingContext` to be optimized.
+    pub(crate) ctx: ParsingContext,
     /// Statistics collected during optimization.
     pub(crate) stats: OptimizerStats,
 }
@@ -31,8 +31,8 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT DISTINCT ?type WHERE { ?s rdf:type/rdfs:subClassOf* ?type . }";
 
 impl Optimizer {
-    /// Creates a new `Optimizer` for a given `ValidationContext`.
-    pub(crate) fn new(ctx: ValidationContext) -> Self {
+    /// Creates a new `Optimizer` for a given `ParsingContext`.
+    pub(crate) fn new(ctx: ParsingContext) -> Self {
         Optimizer {
             ctx,
             stats: OptimizerStats::new(),
@@ -46,8 +46,8 @@ impl Optimizer {
         Ok(())
     }
 
-    /// Consumes the optimizer and returns the optimized `ValidationContext`.
-    pub(crate) fn finish(self) -> ValidationContext {
+    /// Consumes the optimizer and returns the optimized `ParsingContext`.
+    pub(crate) fn finish(self) -> ParsingContext {
         self.ctx
     }
 
@@ -66,7 +66,7 @@ impl Optimizer {
 
         let results = self
             .ctx
-            .store()
+            .store
             .query_opt(parsed_query, QueryOptions::default())
             .map_err(|e| e.to_string())?;
 

@@ -19,7 +19,7 @@ pub mod test_utils; // Often pub for integration tests
 pub(crate) mod validate;
 
 use crate::canonicalization::skolemize;
-use crate::context::ValidationContext;
+use crate::context::{ParsingContext, ShapesModel, ValidationContext};
 use crate::optimize::Optimizer;
 use crate::parser as shacl_parser;
 use log::info;
@@ -27,9 +27,9 @@ use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::model::GraphNameRef;
-use oxigraph::store::Store;
 use std::error::Error;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 /// Represents the source of shapes or data, which can be either a local file or a named graph from an `OntoEnv`.
 #[derive(Debug)]
@@ -65,8 +65,10 @@ impl Validator {
         shape_graph_path: &str,
         data_graph_path: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let context = ValidationContext::from_files(shape_graph_path, data_graph_path)?;
-        Ok(Validator { context })
+        Self::from_sources(
+            Source::File(PathBuf::from(shape_graph_path)),
+            Source::File(PathBuf::from(data_graph_path)),
+        )
     }
 
     /// Creates a new Validator from the given shapes and data sources.
@@ -149,15 +151,30 @@ impl Validator {
             ))
         })?;
 
-        let mut context = ValidationContext::new(store, env, shape_graph_iri, data_graph_iri);
+        let mut parsing_context =
+            ParsingContext::new(store, env, shape_graph_iri, data_graph_iri.clone());
 
-        shacl_parser::run_parser(&mut context)?;
+        shacl_parser::run_parser(&mut parsing_context)?;
 
         info!("Optimizing shape graph");
-        let mut o = Optimizer::new(context);
+        let mut o = Optimizer::new(parsing_context);
         o.optimize()?;
         info!("Finished parsing shapes and optimizing context");
-        let context = o.finish();
+        let final_ctx = o.finish();
+
+        let model = ShapesModel {
+            nodeshape_id_lookup: final_ctx.nodeshape_id_lookup,
+            propshape_id_lookup: final_ctx.propshape_id_lookup,
+            component_id_lookup: final_ctx.component_id_lookup,
+            store: final_ctx.store,
+            shape_graph_iri: final_ctx.shape_graph_iri,
+            node_shapes: final_ctx.node_shapes,
+            prop_shapes: final_ctx.prop_shapes,
+            components: final_ctx.components,
+            env: final_ctx.env,
+        };
+
+        let context = ValidationContext::new(Rc::new(model), data_graph_iri);
 
         Ok(Validator { context })
     }
@@ -168,7 +185,7 @@ impl Validator {
     /// The report contains the outcome of the validation (conformity) and detailed
     /// results for any failures. The returned report is tied to the lifetime of the Validator.
     pub fn validate(&self) -> ValidationReport<'_> {
-        let report_builder = self.context.validate();
+        let report_builder = validate::validate(&self.context);
         // The report needs the context to be able to serialize itself later.
         ValidationReport::new(report_builder, &self.context)
     }
@@ -178,7 +195,7 @@ impl Validator {
     /// This can be used to visualize the structure of the SHACL shapes, including
     /// their constraints and relationships.
     pub fn to_graphviz(&self) -> Result<String, String> {
-        self.context.graphviz()
+        self.context.model.graphviz()
     }
 
     /// Generates a Graphviz DOT string representation of the shapes, with nodes colored by execution frequency.

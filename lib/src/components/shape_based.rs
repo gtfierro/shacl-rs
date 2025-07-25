@@ -27,6 +27,7 @@ impl GraphvizOutput for NodeConstraintComponent {
 
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shape_term_str = context
+            .model
             .nodeshape_id_lookup()
             .borrow()
             .get_term(self.shape)
@@ -56,7 +57,7 @@ impl ValidateComponent for NodeConstraintComponent {
             return Ok(vec![]);
         };
 
-        let Some(target_node_shape) = validation_context.get_node_shape_by_id(&self.shape) else {
+        let Some(target_node_shape) = validation_context.model.get_node_shape_by_id(&self.shape) else {
             return Err(format!("sh:node referenced shape {:?} not found", self.shape));
         };
 
@@ -125,7 +126,7 @@ impl ValidateComponent for PropertyConstraintComponent {
         validation_context: &ValidationContext,
         trace: &mut Vec<TraceItem>,
     ) -> Result<Vec<ComponentValidationResult>, String> {
-        if let Some(property_shape) = validation_context.get_prop_shape_by_id(&self.shape) {
+        if let Some(property_shape) = validation_context.model.get_prop_shape_by_id(&self.shape) {
             // Per SHACL spec for sh:property, the validation results from the property shape
             // are the results of this constraint.
             property_shape.validate(c, validation_context, trace)
@@ -148,6 +149,7 @@ impl GraphvizOutput for PropertyConstraintComponent {
         validation_context: &ValidationContext,
     ) -> String {
         let shape_term_str = validation_context
+            .model
             .propshape_id_lookup()
             .borrow()
             .get_term(*self.shape())
@@ -204,6 +206,7 @@ impl GraphvizOutput for QualifiedValueShapeComponent {
 
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shape_term_str = context
+            .model
             .nodeshape_id_lookup()
             .borrow()
             .get_term(self.shape)
@@ -241,7 +244,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
     ) -> Result<Vec<ComponentValidationResult>, String> {
         let value_nodes = c.value_nodes().cloned().unwrap_or_default();
 
-        let Some(target_node_shape) = validation_context.get_node_shape_by_id(&self.shape) else {
+        let Some(target_node_shape) = validation_context.model.get_node_shape_by_id(&self.shape) else {
             return Err(format!("sh:qualifiedValueShape referenced shape {:?} not found", self.shape));
         };
 
@@ -256,7 +259,7 @@ impl ValidateComponent for QualifiedValueShapeComponent {
             }).ok_or_else(|| "Could not find parent node shape in execution trace for QualifiedValueShapeComponent".to_string())?;
 
             if let Some(parent_node_shape) =
-                validation_context.get_node_shape_by_id(&parent_node_shape_id)
+                validation_context.model.get_node_shape_by_id(&parent_node_shape_id)
             {
                 if !matches!(c.source_shape(), SourceShape::PropertyShape(_)) {
                     return Err(
@@ -269,12 +272,12 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                 // qualified value shapes, which are siblings.
                 for constraint_id in parent_node_shape.constraints() {
                     if let Some(super::Component::PropertyConstraint(prop_constraint)) =
-                        validation_context.get_component_by_id(constraint_id)
+                        validation_context.model.get_component_by_id(constraint_id)
                     {
                         let sibling_prop_shape_id = prop_constraint.shape();
 
                         if let Some(sibling_prop_shape) =
-                            validation_context.get_prop_shape_by_id(sibling_prop_shape_id)
+                            validation_context.model.get_prop_shape_by_id(sibling_prop_shape_id)
                         {
                             for sibling_component_id in sibling_prop_shape.constraints() {
                                 // Exclude the current component from its own sibling set.
@@ -283,10 +286,10 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                                 }
 
                                 if let Some(super::Component::QualifiedValueShape(qvs)) =
-                                    validation_context.get_component_by_id(sibling_component_id)
+                                    validation_context.model.get_component_by_id(sibling_component_id)
                                 {
                                     if let Some(sibling_node_shape) =
-                                        validation_context.get_node_shape_by_id(&qvs.shape)
+                                        validation_context.model.get_node_shape_by_id(&qvs.shape)
                                     {
                                         sibling_shapes.push(sibling_node_shape);
                                     }

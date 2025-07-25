@@ -140,13 +140,14 @@ impl ValidateComponent for ClosedConstraintComponent {
             return Err("sh:closed can only be used on a node shape".to_string());
         };
 
-        if let Some(node_shape) = validation_context.node_shapes.get(source_shape_id) {
+        if let Some(node_shape) = validation_context.model.node_shapes.get(source_shape_id) {
             for constraint_com_id in node_shape.constraints() {
-                if let Some(component) = validation_context.get_component_by_id(constraint_com_id)
+                if let Some(component) =
+                    validation_context.model.get_component_by_id(constraint_com_id)
                 {
                     if let Component::PropertyConstraint(pc) = component {
                         if let Some(prop_shape) =
-                            validation_context.get_prop_shape_by_id(pc.shape())
+                            validation_context.model.get_prop_shape_by_id(pc.shape())
                         {
                             if let Path::Simple(Term::NamedNode(p)) = prop_shape.path() {
                                 allowed_properties.insert(p.clone());
@@ -176,6 +177,7 @@ impl ValidateComponent for ClosedConstraintComponent {
                 oxigraph::model::GraphNameRef::NamedNode(validation_context.data_graph_iri.as_ref());
 
             for quad_res in validation_context
+                .model
                 .store()
                 .quads_for_pattern(Some(subject_ref), None, None, Some(data_graph_ref))
             {

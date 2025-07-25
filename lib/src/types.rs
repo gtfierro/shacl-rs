@@ -262,6 +262,7 @@ impl Target {
                 parsed_query.dataset_mut().set_default_graph_as_union();
 
                 let results = context
+                    .model
                     .store()
                     .query_opt_with_substituted_variables(
                         parsed_query,
@@ -318,6 +319,7 @@ impl Target {
                     parsed_query.dataset_mut().set_default_graph_as_union();
 
                     let results = context
+                        .model
                         .store()
                         .query_opt(parsed_query, QueryOptions::default())
                         .map_err(|e| e.to_string())?;
@@ -365,6 +367,7 @@ impl Target {
                     parsed_query.dataset_mut().set_default_graph_as_union();
 
                     let results = context
+                        .model
                         .store()
                         .query_opt(parsed_query, QueryOptions::default())
                         .map_err(|e| e.to_string())?;

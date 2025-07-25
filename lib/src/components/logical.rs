@@ -26,6 +26,7 @@ impl GraphvizOutput for NotConstraintComponent {
 
     fn to_graphviz_string(&self, component_id: ComponentID, context: &ValidationContext) -> String {
         let shape_term_str = context
+            .model
             .nodeshape_id_lookup()
             .borrow()
             .get_term(self.shape)
@@ -55,7 +56,7 @@ impl ValidateComponent for NotConstraintComponent {
             return Ok(vec![]); // No value nodes to check
         };
 
-        let Some(negated_node_shape) = validation_context.get_node_shape_by_id(&self.shape) else {
+        let Some(negated_node_shape) = validation_context.model.get_node_shape_by_id(&self.shape) else {
             return Err(format!(
                 "sh:not referenced shape {:?} not found",
                 self.shape
@@ -172,7 +173,7 @@ impl ValidateComponent for AndConstraintComponent {
                     c.trace_index(),
                 );
                 let Some(conjunct_node_shape) =
-                    validation_context.get_node_shape_by_id(conjunct_shape_id)
+                    validation_context.model.get_node_shape_by_id(conjunct_shape_id)
                 else {
                     return Err(format!(
                         "sh:and referenced shape {:?} not found",
@@ -297,7 +298,7 @@ impl ValidateComponent for OrConstraintComponent {
                     c.trace_index(),
                 );
                 let Some(disjunct_node_shape) =
-                    validation_context.get_node_shape_by_id(disjunct_shape_id)
+                    validation_context.model.get_node_shape_by_id(disjunct_shape_id)
                 else {
                     return Err(format!(
                         "sh:or referenced shape {:?} not found",
@@ -426,7 +427,7 @@ impl ValidateComponent for XoneConstraintComponent {
                     SourceShape::NodeShape(*xone_shape_id), // Source shape is the xone option being checked
                     c.trace_index(),
                 );
-                let Some(xone_node_shape) = validation_context.get_node_shape_by_id(xone_shape_id)
+                let Some(xone_node_shape) = validation_context.model.get_node_shape_by_id(xone_shape_id)
                 else {
                     return Err(format!(
                         "sh:xone referenced shape {:?} not found",

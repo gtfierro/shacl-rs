@@ -64,6 +64,7 @@ impl ValidateComponent for EqualsConstraintComponent {
         };
 
         let other_values_set: HashSet<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(focus_node.try_to_subject_ref()?),
@@ -180,6 +181,7 @@ impl ValidateComponent for DisjointConstraintComponent {
         };
 
         let other_values: HashSet<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(focus_node.try_to_subject_ref()?),
@@ -280,6 +282,7 @@ impl ValidateComponent for LessThanConstraintComponent {
         };
 
         let other_values: Vec<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(focus_node.try_to_subject_ref()?),
@@ -301,7 +304,7 @@ impl ValidateComponent for LessThanConstraintComponent {
             for other_value in &other_values {
                 let query_str = format!("ASK {{ FILTER({} < {}) }}", value_node, other_value);
 
-                let is_less_than = match context.store().query(&query_str) {
+                let is_less_than = match context.model.store().query(&query_str) {
                     Ok(QueryResults::Boolean(b)) => b,
                     Ok(_) => false, // Should not happen for ASK
                     Err(_) => false, // Incomparable values
@@ -392,6 +395,7 @@ impl ValidateComponent for LessThanOrEqualsConstraintComponent {
         };
 
         let other_values: Vec<Term> = context
+            .model
             .store()
             .quads_for_pattern(
                 Some(focus_node.try_to_subject_ref()?),
@@ -413,7 +417,7 @@ impl ValidateComponent for LessThanOrEqualsConstraintComponent {
             for other_value in &other_values {
                 let query_str = format!("ASK {{ FILTER({} <= {}) }}", value_node, other_value);
 
-                let is_less_than_or_equal = match context.store().query(&query_str) {
+                let is_less_than_or_equal = match context.model.store().query(&query_str) {
                     Ok(QueryResults::Boolean(b)) => b,
                     Ok(_) => false, // Should not happen for ASK
                     Err(_) => false, // Incomparable values
