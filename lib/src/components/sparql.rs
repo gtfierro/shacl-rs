@@ -4,25 +4,27 @@ use super::{
 use crate::context::{format_term_for_label, Context, ParsingContext, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::types::{ComponentID, Path, TraceItem};
-use ontoenv::api::ResolveTarget;
+use ontoenv::api::{OntoEnv, ResolveTarget};
 use oxigraph::model::vocab::xsd;
-use oxigraph::model::{Literal, NamedNode, NamedNodeRef, Term, TermRef};
+use oxigraph::model::{GraphNameRef, Literal, NamedNode, NamedNodeRef, Term, TermRef};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
+use oxigraph::store::Store;
 use std::collections::{HashMap, HashSet};
 
 // TODO : stop grabbing prefixes/declaratiosn from *everywhere*
 fn get_prefixes_for_sparql_node(
     sparql_node: TermRef,
-    context: &ParsingContext,
+    store: &Store,
+    env: &OntoEnv,
+    shape_graph_iri_ref: GraphNameRef,
 ) -> Result<String, String> {
     let shacl = SHACL::new();
-    let mut prefixes_subjects: HashSet<Term> = context
-        .store
+    let mut prefixes_subjects: HashSet<Term> = store
         .quads_for_pattern(
             Some(sparql_node.try_to_subject_ref()?),
             Some(shacl.prefixes),
             None,
-            Some(context.shape_graph_iri_ref()),
+            Some(shape_graph_iri_ref),
         )
         .filter_map(Result::ok)
         .map(|q| q.object)
@@ -30,8 +32,7 @@ fn get_prefixes_for_sparql_node(
 
     // extend with sh:declare subjects
     prefixes_subjects.extend(
-        context
-            .store
+        store
             .quads_for_pattern(
                 None,
                 Some(shacl.declare),
@@ -46,8 +47,7 @@ fn get_prefixes_for_sparql_node(
 
     for prefixes_subject in prefixes_subjects {
         // Handle sh:declare on the prefixes_subject
-        let declarations: Vec<Term> = context
-            .store
+        let declarations: Vec<Term> = store
             .quads_for_pattern(
                 Some(prefixes_subject.try_to_subject_ref()?),
                 Some(shacl.declare),
@@ -69,8 +69,7 @@ fn get_prefixes_for_sparql_node(
                 }
             };
 
-            let prefix_val = context
-                .store
+            let prefix_val = store
                 .quads_for_pattern(
                     Some(decl_subject),
                     Some(shacl.prefix),
@@ -81,8 +80,7 @@ fn get_prefixes_for_sparql_node(
                 .and_then(|res| res.ok())
                 .map(|q| q.object);
 
-            let namespace_val = context
-                .store
+            let namespace_val = store
                 .quads_for_pattern(
                     Some(decl_subject),
                     Some(shacl.namespace),
@@ -118,14 +116,12 @@ fn get_prefixes_for_sparql_node(
 
         // Handle ontology IRI with ontoenv
         if let Term::NamedNode(ontology_iri) = &prefixes_subject {
-            let graphid = context
-                .env
-                .resolve(ResolveTarget::Graph(ontology_iri.clone()));
+            let graphid = env.resolve(ResolveTarget::Graph(ontology_iri.clone()));
             let graphid = match graphid {
                 Some(id) => id,
                 None => continue,
             };
-            if let Ok(ont) = context.env.get_ontology(&graphid) {
+            if let Ok(ont) = env.get_ontology(&graphid) {
                 for (prefix, namespace) in ont.namespace_map().iter() {
                     if let Some(existing_namespace) = collected_prefixes.get(prefix.as_str()) {
                         if existing_namespace != namespace {
@@ -267,7 +263,12 @@ impl ValidateComponent for SPARQLConstraintComponent {
         }
 
         // 4. Get prefixes
-        let prefixes = get_prefixes_for_sparql_node(self.constraint_node.as_ref(), context)?;
+        let prefixes = get_prefixes_for_sparql_node(
+            self.constraint_node.as_ref(),
+            &context.model.store,
+            &context.model.env,
+            context.model.shape_graph_iri_ref(),
+        )?;
 
         // 5. Handle $PATH substitution for property shapes
         if c.source_shape().as_prop_id().is_some() {
@@ -548,9 +549,13 @@ pub(crate) fn parse_custom_constraint_components(
                                                 vec![]
                                             }
                                         });
-                                        let prefixes =
-                                            get_prefixes_for_sparql_node(v_term.as_ref(), context)
-                                                .unwrap_or_default();
+                                        let prefixes = get_prefixes_for_sparql_node(
+                                            v_term.as_ref(),
+                                            &context.store,
+                                            &context.env,
+                                            context.shape_graph_iri_ref(),
+                                        )
+                                        .unwrap_or_default();
                                         return Some(SPARQLValidator {
                                             query: query_lit.value().to_string(),
                                             is_ask,
