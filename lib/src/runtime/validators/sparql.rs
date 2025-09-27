@@ -673,6 +673,48 @@ fn local_name(iri: &NamedNode) -> String {
     }
 }
 
+/*
+Performance note: parse_custom_constraint_components can be very slow on large shapes graphs.
+
+Primary reasons:
+1) Many SPARQL round-trips:
+   - One SELECT to discover all custom constraint components (?cc).
+   - For each component: a separate SELECT to fetch its parameters.
+   - For each component: up to three lookups (validator/nodeValidator/propertyValidator) to find validator nodes,
+     and then for each such validator parse_validator runs another SPARQL query to extract the actual query string
+     (and grouped messages).
+
+2) Repeated prefix collection with global scans:
+   - parse_validator calls get_prefixes_for_sparql_node for each validator node.
+   - get_prefixes_for_sparql_node does multiple quads_for_pattern calls, including
+     quads_for_pattern(None, Some(sh:declare), None, None) which scans across all graphs.
+   - It also iterates sh:declare values per prefixes subject and merges OntoEnv namespace maps.
+   - There is no caching, so these global scans repeat per validator.
+
+3) Unrestricted graph lookups:
+   - Some store lookups omit the shapes graph (graph = None), causing global scans over the entire store.
+     This is much slower than restricting to the shapes graph via context.shape_graph_iri_ref().
+
+4) Query construction and parsing overhead:
+   - Each loop iteration creates fresh query strings and re-parses them (both Oxigraph SPARQL and Spargebra algebra).
+   - GROUP_CONCAT in the validator query adds extra work even though we only use the first row.
+
+5) Minor inefficiencies:
+   - Collecting solution iterators into Vec just to take .next() (extra allocation).
+   - No reuse of computed prefixes per validator/component, and no batching of parameter discovery.
+
+Typical hotspots in profiling:
+- get_prefixes_for_sparql_node
+- context.store.query_opt(...) inside the per-component/per-validator loops
+
+Potential improvements (future work):
+- Cache prefixes per (validator node, shapes graph) and/or precompute once per shapes graph.
+- Restrict all store scans to the shapes graph where possible (avoid None graph unless necessary).
+- Batch parameter discovery (one query returning all params for all components).
+- Avoid GROUP_CONCAT and fetch messages with simple quad iteration if possible.
+- Avoid collecting iterators into Vec when only the first item is needed.
+- Consider building validators with a single query that returns (component, validator, query, messages) tuples.
+*/
 pub(crate) fn parse_custom_constraint_components(
     context: &ParsingContext,
 ) -> (
