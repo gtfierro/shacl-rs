@@ -12,6 +12,8 @@ use oxigraph::model::vocab::xsd;
 use oxigraph::model::{GraphNameRef, Literal, NamedNode, NamedNodeRef, Term, TermRef};
 use oxigraph::sparql::{Query, QueryOptions, QueryResults, Variable};
 use oxigraph::store::Store;
+use spargebra::algebra::{AggregateExpression, Expression, GraphPattern, OrderExpression};
+use spargebra::Query as AlgebraQuery;
 use std::collections::{HashMap, HashSet};
 
 // TODO : stop grabbing prefixes/declaratiosn from *everywhere*
@@ -160,34 +162,209 @@ fn query_mentions_var(query: &str, var: &str) -> bool {
     contains(query, '?', var) || contains(query, '$', var)
 }
 
-fn replace_variable_with_term(query: &str, var: &str, term: &Term) -> String {
-    let mut result = String::with_capacity(query.len() + term.to_string().len());
-    let replacement = term.to_string();
-    let mut i = 0;
-    while i < query.len() {
-        let ch = query[i..].chars().next().unwrap();
-        let ch_len = ch.len_utf8();
-        if (ch == '?' || ch == '$')
-            && i + ch_len + var.len() <= query.len()
-            && &query[i + ch_len..i + ch_len + var.len()] == var
-        {
-            let after = i + ch_len + var.len();
-            let boundary_ok = after == query.len()
-                || query[after..]
-                    .chars()
-                    .next()
-                    .map_or(true, |next| !next.is_ascii_alphanumeric() && next != '_');
-            if boundary_ok {
-                result.push_str(&replacement);
-                i += ch_len + var.len();
-                continue;
-            }
+fn ensure_pre_binding_semantics(
+    query: &AlgebraQuery,
+    context_label: &str,
+    prebound: &HashSet<Variable>,
+    optional: &HashSet<Variable>,
+) -> Result<(), String> {
+    match query {
+        AlgebraQuery::Select { pattern, .. }
+        | AlgebraQuery::Ask { pattern, .. }
+        | AlgebraQuery::Construct { pattern, .. }
+        | AlgebraQuery::Describe { pattern, .. } => {
+            check_graph_pattern(pattern, context_label, prebound, optional, true)
         }
-
-        result.push(ch);
-        i += ch_len;
     }
-    result
+}
+
+fn check_graph_pattern(
+    pattern: &GraphPattern,
+    context_label: &str,
+    prebound: &HashSet<Variable>,
+    optional: &HashSet<Variable>,
+    is_root: bool,
+) -> Result<(), String> {
+    match pattern {
+        GraphPattern::Bgp { .. } | GraphPattern::Path { .. } => Ok(()),
+        GraphPattern::Join { left, right }
+        | GraphPattern::Union { left, right }
+        | GraphPattern::Lateral { left, right } => {
+            check_graph_pattern(left, context_label, prebound, optional, false)?;
+            check_graph_pattern(right, context_label, prebound, optional, false)
+        }
+        GraphPattern::Graph { inner, .. }
+        | GraphPattern::Distinct { inner }
+        | GraphPattern::Reduced { inner }
+        | GraphPattern::Slice { inner, .. } => {
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+        GraphPattern::Filter { expr, inner } => {
+            check_expression(expr, context_label, prebound, optional)?;
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+        GraphPattern::LeftJoin {
+            left,
+            right,
+            expression,
+        } => {
+            check_graph_pattern(left, context_label, prebound, optional, false)?;
+            check_graph_pattern(right, context_label, prebound, optional, false)?;
+            if let Some(expr) = expression {
+                check_expression(expr, context_label, prebound, optional)?;
+            }
+            Ok(())
+        }
+        GraphPattern::Extend {
+            inner,
+            variable,
+            expression,
+        } => {
+            if prebound.contains(variable) {
+                return Err(format!(
+                    "{} must not reassign the pre-bound variable ?{}.",
+                    context_label,
+                    variable.as_str()
+                ));
+            }
+            check_expression(expression, context_label, prebound, optional)?;
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+        GraphPattern::Group {
+            inner, aggregates, ..
+        } => {
+            for (variable, aggregate) in aggregates {
+                if prebound.contains(variable) {
+                    return Err(format!(
+                        "{} must not reassign the pre-bound variable ?{}.",
+                        context_label,
+                        variable.as_str()
+                    ));
+                }
+                check_aggregate_expression(aggregate, context_label, prebound, optional)?;
+            }
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+        GraphPattern::Project { inner, variables } => {
+            if !is_root {
+                for variable in prebound {
+                    if optional.contains(variable) {
+                        continue;
+                    }
+                    if !variables.iter().any(|v| v == variable) {
+                        return Err(format!(
+                            "{} subqueries must project the pre-bound variable ?{}.",
+                            context_label,
+                            variable.as_str()
+                        ));
+                    }
+                }
+            }
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+        GraphPattern::Values { .. } => Err(format!(
+            "{} must not contain a VALUES clause.",
+            context_label
+        )),
+        GraphPattern::Minus { .. } => Err(format!(
+            "{} must not contain a MINUS clause.",
+            context_label
+        )),
+        GraphPattern::Service { .. } => Err(format!(
+            "{} must not contain a federated query (SERVICE).",
+            context_label
+        )),
+        GraphPattern::OrderBy { inner, expression } => {
+            for expr in expression {
+                check_order_expression(expr, context_label, prebound, optional)?;
+            }
+            check_graph_pattern(inner, context_label, prebound, optional, false)
+        }
+    }
+}
+
+fn check_order_expression(
+    order: &OrderExpression,
+    context_label: &str,
+    prebound: &HashSet<Variable>,
+    optional: &HashSet<Variable>,
+) -> Result<(), String> {
+    match order {
+        OrderExpression::Asc(expr) | OrderExpression::Desc(expr) => {
+            check_expression(expr, context_label, prebound, optional)
+        }
+    }
+}
+
+fn check_aggregate_expression(
+    aggregate: &AggregateExpression,
+    context_label: &str,
+    prebound: &HashSet<Variable>,
+    optional: &HashSet<Variable>,
+) -> Result<(), String> {
+    match aggregate {
+        AggregateExpression::CountSolutions { .. } => Ok(()),
+        AggregateExpression::FunctionCall { expr, .. } => {
+            check_expression(expr, context_label, prebound, optional)
+        }
+    }
+}
+
+fn check_expression(
+    expr: &Expression,
+    context_label: &str,
+    prebound: &HashSet<Variable>,
+    optional: &HashSet<Variable>,
+) -> Result<(), String> {
+    match expr {
+        Expression::NamedNode(_) | Expression::Literal(_) | Expression::Variable(_) => Ok(()),
+        Expression::UnaryPlus(inner) | Expression::UnaryMinus(inner) | Expression::Not(inner) => {
+            check_expression(inner, context_label, prebound, optional)
+        }
+        Expression::Or(left, right)
+        | Expression::And(left, right)
+        | Expression::Equal(left, right)
+        | Expression::SameTerm(left, right)
+        | Expression::Greater(left, right)
+        | Expression::GreaterOrEqual(left, right)
+        | Expression::Less(left, right)
+        | Expression::LessOrEqual(left, right)
+        | Expression::Add(left, right)
+        | Expression::Subtract(left, right)
+        | Expression::Multiply(left, right)
+        | Expression::Divide(left, right) => {
+            check_expression(left, context_label, prebound, optional)?;
+            check_expression(right, context_label, prebound, optional)
+        }
+        Expression::In(item, items) => {
+            check_expression(item, context_label, prebound, optional)?;
+            for it in items {
+                check_expression(it, context_label, prebound, optional)?;
+            }
+            Ok(())
+        }
+        Expression::FunctionCall(_, args) => {
+            for arg in args {
+                check_expression(arg, context_label, prebound, optional)?;
+            }
+            Ok(())
+        }
+        Expression::If(condition, then_branch, else_branch) => {
+            check_expression(condition, context_label, prebound, optional)?;
+            check_expression(then_branch, context_label, prebound, optional)?;
+            check_expression(else_branch, context_label, prebound, optional)
+        }
+        Expression::Coalesce(expressions) => {
+            for expression in expressions {
+                check_expression(expression, context_label, prebound, optional)?;
+            }
+            Ok(())
+        }
+        Expression::Exists(pattern) => {
+            check_graph_pattern(pattern, context_label, prebound, optional, false)
+        }
+        Expression::Bound(_) => Ok(()),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -291,23 +468,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             return Err("SPARQL constraint is missing sh:select".to_string());
         };
 
-        // 3. SPARQL syntax checks from Appendix A
-        // Note: These are simplified checks. More robust checks would need a full SPARQL parser
-        // or more complex regular expressions to avoid matching inside comments or strings.
-        if select_query.to_uppercase().contains(" MINUS ") {
-            // with spaces to avoid matching variable names
-            return Err("A SPARQL Constraint must not contain a MINUS clause.".to_string());
-        }
-        if select_query.to_uppercase().contains(" VALUES ") {
-            return Err("A SPARQL Constraint must not contain a VALUES clause.".to_string());
-        }
-        if select_query.to_uppercase().contains(" SERVICE ") {
-            return Err(
-                "A SPARQL Constraint must not contain a federated query (SERVICE).".to_string(),
-            );
-        }
-
-        // 4. Get prefixes
+        // Collect prefixes
         let prefixes = get_prefixes_for_sparql_node(
             self.constraint_node.as_ref(),
             &context.model.store,
@@ -315,7 +476,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             context.model.shape_graph_iri_ref(),
         )?;
 
-        // 5. Handle $PATH substitution for property shapes
+        // Handle $PATH substitution for property shapes
         if c.source_shape().as_prop_id().is_some() {
             if let Some(prop_id) = c.source_shape().as_prop_id() {
                 if let Some(prop_shape) = context.model.get_prop_shape_by_id(prop_id) {
@@ -331,12 +492,40 @@ impl ValidateComponent for SPARQLConstraintComponent {
             select_query
         };
 
+        let algebra_query = AlgebraQuery::parse(&full_query_str, None)
+            .map_err(|e| format!("Failed to parse SPARQL constraint query: {}", e))?;
+
+        let mut prebound_vars: HashSet<Variable> = HashSet::new();
+        let mut optional_prebound_vars: HashSet<Variable> = HashSet::new();
+
+        if query_mentions_var(&full_query_str, "this") {
+            prebound_vars.insert(Variable::new_unchecked("this"));
+        }
+
+        if query_mentions_var(&full_query_str, "currentShape") {
+            let var = Variable::new_unchecked("currentShape");
+            optional_prebound_vars.insert(var.clone());
+            prebound_vars.insert(var);
+        }
+
+        if query_mentions_var(&full_query_str, "shapesGraph") {
+            let var = Variable::new_unchecked("shapesGraph");
+            optional_prebound_vars.insert(var.clone());
+            prebound_vars.insert(var);
+        }
+
+        ensure_pre_binding_semantics(
+            &algebra_query,
+            "SPARQL constraint query",
+            &prebound_vars,
+            &optional_prebound_vars,
+        )?;
+
         let mut query = Query::parse(&full_query_str, None)
-            .map_err(|e| format!("Failed to parse SPARQL constraint query: {}", e))
-            .unwrap();
+            .map_err(|e| format!("Failed to parse SPARQL constraint query: {}", e))?;
         query.dataset_mut().set_default_graph_as_union();
 
-        // 6. Prepare pre-bound variables
+        // Prepare pre-bound variables
         let mut substitutions = vec![];
 
         if query_mentions_var(&full_query_str, "this") {
@@ -358,7 +547,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             ));
         }
 
-        // 7. Get messages
+        // Get messages
         let messages: Vec<Term> = context
             .model
             .store()
@@ -372,7 +561,7 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .map(|q| q.object)
             .collect();
 
-        // 8. Execute query
+        // Execute query
         let query_results = context.model.store().query_opt_with_substituted_variables(
             query,
             QueryOptions::default(),
@@ -748,32 +937,53 @@ impl ValidateComponent for CustomConstraintComponent {
             }
         }
 
-        for (param_path, values) in &self.parameter_values {
-            if let Some(value) = values.first() {
-                let param_name = local_name(param_path);
-                if query_mentions_var(&query_body, &param_name) {
-                    query_body = replace_variable_with_term(&query_body, &param_name, value);
-                }
-            }
-        }
+        let current_shape_term = c.source_shape().get_term(context);
 
-        let mut substitutions = Vec::new();
+        let mut substitutions: Vec<(Variable, Term)> = Vec::new();
+        let mut prebound_vars: HashSet<Variable> = HashSet::new();
+        let mut optional_prebound_vars: HashSet<Variable> = HashSet::new();
 
         if query_mentions_var(&query_body, "this") {
-            substitutions.push((Variable::new_unchecked("this"), c.focus_node().clone()));
+            let var = Variable::new_unchecked("this");
+            substitutions.push((var.clone(), c.focus_node().clone()));
+            prebound_vars.insert(var);
         }
 
-        if query_mentions_var(&query_body, "currentShape") {
-            if let Some(current_shape_term) = c.source_shape().get_term(context) {
-                substitutions.push((Variable::new_unchecked("currentShape"), current_shape_term));
+        if let Some(term) = current_shape_term.clone() {
+            if query_mentions_var(&query_body, "currentShape") {
+                let var = Variable::new_unchecked("currentShape");
+                substitutions.push((var.clone(), term));
+                optional_prebound_vars.insert(var.clone());
+                prebound_vars.insert(var);
             }
         }
 
         if query_mentions_var(&query_body, "shapesGraph") {
-            substitutions.push((
-                Variable::new_unchecked("shapesGraph"),
-                context.model.shape_graph_iri.clone().into(),
-            ));
+            let var = Variable::new_unchecked("shapesGraph");
+            substitutions.push((var.clone(), context.model.shape_graph_iri.clone().into()));
+            optional_prebound_vars.insert(var.clone());
+            prebound_vars.insert(var);
+        }
+
+        for (param_path, values) in &self.parameter_values {
+            let param_name = local_name(param_path);
+            if query_mentions_var(&query_body, &param_name) {
+                let value = values.first().ok_or_else(|| {
+                    format!(
+                        "Custom constraint {} is missing a value for parameter {} needed by its SPARQL query.",
+                        self.definition.iri,
+                        param_name
+                    )
+                })?;
+                let var = Variable::new_unchecked(&param_name);
+                substitutions.push((var.clone(), value.clone()));
+                prebound_vars.insert(var);
+            }
+        }
+
+        let include_value = validator.is_ask && query_mentions_var(&query_body, "value");
+        if include_value {
+            prebound_vars.insert(Variable::new_unchecked("value"));
         }
 
         let apply_prefixes = |body: &str| {
@@ -784,10 +994,25 @@ impl ValidateComponent for CustomConstraintComponent {
             }
         };
 
+        let query_with_prefixes = apply_prefixes(&query_body);
+        let context_label = if validator.is_ask {
+            format!("SPARQL ASK validator {}", self.definition.iri)
+        } else {
+            format!("SPARQL SELECT validator {}", self.definition.iri)
+        };
+
+        let algebra_query = AlgebraQuery::parse(&query_with_prefixes, None)
+            .map_err(|e| format!("Failed to parse SPARQL validator query: {}", e))?;
+
+        ensure_pre_binding_semantics(
+            &algebra_query,
+            &context_label,
+            &prebound_vars,
+            &optional_prebound_vars,
+        )?;
+
         if validator.is_ask {
             if let Some(value_nodes) = c.value_nodes() {
-                let include_value = query_mentions_var(&query_body, "value");
-                let query_with_prefixes = apply_prefixes(&query_body);
                 for value_node in value_nodes {
                     let mut ask_substitutions = substitutions.clone();
                     if include_value {
@@ -834,9 +1059,7 @@ impl ValidateComponent for CustomConstraintComponent {
             }
         } else {
             // SELECT validator
-            let query = apply_prefixes(&query_body);
-
-            let mut parsed_query = Query::parse(&query, None)
+            let mut parsed_query = Query::parse(&query_with_prefixes, None)
                 .map_err(|e| format!("Failed to parse SPARQL validator query: {}", e))?;
             parsed_query.dataset_mut().set_default_graph_as_union();
 
