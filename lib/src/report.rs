@@ -198,6 +198,11 @@ impl ValidationReportBuilder {
                 //    sh.result_message,
                 //    Term::from(Literal::new_simple_literal(&failure.message)),
                 //));
+                
+                println!("failure result path: {:?}", failure.result_path);
+                println!("context result path: {:?}", context.result_path());
+                println!("context source shape: {:?}", context.source_shape());
+                println!("----");
 
                 // sh:resultPath
                 let result_path_term = if let Some(path_override) = &failure.result_path {
@@ -210,21 +215,27 @@ impl ValidationReportBuilder {
                         _ => path_to_rdf(path_override, &mut graph),
                     })
                 } else if let Some(_p) = context.result_path() {
+                    context.result_path().map(|p| match p {
+                                                Path::Simple(t) if matches!(t, Term::BlankNode(_)) => {
+                                                    clone_path_term_from_shapes_graph(t, validation_context, &mut graph)
+                                                }
+                                                _ => path_to_rdf(p, &mut graph),
+                                            })
                     // Prefer the original shapes-graph term when the source is a PropertyShape.
-                    match context.source_shape() {
-                        SourceShape::PropertyShape(prop_id) => validation_context
-                            .model
-                            .get_prop_shape_by_id(&prop_id)
-                            .map(|ps| clone_path_term_from_shapes_graph(ps.path_term(), validation_context, &mut graph)),
-                        // For NodeShape-derived paths (rare), if it's a blank node head from the shapes graph, clone it.
-                        // Otherwise, fall back to structural build.
-                        _ => context.result_path().map(|p| match p {
-                            Path::Simple(t) if matches!(t, Term::BlankNode(_)) => {
-                                clone_path_term_from_shapes_graph(t, validation_context, &mut graph)
-                            }
-                            _ => path_to_rdf(p, &mut graph),
-                        }),
-                    }
+                    //match context.source_shape() {
+                    //    SourceShape::PropertyShape(prop_id) => validation_context
+                    //        .model
+                    //        .get_prop_shape_by_id(&prop_id)
+                    //        .map(|ps| clone_path_term_from_shapes_graph(ps.path_term(), validation_context, &mut graph)),
+                    //    // For NodeShape-derived paths (rare), if it's a blank node head from the shapes graph, clone it.
+                    //    // Otherwise, fall back to structural build.
+                    //    _ => context.result_path().map(|p| match p {
+                    //        Path::Simple(t) if matches!(t, Term::BlankNode(_)) => {
+                    //            clone_path_term_from_shapes_graph(t, validation_context, &mut graph)
+                    //        }
+                    //        _ => path_to_rdf(p, &mut graph),
+                    //    }),
+                    //}
                 } else {
                     // No runtime path set; if the source is a PropertyShape, clone from shapes graph.
                     match context.source_shape() {

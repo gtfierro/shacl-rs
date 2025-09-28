@@ -97,6 +97,35 @@ fn load_unique_lang_lexicals(context: &ParsingContext) -> HashMap<Term, String> 
 pub(crate) fn run_parser(context: &mut ParsingContext) -> Result<(), String> {
     // parses the shape graph to get all of the shapes and components defined within
     let unique_lang_lexicals = load_unique_lang_lexicals(context);
+    let rdf = RDF::new();
+    let sh = SHACL::new();
+    let shape_graph_name_ref = context.shape_graph_iri_ref();
+    let property_shape_count = context
+        .store
+        .quads_for_pattern(
+            None,
+            Some(rdf.type_),
+            Some(sh.property_shape.into()),
+            Some(shape_graph_name_ref),
+        )
+        .filter_map(Result::ok)
+        .count();
+    let property_shape_total = context
+        .store
+        .quads_for_pattern(
+            None,
+            Some(rdf.type_),
+            Some(sh.property_shape.into()),
+            None,
+        )
+        .filter_map(Result::ok)
+        .count();
+    eprintln!(
+        "run_parser shape graph {} has {} property shape type triples (total across graphs {})",
+        context.shape_graph_iri,
+        property_shape_count,
+        property_shape_total
+    );
     let shapes = get_node_shapes(context);
     for shape in shapes {
         parse_node_shape(context, shape, &unique_lang_lexicals)?;
@@ -106,6 +135,11 @@ pub(crate) fn run_parser(context: &mut ParsingContext) -> Result<(), String> {
     for pshape in pshapes {
         parse_property_shape(context, pshape, &unique_lang_lexicals)?;
     }
+    eprintln!(
+        "run_parser parsed node_shapes={} prop_shapes={}",
+        context.node_shapes.len(),
+        context.prop_shapes.len()
+    );
     Ok(())
 }
 
@@ -399,7 +433,14 @@ fn parse_property_shape(
 
     let severity = severity_term_opt.as_ref().and_then(Severity::from_term);
 
-    let prop_shape = PropertyShape::new(id, targets, path, component_ids, severity);
+    let prop_shape = PropertyShape::new(
+        id,
+        targets,
+        path,
+        path_object_term.clone(),
+        component_ids,
+        severity,
+    );
     context.prop_shapes.insert(id, prop_shape);
     Ok(id)
 }
@@ -412,6 +453,16 @@ fn parse_shacl_path_recursive(
     let shacl = SHACL::new();
     let _rdf = RDF::new();
     let shape_graph_name_ref = context.shape_graph_iri_ref();
+
+    // Check if this term directly encodes an RDF list for a sequence path.
+    let seq_paths_terms = parse_rdf_list(context, path_term_ref.into_owned());
+    if !seq_paths_terms.is_empty() {
+        let seq_paths: Result<Vec<PShapePath>, String> = seq_paths_terms
+            .iter()
+            .map(|term| parse_shacl_path_recursive(context, term.as_ref()))
+            .collect();
+        return Ok(PShapePath::Sequence(seq_paths?));
+    }
 
     // Check for sh:inversePath
     if let Some(inverse_path_obj) = context
@@ -500,15 +551,6 @@ fn parse_shacl_path_recursive(
     {
         let inner_path = parse_shacl_path_recursive(context, zoo_path_obj.as_ref())?;
         return Ok(PShapePath::ZeroOrOne(Box::new(inner_path)));
-    }
-
-    let seq_paths_terms = parse_rdf_list(context, path_term_ref.into_owned());
-    if !seq_paths_terms.is_empty() {
-        let seq_paths: Result<Vec<PShapePath>, String> = seq_paths_terms
-            .iter()
-            .map(|term| parse_shacl_path_recursive(context, term.as_ref()))
-            .collect();
-        return Ok(PShapePath::Sequence(seq_paths?));
     }
 
     // If it's not a complex path node, it must be a simple path (an IRI)

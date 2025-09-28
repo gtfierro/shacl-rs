@@ -1,4 +1,5 @@
 use crate::types::{ComponentID, Path, PropShapeID, Severity, Target, ID};
+use oxigraph::model::Term;
 
 /// Immutable description of a SHACL node shape.
 #[derive(Debug)]
@@ -45,6 +46,7 @@ pub struct PropertyShape {
     /// Target selectors identifying candidate focus nodes.
     pub targets: Vec<Target>,
     path: Path,
+    path_term: Term,
     constraints: Vec<ComponentID>,
     severity: Severity,
 }
@@ -54,6 +56,7 @@ impl PropertyShape {
         identifier: PropShapeID,
         targets: Vec<Target>,
         path: Path,
+        path_term: Term,
         constraints: Vec<ComponentID>,
         severity: Option<Severity>,
     ) -> Self {
@@ -61,6 +64,7 @@ impl PropertyShape {
             identifier,
             targets,
             path,
+            path_term,
             constraints,
             severity: severity.unwrap_or_default(),
         }
@@ -76,6 +80,10 @@ impl PropertyShape {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn path_term(&self) -> &Term {
+        &self.path_term
     }
 
     pub fn constraints(&self) -> &[ComponentID] {

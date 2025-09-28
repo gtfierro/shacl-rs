@@ -10,6 +10,7 @@ use std::collections::HashSet;
 
 pub(crate) fn validate(context: &ValidationContext) -> Result<ValidationReportBuilder, String> {
     let mut report_builder = ValidationReportBuilder::new();
+    eprintln!("node_shapes: {} prop_shapes: {}", context.model.node_shapes.len(), context.model.prop_shapes.len());
     // Validate all node shapes
     for shape in context.model.node_shapes.values() {
         shape.process_targets(context, &mut report_builder)?;
@@ -173,6 +174,7 @@ impl PropertyShape {
                 focus_node.to_string(),
                 sparql_path
             );
+            eprintln!("PropertyShape {:?} focus {} query: {}", self.identifier(), focus_node, query_str);
 
             let mut query = Query::parse(&query_str, None).map_err(|e| {
                 format!(

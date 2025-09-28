@@ -28,6 +28,7 @@ use log::{debug, info};
 use ontoenv::api::OntoEnv;
 use ontoenv::config::Config;
 use ontoenv::ontology::OntologyLocation;
+use ontoenv::options::{Overwrite, RefreshStrategy};
 use oxigraph::model::GraphNameRef;
 use std::error::Error;
 use std::path::PathBuf;
@@ -95,17 +96,51 @@ impl Validator {
         let mut env: OntoEnv = OntoEnv::init(config, false)?;
 
         let shapes_graph_id = match shapes_source {
-            Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
-            Source::File(path) => env.add(OntologyLocation::File(path.clone()), true)?,
+            Source::Graph(uri) => env.add(
+                OntologyLocation::Url(uri.clone()),
+                Overwrite::Allow,
+                RefreshStrategy::Force,
+            )?,
+            Source::File(path) => env.add(
+                OntologyLocation::File(path.clone()),
+                Overwrite::Allow,
+                RefreshStrategy::Force,
+            )?,
         };
-        let shape_graph_iri = env.get_ontology(&shapes_graph_id).unwrap().name().clone();
+        let shape_ontology = env.get_ontology(&shapes_graph_id).unwrap().clone();
+        let shape_graph_iri = shape_ontology.name().clone();
+        eprintln!(
+            "Loaded shapes graph {} (location {})",
+            shape_graph_iri,
+            shape_ontology
+                .location()
+                .map(|loc| loc.as_str().to_string())
+                .unwrap_or_else(|| "<unknown>".into())
+        );
         info!("Added shape graph: {}", shape_graph_iri);
 
         let data_graph_id = match data_source {
-            Source::Graph(uri) => env.add(OntologyLocation::Url(uri.clone()), true)?,
-            Source::File(path) => env.add(OntologyLocation::File(path.clone()), true)?,
+            Source::Graph(uri) => env.add(
+                OntologyLocation::Url(uri.clone()),
+                Overwrite::Allow,
+                RefreshStrategy::Force,
+            )?,
+            Source::File(path) => env.add(
+                OntologyLocation::File(path.clone()),
+                Overwrite::Allow,
+                RefreshStrategy::Force,
+            )?,
         };
-        let data_graph_iri = env.get_ontology(&data_graph_id).unwrap().name().clone();
+        let data_ontology = env.get_ontology(&data_graph_id).unwrap().clone();
+        let data_graph_iri = data_ontology.name().clone();
+        eprintln!(
+            "Loaded data graph {} (location {})",
+            data_graph_iri,
+            data_ontology
+                .location()
+                .map(|loc| loc.as_str().to_string())
+                .unwrap_or_else(|| "<unknown>".into())
+        );
         info!("Added data graph: {}", data_graph_iri);
 
         let store = env.io().store().clone();

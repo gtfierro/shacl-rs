@@ -7,6 +7,7 @@ use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TraceItem, ID};
 use log::info;
 use ontoenv::api::OntoEnv;
 use ontoenv::ontology::OntologyLocation;
+use ontoenv::options::{Overwrite, RefreshStrategy};
 use oxigraph::model::{GraphNameRef, NamedNode, NamedNodeRef, Term};
 use oxigraph::store::Store;
 use std::cell::RefCell;
@@ -127,7 +128,11 @@ impl ShapesModel {
 
         let shape_graph_location = OntologyLocation::from_str(shape_graph_path)?;
         info!("Added shape graph: {}", shape_graph_location);
-        let shape_id = env.add(shape_graph_location, false)?;
+        let shape_id = env.add(
+            shape_graph_location,
+            Overwrite::Preserve,
+            RefreshStrategy::Force,
+        )?;
         let shape_graph_iri = env.get_ontology(&shape_id).unwrap().name().clone();
 
         // Data graph is not loaded here. We create a dummy one for the legacy ValidationContext.
