@@ -203,6 +203,7 @@ macro_rules! generate_test_cases {
     ($($name:ident: $file:expr),* $(,)?) => {
         $(
             #[test]
+            #[ntest::timeout(5000)]
             fn $name() -> Result<(), Box<dyn std::error::Error>> {
                 run_test_file($file)
             }
