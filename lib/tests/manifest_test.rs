@@ -1,9 +1,10 @@
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use shacl::canonicalization::{are_isomorphic, deskolemize_graph};
-use shacl::test_utils::{load_manifest, TestCase};
+use shacl::test_utils::{list_includes, load_manifest, TestCase};
 use shacl::Validator;
+use std::collections::{HashSet, VecDeque};
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use url::Url;
 
 fn graph_to_turtle(graph: &oxigraph::model::Graph) -> Result<String, Box<dyn Error>> {
@@ -22,27 +23,101 @@ fn graph_to_turtle(graph: &oxigraph::model::Graph) -> Result<String, Box<dyn Err
     Ok(turtle_string)
 }
 
-fn parse_tests(tests: &[&str]) -> Result<Vec<TestCase>, Box<dyn Error>> {
+fn collect_tests_from_manifest(
+    manifest_path: &Path,
+) -> Result<Vec<(PathBuf, TestCase)>, Box<dyn Error>> {
     let mut all_tests = Vec::new();
-    for test_path in tests {
-        let test_path = PathBuf::from(test_path);
-        let man = load_manifest(&test_path).map_err(|e| {
+    let mut to_visit = VecDeque::new();
+    let mut visited = HashSet::new();
+
+    let manifest_path = manifest_path.to_path_buf();
+    to_visit.push_back(manifest_path);
+
+    while let Some(current_manifest) = to_visit.pop_front() {
+        let canonical = current_manifest
+            .canonicalize()
+            .unwrap_or_else(|_| current_manifest.clone());
+        if !visited.insert(canonical.clone()) {
+            continue;
+        }
+
+        let manifest = load_manifest(&canonical).map_err(|e| {
             format!(
                 "Failed to load manifest from {}: {}",
-                test_path.display(),
+                canonical.display(),
                 e
             )
         })?;
-        all_tests.extend(man.test_cases);
+        for case in manifest.test_cases {
+            all_tests.push((canonical.clone(), case));
+        }
+
+        let includes = list_includes(&canonical).map_err(|e| {
+            format!(
+                "Failed to list mf:include targets for {}: {}",
+                canonical.display(),
+                e
+            )
+        })?;
+        for include in includes {
+            let include_canonical = include.canonicalize().unwrap_or_else(|_| include.clone());
+            if visited.contains(&include_canonical) {
+                continue;
+            }
+            to_visit.push_back(include_canonical);
+        }
     }
+
+    all_tests.sort_by(|(path_a, case_a), (path_b, case_b)| {
+        path_a
+            .cmp(path_b)
+            .then_with(|| case_a.name.cmp(&case_b.name))
+    });
+
     Ok(all_tests)
 }
 
+fn skip_reason(test: &TestCase) -> Option<&'static str> {
+    let data_path = test.data_graph_path.to_string_lossy();
+    let shapes_path = test.shapes_graph_path.to_string_lossy();
+    let is_sparql = data_path.contains("/sparql/") || shapes_path.contains("/sparql/");
+
+    let allow_sparql = std::env::var("SHACL_W3C_ALLOW_SPARQL").ok().as_deref() == Some("1");
+
+    if !allow_sparql && is_sparql {
+        return Some("SPARQL validation disabled (set SHACL_W3C_ALLOW_SPARQL=1 to opt in)");
+    }
+
+    // Known unsupported SPARQL features even when SPARQL is enabled.
+    if is_sparql {
+        if data_path.contains("/sparql/pre-binding/")
+            || shapes_path.contains("/sparql/pre-binding/")
+        {
+            return Some("SPARQL pre-binding is not yet supported");
+        }
+    }
+
+    None
+}
+
 fn run_test_file(file: &str) -> Result<(), Box<dyn Error>> {
-    let tests = parse_tests(&[file])?;
-    for test in tests {
+    let tests = collect_tests_from_manifest(Path::new(file))?;
+    for (manifest_path, test) in tests {
         let test_name = test.name.as_str();
-        println!("Running test: {} from file: {}", test_name, file);
+        if let Some(reason) = skip_reason(&test) {
+            println!(
+                "[skip] {} — {} (manifest: {})",
+                test_name,
+                reason,
+                manifest_path.display()
+            );
+            continue;
+        }
+        println!(
+            "Running test: {} from manifest: {}",
+            test_name,
+            manifest_path.display()
+        );
         let data_graph_path = test
             .data_graph_path
             .to_str()
@@ -135,99 +210,4 @@ macro_rules! generate_test_cases {
     }
 }
 
-generate_test_cases! {
-    test_target_node_001: "tests/test-suite/core/targets/targetNode-001.ttl",
-    test_target_class_001: "tests/test-suite/core/targets/targetClass-001.ttl",
-    test_target_objects_of_001: "tests/test-suite/core/targets/targetObjectsOf-001.ttl",
-    test_multiple_targets_001: "tests/test-suite/core/targets/multipleTargets-001.ttl",
-    test_target_subjects_of_001: "tests/test-suite/core/targets/targetSubjectsOf-001.ttl",
-    test_target_subjects_of_002: "tests/test-suite/core/targets/targetSubjectsOf-002.ttl",
-    test_target_class_implicit_001: "tests/test-suite/core/targets/targetClassImplicit-001.ttl",
-
-    test_property_and_001: "tests/test-suite/core/property/and-001.ttl",
-    test_property_class_001: "tests/test-suite/core/property/class-001.ttl",
-    test_property_datatype_001: "tests/test-suite/core/property/datatype-001.ttl",
-    test_property_datatype_002: "tests/test-suite/core/property/datatype-002.ttl",
-    test_property_datatype_003: "tests/test-suite/core/property/datatype-003.ttl",
-    test_property_datatype_ill_formed: "tests/test-suite/core/property/datatype-ill-formed.ttl",
-    test_property_disjoint_001: "tests/test-suite/core/property/disjoint-001.ttl",
-    test_property_equals_001: "tests/test-suite/core/property/equals-001.ttl",
-    test_property_has_value_001: "tests/test-suite/core/property/hasValue-001.ttl",
-    test_property_in_001: "tests/test-suite/core/property/in-001.ttl",
-    test_property_language_in_001: "tests/test-suite/core/property/languageIn-001.ttl",
-    test_property_less_than_001: "tests/test-suite/core/property/lessThan-001.ttl",
-    test_property_less_than_002: "tests/test-suite/core/property/lessThan-002.ttl",
-    test_property_less_than_or_equals_001: "tests/test-suite/core/property/lessThanOrEquals-001.ttl",
-    test_property_manifest: "tests/test-suite/core/property/manifest.ttl",
-    test_property_max_count_001: "tests/test-suite/core/property/maxCount-001.ttl",
-    test_property_max_count_002: "tests/test-suite/core/property/maxCount-002.ttl",
-    test_property_max_exclusive_001: "tests/test-suite/core/property/maxExclusive-001.ttl",
-    test_property_max_inclusive_001: "tests/test-suite/core/property/maxInclusive-001.ttl",
-    test_property_max_length_001: "tests/test-suite/core/property/maxLength-001.ttl",
-    test_property_min_count_001: "tests/test-suite/core/property/minCount-001.ttl",
-    test_property_min_count_002: "tests/test-suite/core/property/minCount-002.ttl",
-    test_property_min_exclusive_001: "tests/test-suite/core/property/minExclusive-001.ttl",
-    test_property_min_exclusive_002: "tests/test-suite/core/property/minExclusive-002.ttl",
-    test_property_min_length_001: "tests/test-suite/core/property/minLength-001.ttl",
-    test_property_node_001: "tests/test-suite/core/property/node-001.ttl",
-    test_property_node_002: "tests/test-suite/core/property/node-002.ttl",
-    test_property_node_kind_001: "tests/test-suite/core/property/nodeKind-001.ttl",
-    test_property_not_001: "tests/test-suite/core/property/not-001.ttl",
-    test_property_or_001: "tests/test-suite/core/property/or-001.ttl",
-    test_property_or_datatypes_001: "tests/test-suite/core/property/or-datatypes-001.ttl",
-    test_property_pattern_001: "tests/test-suite/core/property/pattern-001.ttl",
-    test_property_pattern_002: "tests/test-suite/core/property/pattern-002.ttl",
-    test_property_property_001: "tests/test-suite/core/property/property-001.ttl",
-    test_property_qualified_min_count_disjoint_001: "tests/test-suite/core/property/qualifiedMinCountDisjoint-001.ttl",
-    test_property_qualified_value_shape_001: "tests/test-suite/core/property/qualifiedValueShape-001.ttl",
-    test_property_qualified_value_shapes_disjoint_001: "tests/test-suite/core/property/qualifiedValueShapesDisjoint-001.ttl",
-    test_property_unique_lang_001: "tests/test-suite/core/property/uniqueLang-001.ttl",
-    test_property_unique_lang_002: "tests/test-suite/core/property/uniqueLang-002.ttl",
-
-
-    test_node_and_001: "tests/test-suite/core/node/and-001.ttl",
-    test_node_and_002: "tests/test-suite/core/node/and-002.ttl",
-    test_node_class_001: "tests/test-suite/core/node/class-001.ttl",
-    test_node_class_002: "tests/test-suite/core/node/class-002.ttl",
-    test_node_class_003: "tests/test-suite/core/node/class-003.ttl",
-    test_node_closed_001: "tests/test-suite/core/node/closed-001.ttl",
-    test_node_closed_002: "tests/test-suite/core/node/closed-002.ttl",
-    test_node_datatype_001: "tests/test-suite/core/node/datatype-001.ttl",
-    test_node_datatype_002: "tests/test-suite/core/node/datatype-002.ttl",
-    test_node_disjoint_001: "tests/test-suite/core/node/disjoint-001.ttl",
-    test_node_equals_001: "tests/test-suite/core/node/equals-001.ttl",
-    test_node_has_value_001: "tests/test-suite/core/node/hasValue-001.ttl",
-    test_node_in_001: "tests/test-suite/core/node/in-001.ttl",
-    test_node_language_in_001: "tests/test-suite/core/node/languageIn-001.ttl",
-    test_node_manifest: "tests/test-suite/core/node/manifest.ttl",
-    test_node_max_exclusive_001: "tests/test-suite/core/node/maxExclusive-001.ttl",
-    test_node_max_inclusive_001: "tests/test-suite/core/node/maxInclusive-001.ttl",
-    test_node_max_length_001: "tests/test-suite/core/node/maxLength-001.ttl",
-    test_node_min_exclusive_001: "tests/test-suite/core/node/minExclusive-001.ttl",
-    test_node_min_inclusive_001: "tests/test-suite/core/node/minInclusive-001.ttl",
-    test_node_min_inclusive_002: "tests/test-suite/core/node/minInclusive-002.ttl",
-    test_node_min_inclusive_003: "tests/test-suite/core/node/minInclusive-003.ttl",
-    test_node_min_length_001: "tests/test-suite/core/node/minLength-001.ttl",
-    test_node_node_001: "tests/test-suite/core/node/node-001.ttl",
-    test_node_node_kind_001: "tests/test-suite/core/node/nodeKind-001.ttl",
-    test_node_not_001: "tests/test-suite/core/node/not-001.ttl",
-    test_node_not_002: "tests/test-suite/core/node/not-002.ttl",
-    test_node_or_001: "tests/test-suite/core/node/or-001.ttl",
-    test_node_pattern_001: "tests/test-suite/core/node/pattern-001.ttl",
-    test_node_pattern_002: "tests/test-suite/core/node/pattern-002.ttl",
-    test_node_qualified_001: "tests/test-suite/core/node/qualified-001.ttl",
-    test_node_xone_001: "tests/test-suite/core/node/xone-001.ttl",
-    test_node_xone_duplicate: "tests/test-suite/core/node/xone-duplicate.ttl",
-
-    test_complex_personexample: "tests/test-suite/core/complex/personexample.ttl",
-
-    test_sparql_node_sparql_001: "tests/test-suite/sparql/node/sparql-001.ttl",
-    test_sparql_property_sparql_001: "tests/test-suite/sparql/property/sparql-001.ttl",
-    test_sparql_node_sparql_002: "tests/test-suite/sparql/node/sparql-002.ttl",
-    test_sparql_node_sparql_003: "tests/test-suite/sparql/node/sparql-003.ttl",
-    test_sparql_node_prefixes_001: "tests/test-suite/sparql/node/prefixes-001.ttl",
-    test_sparql_component_nodevalidator_001: "tests/test-suite/sparql/component/nodeValidator-001.ttl",
-    test_sparql_component_propertyvalidator_001: "tests/test-suite/sparql/component/propertyValidator-select-001.ttl",
-    test_sparql_component_optional_001: "tests/test-suite/sparql/component/optional-001.ttl",
-    test_sparql_component_validator_001: "tests/test-suite/sparql/component/validator-001.ttl",
-}
+include!(concat!(env!("OUT_DIR"), "/generated_manifest_tests.rs"));
