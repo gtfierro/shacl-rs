@@ -4,7 +4,7 @@ use crate::runtime::ValidationFailure;
 use crate::types::Path;
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::vocab::rdf;
-use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term, Triple};
+use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, SubjectRef, Term, Triple};
 use std::collections::HashMap; // For using Term as a HashMap key
 use std::error::Error;
 
@@ -201,20 +201,25 @@ impl ValidationReportBuilder {
 
                 // sh:resultPath
                 let result_path_term = if let Some(path_override) = &failure.result_path {
+                    // Explicit overrides may originate outside the shapes graph; build structurally.
                     Some(path_to_rdf(path_override, &mut graph))
-                } else if let Some(p) = context.result_path() {
-                    match context.source_shape() {
-                        SourceShape::PropertyShape(_) => {
-                            Some(result_path_term_for_property_shape(p, &mut graph))
-                        }
-                        _ => Some(path_to_rdf(p, &mut graph)),
-                    }
-                } else {
+                } else if let Some(_p) = context.result_path() {
+                    // Prefer the original shapes-graph term when the source is a PropertyShape.
                     match context.source_shape() {
                         SourceShape::PropertyShape(prop_id) => validation_context
                             .model
                             .get_prop_shape_by_id(&prop_id)
-                            .map(|ps| result_path_term_for_property_shape(ps.path(), &mut graph)),
+                            .map(|ps| clone_path_term_from_shapes_graph(ps.path_term(), validation_context, &mut graph)),
+                        // For NodeShape-derived paths (rare), fall back to structural build.
+                        _ => context.result_path().map(|p| path_to_rdf(p, &mut graph)),
+                    }
+                } else {
+                    // No runtime path set; if the source is a PropertyShape, clone from shapes graph.
+                    match context.source_shape() {
+                        SourceShape::PropertyShape(prop_id) => validation_context
+                            .model
+                            .get_prop_shape_by_id(&prop_id)
+                            .map(|ps| clone_path_term_from_shapes_graph(ps.path_term(), validation_context, &mut graph)),
                         _ => None,
                     }
                 };
@@ -489,4 +494,79 @@ fn build_rdf_list(items: impl IntoIterator<Item = Term>, graph: &mut Graph) -> T
         graph.insert(&Triple::new(subject, rdf::REST, rest));
     }
     head.into()
+}
+
+// Deeply clones a SHACL path term from the shapes graph into the report graph,
+// preserving the original blank-node and RDF list structure.
+fn clone_path_term_from_shapes_graph(
+    term: &Term,
+    validation_context: &ValidationContext,
+    out_graph: &mut Graph,
+) -> Term {
+    let mut memo: HashMap<Term, Term> = HashMap::new();
+    clone_path_term_from_shapes_graph_inner(term, validation_context, out_graph, &mut memo)
+}
+
+fn clone_path_term_from_shapes_graph_inner(
+    term: &Term,
+    validation_context: &ValidationContext,
+    out_graph: &mut Graph,
+    memo: &mut HashMap<Term, Term>,
+) -> Term {
+    match term {
+        // For IRIs (simple path steps) and literals, return as-is.
+        Term::NamedNode(_) | Term::Literal(_) | Term::Triple(_) => term.clone(),
+        // For blank nodes, recursively copy only SHACL path-relevant triples.
+        Term::BlankNode(_) => {
+            if let Some(mapped) = memo.get(term) {
+                return mapped.clone();
+            }
+            let new_bn_term: Term = BlankNode::default().into();
+            memo.insert(term.clone(), new_bn_term.clone());
+
+            let store = validation_context.model.store();
+            let sh = SHACL::new();
+
+            let subject_ref: SubjectRef = match term {
+                Term::BlankNode(b) => SubjectRef::BlankNode(b.as_ref()),
+                Term::NamedNode(n) => SubjectRef::NamedNode(n.as_ref()),
+                _ => unreachable!(),
+            };
+
+            for quad_res in store.quads_for_pattern(
+                Some(subject_ref),
+                None,
+                None,
+                Some(validation_context.shape_graph_iri_ref()),
+            ) {
+                if let Ok(q) = quad_res {
+                    let pred = q.predicate;
+
+                    // Copy only the path-defining predicates.
+                    if pred == rdf::FIRST
+                        || pred == rdf::REST
+                        || pred == sh.alternative_path
+                        || pred == sh.inverse_path
+                        || pred == sh.zero_or_more_path
+                        || pred == sh.one_or_more_path
+                        || pred == sh.zero_or_one_path
+                    {
+                        let obj_owned: Term = q.object.into_owned();
+                        let cloned_obj =
+                            clone_path_term_from_shapes_graph_inner(&obj_owned, validation_context, out_graph, memo);
+
+                        let new_subject: Subject = match &new_bn_term {
+                            Term::BlankNode(b) => b.clone().into(),
+                            Term::NamedNode(n) => n.clone().into(),
+                            _ => unreachable!(),
+                        };
+
+                        out_graph.insert(&Triple::new(new_subject, pred, cloned_obj));
+                    }
+                }
+            }
+
+            new_bn_term
+        }
+    }
 }
