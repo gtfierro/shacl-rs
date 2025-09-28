@@ -1,7 +1,7 @@
-use crate::context::{Context, ValidationContext};
+use crate::context::{Context, SourceShape, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::runtime::ValidationFailure;
-use crate::types::{Path, TraceItem};
+use crate::types::Path;
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::vocab::rdf;
 use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, Term, Triple};
@@ -202,8 +202,17 @@ impl ValidationReportBuilder {
                 // sh:resultPath
                 let result_path_term = if let Some(path_override) = &failure.result_path {
                     Some(path_to_rdf(path_override, &mut graph))
+                } else if let Some(p) = context.result_path() {
+                    Some(path_to_rdf(p, &mut graph))
                 } else {
-                    context.result_path().map(|p| path_to_rdf(p, &mut graph))
+                    // Fall back to the original SHACL property path from the source shape, if any.
+                    match context.source_shape() {
+                        SourceShape::PropertyShape(prop_id) => validation_context
+                            .model
+                            .get_prop_shape_by_id(prop_id)
+                            .map(|ps| path_to_rdf(ps.path(), &mut graph)),
+                        _ => None,
+                    }
                 };
 
                 let source_shape_term = context.source_shape().get_term(validation_context);
