@@ -147,15 +147,24 @@ impl Path {
             }
             Path::ZeroOrMore(inner_path) => {
                 let inner_sparql = inner_path.to_sparql_path()?;
-                Ok(format!("{}*", inner_sparql))
+                match &**inner_path {
+                    Path::Simple(_) => Ok(format!("{}*", inner_sparql)),
+                    _ => Ok(format!("({})*", inner_sparql)),
+                }
             }
             Path::OneOrMore(inner_path) => {
                 let inner_sparql = inner_path.to_sparql_path()?;
-                Ok(format!("{}+", inner_sparql))
+                match &**inner_path {
+                    Path::Simple(_) => Ok(format!("{}+", inner_sparql)),
+                    _ => Ok(format!("({})+", inner_sparql)),
+                }
             }
             Path::ZeroOrOne(inner_path) => {
                 let inner_sparql = inner_path.to_sparql_path()?;
-                Ok(format!("{}?", inner_sparql))
+                match &**inner_path {
+                    Path::Simple(_) => Ok(format!("{}?", inner_sparql)),
+                    _ => Ok(format!("({})?", inner_sparql)),
+                }
             }
         }
     }
