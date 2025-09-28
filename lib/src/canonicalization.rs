@@ -3,7 +3,6 @@ use oxigraph::model::{
     BlankNode, Graph, GraphNameRef, NamedNode, Quad, Subject, SubjectRef, Term, TermRef, Triple,
 };
 use oxigraph::store::{StorageError, Store};
-use petgraph::algo::is_isomorphic;
 use petgraph::graph::{DiGraph, NodeIndex};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -687,18 +686,16 @@ mod tests {
         assert!(!are_isomorphic(&g1, &g2));
     }
 
-    // Helper to parse Turtle into a Graph (uses deprecated GraphParser for simplicity in tests).
-    use oxigraph::io::{GraphFormat, GraphParser};
+    // Helper to parse Turtle into a Graph.
+    use oxigraph::io::{RdfFormat, RdfParser};
 
     fn parse_turtle_to_graph(ttl: &str) -> Graph {
         let mut g = Graph::new();
-        let parser = GraphParser::from_format(GraphFormat::Turtle);
-        parser
-            .read_triples(ttl.as_bytes(), &mut |t| {
-                g.insert(t);
-                Ok(())
-            })
-            .expect("failed to parse Turtle");
+        let parser = RdfParser::from_format(RdfFormat::Turtle);
+        for t in parser.read_triples(ttl.as_bytes()) {
+            let t = t.expect("failed to parse Turtle");
+            g.insert(&t);
+        }
         g
     }
 
