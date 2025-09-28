@@ -108,21 +108,20 @@ impl Path {
             },
             Path::Inverse(inner_path) => {
                 let inner_sparql = inner_path.to_sparql_path()?;
-                // Based on SPARQL grammar, if inner_sparql is already a (Path) or an IRIref,
-                // it doesn't need more parentheses for ^.
-                // Our Sequence and Alternative variants return parenthesized strings.
-                // Simple returns an IRIref.
-                Ok(format!("^{}", inner_sparql))
+                // Wrap complex inner paths in parentheses to preserve precedence.
+                // For simple IRIs, avoid extra parentheses.
+                match &**inner_path {
+                    Path::Simple(_) => Ok(format!("^{}", inner_sparql)),
+                    _ => Ok(format!("^({})", inner_sparql)),
+                }
             }
             Path::Sequence(paths) => {
-                if paths.len() < 2 {
-                    // SHACL specification: sequence path is a list of at least two members.
-                    // If parsing allowed a single path, it should be simplified upstream.
-                    // For now, error if not adhering to the typical structure.
-                    return Err(format!(
-                        "Sequence path must have at least two elements, found {}",
-                        paths.len()
-                    ));
+                if paths.is_empty() {
+                    return Err("Sequence path must have at least one element".to_string());
+                }
+                if paths.len() == 1 {
+                    // Collapse single-element sequences to the inner path.
+                    return paths[0].to_sparql_path();
                 }
                 let mut sparql_paths = Vec::new();
                 for p in paths {
@@ -132,12 +131,12 @@ impl Path {
                 Ok(format!("({})", result)) // Always parenthesize sequence for clarity and safety.
             }
             Path::Alternative(paths) => {
-                if paths.len() < 2 {
-                    // SHACL specification: alternative path is a list of at least two members.
-                    return Err(format!(
-                        "Alternative path must have at least two elements, found {}",
-                        paths.len()
-                    ));
+                if paths.is_empty() {
+                    return Err("Alternative path must have at least one element".to_string());
+                }
+                if paths.len() == 1 {
+                    // Collapse single-element alternatives to the inner path.
+                    return paths[0].to_sparql_path();
                 }
                 let mut sparql_paths = Vec::new();
                 for p in paths {
