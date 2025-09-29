@@ -29,9 +29,9 @@ fn subject_to_sparql(subject: &Subject) -> String {
             let t = t.as_ref();
             format!(
                 "<< {} <{}> {} >>",
-                subject_to_sparql(t.subject()),
-                t.predicate().as_str(),
-                term_to_sparql(t.object())
+                subject_to_sparql(&t.subject),
+                t.predicate.as_str(),
+                term_to_sparql(&t.object)
             )
         }
     }
@@ -56,9 +56,9 @@ fn term_to_sparql(term: &Term) -> String {
             let t = t.as_ref();
             format!(
                 "<< {} <{}> {} >>",
-                subject_to_sparql(t.subject()),
-                t.predicate().as_str(),
-                term_to_sparql(t.object())
+                subject_to_sparql(&t.subject),
+                t.predicate.as_str(),
+                term_to_sparql(&t.object)
             )
         }
     }
