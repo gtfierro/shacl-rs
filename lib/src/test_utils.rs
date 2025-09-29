@@ -185,8 +185,9 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
             let mut current_node = entries_list_head;
             let nil_ref: TermRef = rdf.nil.into();
             while current_node != nil_ref {
+                let list_node = current_node.to_subject_ref();
                 let obj = manifest_graph
-                    .object_for_subject_predicate(current_node.to_subject_ref(), rdf.first)
+                    .object_for_subject_predicate(list_node, rdf.first)
                     .ok_or_else(|| {
                         format!(
                             "Invalid RDF list for mf:entries: missing rdf:first at {}",
@@ -194,6 +195,12 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                         )
                     })?;
                 let entry = obj.to_subject_ref();
+
+                let next_node = manifest_graph
+                    .object_for_subject_predicate(list_node, rdf.rest)
+                    .ok_or_else(|| {
+                        "Invalid RDF list for mf:entries: missing rdf:rest".to_string()
+                    })?;
 
                 let is_validate_test =
                     manifest_graph.contains(TripleRef::new(entry, rdf.type_, sht.validate));
@@ -232,22 +239,26 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                         .object_for_subject_predicate(entry, mf.result)
                         .ok_or_else(|| format!("Test '{}' has no mf:result", name))?;
 
-                    if let TermRef::NamedNode(nn) = result_term {
+                    let skip_syntax_only = if let TermRef::NamedNode(nn) = result_term {
                         let iri = nn.as_str();
-                        if iri == "http://www.w3.org/ns/shacl-test#Failure"
+                        iri == "http://www.w3.org/ns/shacl-test#Failure"
                             || iri == "http://www.w3.org/ns/shacl-test#Success"
-                        {
-                            // Skip negative/positive syntax tests that do not produce reports
-                            continue;
-                        }
+                    } else {
+                        false
+                    };
+
+                    if skip_syntax_only {
+                        current_node = next_node;
+                        continue;
                     }
 
-                    let result_node = match result_term {
-                        TermRef::NamedNode(_) | TermRef::BlankNode(_) => {
+                    let result_node =
+                        if matches!(result_term, TermRef::NamedNode(_) | TermRef::BlankNode(_)) {
                             result_term.to_subject_ref()
-                        }
-                        _ => continue,
-                    };
+                        } else {
+                            current_node = next_node;
+                            continue;
+                        };
 
                     let conforms = manifest_graph
                         .object_for_subject_predicate(result_node, sh.conforms)
@@ -277,11 +288,7 @@ pub fn load_manifest(path: &Path) -> Result<Manifest, String> {
                     });
                 }
 
-                current_node = manifest_graph
-                    .object_for_subject_predicate(current_node.to_subject_ref(), rdf.rest)
-                    .ok_or_else(|| {
-                        "Invalid RDF list for mf:entries: missing rdf:rest".to_string()
-                    })?;
+                current_node = next_node;
             }
         }
     }
