@@ -3,7 +3,7 @@ use crate::runtime::{
     ComponentValidationResult, GraphvizOutput, ValidateComponent, ValidationFailure,
 };
 use crate::types::{ComponentID, TraceItem};
-use oxigraph::model::{NamedNode, Term};
+use oxigraph::model::{Literal, NamedNode, Term};
 use oxigraph::sparql::QueryResults;
 
 // value range constraints
@@ -230,13 +230,34 @@ impl ValidateComponent for MaxExclusiveConstraintComponent {
             };
 
             if !is_valid {
+                // Preserve a decimal's fractional ".0" if it was lost upstream by canonicalization.
+                let reported_term = match value_node {
+                    Term::Literal(lit)
+                        if lit.datatype().as_str()
+                            == "http://www.w3.org/2001/XMLSchema#decimal" =>
+                    {
+                        let lex = lit.value();
+                        if !lex.contains('.') && !lex.contains('e') && !lex.contains('E') {
+                            Term::Literal(Literal::new_typed_literal(
+                                format!("{}.0", lex),
+                                NamedNode::new_unchecked(
+                                    "http://www.w3.org/2001/XMLSchema#decimal",
+                                ),
+                            ))
+                        } else {
+                            value_node.clone()
+                        }
+                    }
+                    _ => value_node.clone(),
+                };
+
                 let mut fail_context = c.clone();
-                fail_context.with_value(value_node.clone());
+                fail_context.with_value(reported_term.clone());
                 results.push(ComponentValidationResult::Fail(
                     fail_context,
                     ValidationFailure {
                         component_id,
-                        failed_value_node: Some(value_node.clone()),
+                        failed_value_node: Some(reported_term),
                         message: format!(
                             "Value {} is not exclusively less than {}",
                             format_term_for_label(value_node),
