@@ -64,6 +64,25 @@ fn term_to_sparql(term: &Term) -> String {
     }
 }
 
+fn preserve_numeric_lexical(term: &Term) -> Term {
+    if let Term::Literal(lit) = term {
+        let dt = lit.datatype().as_str();
+        let is_decimal = dt == "http://www.w3.org/2001/XMLSchema#decimal";
+        let is_double = dt == "http://www.w3.org/2001/XMLSchema#double";
+        let is_float = dt == "http://www.w3.org/2001/XMLSchema#float";
+        if is_decimal || is_double || is_float {
+            let lex = lit.value();
+            if !lex.contains('.') && !lex.contains('e') && !lex.contains('E') {
+                return Term::Literal(Literal::new_typed_literal(
+                    format!("{}.0", lex),
+                    NamedNode::new_unchecked(dt),
+                ));
+            }
+        }
+    }
+    term.clone()
+}
+
 // value range constraints
 #[derive(Debug)]
 pub struct MinExclusiveConstraintComponent {
@@ -128,13 +147,14 @@ impl ValidateComponent for MinExclusiveConstraintComponent {
             };
 
             if !is_valid {
+                let reported_term = preserve_numeric_lexical(value_node);
                 let mut fail_context = c.clone();
-                fail_context.with_value(value_node.clone());
+                fail_context.with_value(reported_term.clone());
                 results.push(ComponentValidationResult::Fail(
                     fail_context,
                     ValidationFailure {
                         component_id,
-                        failed_value_node: Some(value_node.clone()),
+                        failed_value_node: Some(reported_term),
                         message: format!(
                             "Value {} is not exclusively greater than {}",
                             format_term_for_label(value_node),
@@ -214,13 +234,14 @@ impl ValidateComponent for MinInclusiveConstraintComponent {
             };
 
             if !is_valid {
+                let reported_term = preserve_numeric_lexical(value_node);
                 let mut fail_context = c.clone();
-                fail_context.with_value(value_node.clone());
+                fail_context.with_value(reported_term.clone());
                 results.push(ComponentValidationResult::Fail(
                     fail_context,
                     ValidationFailure {
                         component_id,
-                        failed_value_node: Some(value_node.clone()),
+                        failed_value_node: Some(reported_term),
                         message: format!(
                             "Value {} is not inclusively greater than or equal to {}",
                             format_term_for_label(value_node),
@@ -300,26 +321,7 @@ impl ValidateComponent for MaxExclusiveConstraintComponent {
             };
 
             if !is_valid {
-                // Preserve a decimal's fractional ".0" if it was lost upstream by canonicalization.
-                let reported_term = match value_node {
-                    Term::Literal(lit)
-                        if lit.datatype().as_str()
-                            == "http://www.w3.org/2001/XMLSchema#decimal" =>
-                    {
-                        let lex = lit.value();
-                        if !lex.contains('.') && !lex.contains('e') && !lex.contains('E') {
-                            Term::Literal(Literal::new_typed_literal(
-                                format!("{}.0", lex),
-                                NamedNode::new_unchecked(
-                                    "http://www.w3.org/2001/XMLSchema#decimal",
-                                ),
-                            ))
-                        } else {
-                            value_node.clone()
-                        }
-                    }
-                    _ => value_node.clone(),
-                };
+                let reported_term = preserve_numeric_lexical(value_node);
 
                 let mut fail_context = c.clone();
                 fail_context.with_value(reported_term.clone());
@@ -407,13 +409,14 @@ impl ValidateComponent for MaxInclusiveConstraintComponent {
             };
 
             if !is_valid {
+                let reported_term = preserve_numeric_lexical(value_node);
                 let mut fail_context = c.clone();
-                fail_context.with_value(value_node.clone());
+                fail_context.with_value(reported_term.clone());
                 results.push(ComponentValidationResult::Fail(
                     fail_context,
                     ValidationFailure {
                         component_id,
-                        failed_value_node: Some(value_node.clone()),
+                        failed_value_node: Some(reported_term),
                         message: format!(
                             "Value {} is not inclusively less than or equal to {}",
                             format_term_for_label(value_node),
