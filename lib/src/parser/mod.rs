@@ -112,19 +112,12 @@ pub(crate) fn run_parser(context: &mut ParsingContext) -> Result<(), String> {
         .count();
     let property_shape_total = context
         .store
-        .quads_for_pattern(
-            None,
-            Some(rdf.type_),
-            Some(sh.property_shape.into()),
-            None,
-        )
+        .quads_for_pattern(None, Some(rdf.type_), Some(sh.property_shape.into()), None)
         .filter_map(Result::ok)
         .count();
     eprintln!(
         "run_parser shape graph {} has {} property shape type triples (total across graphs {})",
-        context.shape_graph_iri,
-        property_shape_count,
-        property_shape_total
+        context.shape_graph_iri, property_shape_count, property_shape_total
     );
     let shapes = get_node_shapes(context);
     for shape in shapes {

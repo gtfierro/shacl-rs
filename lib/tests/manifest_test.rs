@@ -133,16 +133,25 @@ fn run_test_file(file: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
             .shapes_graph_path
             .to_str()
             .ok_or("Invalid shapes graph path")?;
-        let validator = Validator::from_files(shapes_graph_path, data_graph_path)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create Validator for test '{}': {}", test_name, e)))?;
+        let validator = Validator::from_files(shapes_graph_path, data_graph_path).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to create Validator for test '{}': {}", test_name, e),
+            )
+        })?;
         let report = validator.validate();
         let conforms = report.conforms();
         let expects_conform = test.conforms;
         let mut report_graph = report.to_graph();
 
         // Deskolemize the report graph before comparison
-        let data_graph_url = Url::from_file_path(test.data_graph_path.canonicalize()?)
-            .map_err(|()| io::Error::new(io::ErrorKind::InvalidInput, "Failed to create file URL for data graph"))?;
+        let data_graph_url =
+            Url::from_file_path(test.data_graph_path.canonicalize()?).map_err(|()| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Failed to create file URL for data graph",
+                )
+            })?;
         let data_base_iri = format!(
             "{}/.well-known/skolem/",
             data_graph_url.as_str().trim_end_matches('/')
@@ -150,7 +159,12 @@ fn run_test_file(file: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         report_graph = deskolemize_graph(&report_graph, &data_base_iri);
 
         let shapes_graph_url = Url::from_file_path(test.shapes_graph_path.canonicalize()?)
-            .map_err(|()| io::Error::new(io::ErrorKind::InvalidInput, "Failed to create file URL for shapes graph"))?;
+            .map_err(|()| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Failed to create file URL for shapes graph",
+                )
+            })?;
         let shapes_base_iri = format!(
             "{}/.well-known/skolem/",
             shapes_graph_url.as_str().trim_end_matches('/')

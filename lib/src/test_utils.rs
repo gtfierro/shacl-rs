@@ -59,6 +59,7 @@ fn read_manifest_content(path: &Path) -> Result<String, String> {
 
 fn extract_path_graph(manifest_graph: &Graph, path_node: SubjectRef, report_graph: &mut Graph) {
     let sh = SHACL::new();
+    let rdf = RDF::new();
     for triple in manifest_graph.triples_for_subject(path_node) {
         report_graph.insert(triple);
         // Recurse for nested paths
@@ -71,6 +72,10 @@ fn extract_path_graph(manifest_graph: &Graph, path_node: SubjectRef, report_grap
             || predicate_ref == sh.zero_or_one_path
         {
             if let TermRef::NamedNode(_) | TermRef::BlankNode(_) = triple.object {
+                extract_path_graph(manifest_graph, triple.object.to_subject_ref(), report_graph);
+            }
+        } else if predicate_ref == rdf.rest || predicate_ref == rdf.first {
+            if let TermRef::BlankNode(_) = triple.object {
                 extract_path_graph(manifest_graph, triple.object.to_subject_ref(), report_graph);
             }
         }

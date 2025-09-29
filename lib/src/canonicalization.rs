@@ -602,9 +602,7 @@ mod tests {
         let a = BlankNode::new_unchecked("a");
         let b = BlankNode::new_unchecked("b");
         let p = iri("http://example.org/p");
-        g1.insert(
-            Triple::new(Subject::from(a.clone()), p.clone(), Term::from(b.clone())).as_ref(),
-        );
+        g1.insert(Triple::new(Subject::from(a.clone()), p.clone(), Term::from(b.clone())).as_ref());
 
         // g2: _:x ex:p _:y
         let mut g2 = Graph::new();
@@ -625,9 +623,13 @@ mod tests {
         let p = iri("http://example.org/p");
         let q = iri("http://example.org/q");
 
-        g1.insert(Triple::new(Subject::from(a.clone()), rdf::FIRST, Term::from(p.clone())).as_ref());
+        g1.insert(
+            Triple::new(Subject::from(a.clone()), rdf::FIRST, Term::from(p.clone())).as_ref(),
+        );
         g1.insert(Triple::new(Subject::from(a.clone()), rdf::REST, Term::from(b.clone())).as_ref());
-        g1.insert(Triple::new(Subject::from(b.clone()), rdf::FIRST, Term::from(q.clone())).as_ref());
+        g1.insert(
+            Triple::new(Subject::from(b.clone()), rdf::FIRST, Term::from(q.clone())).as_ref(),
+        );
         g1.insert(Triple::new(Subject::from(b.clone()), rdf::REST, Term::from(rdf::NIL)).as_ref());
 
         // g2 with different blank node ids: _:x/_:y but same structure
@@ -649,9 +651,7 @@ mod tests {
         let a = BlankNode::new_unchecked("a");
         let b = BlankNode::new_unchecked("b");
         let p = iri("http://example.org/p");
-        g1.insert(
-            Triple::new(Subject::from(a.clone()), p, Term::from(b.clone())).as_ref(),
-        );
+        g1.insert(Triple::new(Subject::from(a.clone()), p, Term::from(b.clone())).as_ref());
 
         // g2: _:x ex:q _:y (different predicate)
         let mut g2 = Graph::new();
@@ -672,7 +672,9 @@ mod tests {
         let p = iri("http://example.org/p");
         let q = iri("http://example.org/q");
         g1.insert(Triple::new(Subject::from(a1.clone()), rdf::FIRST, Term::from(p)).as_ref());
-        g1.insert(Triple::new(Subject::from(a1.clone()), rdf::REST, Term::from(a2.clone())).as_ref());
+        g1.insert(
+            Triple::new(Subject::from(a1.clone()), rdf::REST, Term::from(a2.clone())).as_ref(),
+        );
         g1.insert(Triple::new(Subject::from(a2.clone()), rdf::FIRST, Term::from(q)).as_ref());
         g1.insert(Triple::new(Subject::from(a2.clone()), rdf::REST, Term::from(rdf::NIL)).as_ref());
 
@@ -697,67 +699,5 @@ mod tests {
             g.insert(&t);
         }
         g
-    }
-
-    #[test]
-    fn isomorphism_expected_vs_got_alternative_001() {
-        // Both snippets below use explicit rdf:first/rest triples (not Turtle () shorthand).
-        const EXPECTED: &str = r#"_:d5e170560eb636a9099965b8ca09713f <http://www.w3.org/ns/shacl#alternativePath> _:e73a450aa46b5d1f94e68df1a12cd49f .
-_:d9c0a71fc32c875c42c80ad2f88211f3 <http://www.w3.org/ns/shacl#sourceConstraintComponent> <http://www.w3.org/ns/shacl#MinCountConstraintComponent> ;
-        <http://www.w3.org/ns/shacl#resultPath> _:ef0070ec0e2c8be54a6bc7e402983e5a ;
-        <http://www.w3.org/ns/shacl#sourceShape> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#TestShape> ;
-        a <http://www.w3.org/ns/shacl#ValidationResult> ;
-        <http://www.w3.org/ns/shacl#focusNode> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#InvalidResource1> ;
-        <http://www.w3.org/ns/shacl#resultSeverity> <http://www.w3.org/ns/shacl#Violation> .
-_:dad91a382a73f101264a0091f4be5050 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property1> ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b3d625bd053b4cfd740de21c2b7d9fdb .
-_:dc2ce56b0667e108e74c16f5d52e184b <http://www.w3.org/ns/shacl#sourceConstraintComponent> <http://www.w3.org/ns/shacl#MinCountConstraintComponent> ;
-        <http://www.w3.org/ns/shacl#resultPath> _:d5e170560eb636a9099965b8ca09713f ;
-        <http://www.w3.org/ns/shacl#sourceShape> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#TestShape> ;
-        a <http://www.w3.org/ns/shacl#ValidationResult> ;
-        <http://www.w3.org/ns/shacl#focusNode> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#InvalidResource2> ;
-        <http://www.w3.org/ns/shacl#resultSeverity> <http://www.w3.org/ns/shacl#Violation> .
-_:e5b948f8ca2aaa48c8c8e2b34dfbd006 a <http://www.w3.org/ns/shacl#ValidationReport> ;
-        <http://www.w3.org/ns/shacl#conforms> false ;
-        <http://www.w3.org/ns/shacl#result> _:d9c0a71fc32c875c42c80ad2f88211f3 , _:dc2ce56b0667e108e74c16f5d52e184b .
-_:e73a450aa46b5d1f94e68df1a12cd49f <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property1> ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:dc8cbe4f86cf54db25162d5e83a1772d .
-_:ef0070ec0e2c8be54a6bc7e402983e5a <http://www.w3.org/ns/shacl#alternativePath> _:dad91a382a73f101264a0091f4be5050
-."#;
-
-        const GOT: &str = r#"_:a3468be51620763fdc096884faaec8c <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property2> .
-_:b4196fec62b0423679540f02dd040740 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property2> .
-_:c703fa53f3da8647a8a99a09271f397e <http://www.w3.org/ns/shacl#resultPath> _:e1edaa65b6be72fb0a2bb8e6394d486a ;
-        a <http://www.w3.org/ns/shacl#ValidationResult> ;
-        <http://www.w3.org/ns/shacl#resultSeverity> <http://www.w3.org/ns/shacl#Violation> ;
-        <http://www.w3.org/ns/shacl#focusNode> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#InvalidResource2> ;
-        <http://www.w3.org/ns/shacl#sourceShape> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#TestShape> ;
-        <http://www.w3.org/ns/shacl#sourceConstraintComponent> <http://www.w3.org/ns/shacl#MinCountConstraintComponent> .
-_:cf69e939d052a56473cc70a9463e276f <http://www.w3.org/ns/shacl#resultPath> _:e4fa30714d6d049e064df5bef62acb1e ;
-        a <http://www.w3.org/ns/shacl#ValidationResult> ;
-        <http://www.w3.org/ns/shacl#resultSeverity> <http://www.w3.org/ns/shacl#Violation> ;
-        <http://www.w3.org/ns/shacl#focusNode> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#InvalidResource1> ;
-        <http://www.w3.org/ns/shacl#sourceShape> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#TestShape> ;
-        <http://www.w3.org/ns/shacl#sourceConstraintComponent> <http://www.w3.org/ns/shacl#MinCountConstraintComponent> .
-_:df0a7f83dde90fd5044a8cbe6d625552 <http://www.w3.org/ns/shacl#result> _:c703fa53f3da8647a8a99a09271f397e , _:cf69e939d052a56473cc70a9463e276f ;
-        a <http://www.w3.org/ns/shacl#ValidationReport> ;
-        <http://www.w3.org/ns/shacl#conforms> false .
-_:e08e374222852c55046319f1473c0a4d <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b4196fec62b0423679540f02dd040740 ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property1> .
-_:e1edaa65b6be72fb0a2bb8e6394d486a <http://www.w3.org/ns/shacl#alternativePath> _:e08e374222852c55046319f1473c0a4d .
-_:e4fa30714d6d049e064df5bef62acb1e <http://www.w3.org/ns/shacl#alternativePath> _:edd7266a0eb02e94bc6cd8cfbedd3bca .
-_:edd7266a0eb02e94bc6cd8cfbedd3bca <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:a3468be51620763fdc096884faaec8c ;
-        <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#property1>
-."#;
-
-        let g_expected = parse_turtle_to_graph(EXPECTED);
-        let g_got = parse_turtle_to_graph(GOT);
-
-        assert!(
-            are_isomorphic(&g_expected, &g_got),
-            "expected and got graphs are not isomorphic"
-        );
     }
 }

@@ -4,7 +4,9 @@ use crate::runtime::ValidationFailure;
 use crate::types::Path;
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::vocab::rdf;
-use oxigraph::model::{BlankNode, Graph, Literal, NamedOrBlankNode, Subject, SubjectRef, Term, Triple};
+use oxigraph::model::{
+    BlankNode, Graph, Literal, NamedOrBlankNode, Subject, SubjectRef, Term, Triple,
+};
 use std::collections::HashMap; // For using Term as a HashMap key
 use std::error::Error;
 
@@ -198,7 +200,7 @@ impl ValidationReportBuilder {
                 //    sh.result_message,
                 //    Term::from(Literal::new_simple_literal(&failure.message)),
                 //));
-                
+
                 println!("failure result path: {:?}", failure.result_path);
                 println!("context result path: {:?}", context.result_path());
                 println!("context source shape: {:?}", context.source_shape());
@@ -216,11 +218,11 @@ impl ValidationReportBuilder {
                     })
                 } else if let Some(_p) = context.result_path() {
                     context.result_path().map(|p| match p {
-                                                Path::Simple(t) if matches!(t, Term::BlankNode(_)) => {
-                                                    clone_path_term_from_shapes_graph(t, validation_context, &mut graph)
-                                                }
-                                                _ => path_to_rdf(p, &mut graph),
-                                            })
+                        Path::Simple(t) if matches!(t, Term::BlankNode(_)) => {
+                            clone_path_term_from_shapes_graph(t, validation_context, &mut graph)
+                        }
+                        _ => path_to_rdf(p, &mut graph),
+                    })
                     // Prefer the original shapes-graph term when the source is a PropertyShape.
                     //match context.source_shape() {
                     //    SourceShape::PropertyShape(prop_id) => validation_context
@@ -242,7 +244,13 @@ impl ValidationReportBuilder {
                         SourceShape::PropertyShape(prop_id) => validation_context
                             .model
                             .get_prop_shape_by_id(&prop_id)
-                            .map(|ps| clone_path_term_from_shapes_graph(ps.path_term(), validation_context, &mut graph)),
+                            .map(|ps| {
+                                clone_path_term_from_shapes_graph(
+                                    ps.path_term(),
+                                    validation_context,
+                                    &mut graph,
+                                )
+                            }),
                         _ => None,
                     }
                 };
@@ -556,12 +564,7 @@ fn clone_path_term_from_shapes_graph_inner(
                 _ => unreachable!(),
             };
 
-            for quad_res in store.quads_for_pattern(
-                Some(subject_ref),
-                None,
-                None,
-                None,
-            ) {
+            for quad_res in store.quads_for_pattern(Some(subject_ref), None, None, None) {
                 if let Ok(q) = quad_res {
                     let pred = q.predicate;
 
@@ -575,8 +578,12 @@ fn clone_path_term_from_shapes_graph_inner(
                         || pred == sh.zero_or_one_path
                     {
                         let obj_owned: Term = q.object.to_owned();
-                        let cloned_obj =
-                            clone_path_term_from_shapes_graph_inner(&obj_owned, validation_context, out_graph, memo);
+                        let cloned_obj = clone_path_term_from_shapes_graph_inner(
+                            &obj_owned,
+                            validation_context,
+                            out_graph,
+                            memo,
+                        );
 
                         let new_subject: Subject = match &new_bn_term {
                             Term::BlankNode(b) => b.clone().into(),
