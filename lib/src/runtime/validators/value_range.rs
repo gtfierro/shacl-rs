@@ -3,7 +3,7 @@ use crate::runtime::{
     ComponentValidationResult, GraphvizOutput, ValidateComponent, ValidationFailure,
 };
 use crate::types::{ComponentID, TraceItem};
-use oxigraph::model::{Literal, NamedNode, Term};
+use oxigraph::model::{Literal, NamedNode, Subject, Term};
 use oxigraph::sparql::QueryResults;
 
 fn escape_sparql_string(s: &str) -> String {
@@ -21,6 +21,22 @@ fn escape_sparql_string(s: &str) -> String {
     out
 }
 
+fn subject_to_sparql(subject: &Subject) -> String {
+    match subject {
+        Subject::NamedNode(nn) => format!("<{}>", nn.as_str()),
+        Subject::BlankNode(bn) => format!("_:{}", bn.as_str()),
+        Subject::Triple(t) => {
+            let t = t.as_ref();
+            format!(
+                "<< {} <{}> {} >>",
+                subject_to_sparql(t.subject()),
+                t.predicate().as_str(),
+                term_to_sparql(t.object())
+            )
+        }
+    }
+}
+
 fn term_to_sparql(term: &Term) -> String {
     match term {
         Term::NamedNode(nn) => format!("<{}>", nn.as_str()),
@@ -35,6 +51,15 @@ fn term_to_sparql(term: &Term) -> String {
                     lit.datatype().as_str()
                 )
             }
+        }
+        Term::Triple(t) => {
+            let t = t.as_ref();
+            format!(
+                "<< {} <{}> {} >>",
+                subject_to_sparql(t.subject()),
+                t.predicate().as_str(),
+                term_to_sparql(t.object())
+            )
         }
     }
 }
