@@ -197,7 +197,8 @@ fn check_graph_pattern(
         | GraphPattern::Distinct { inner }
         | GraphPattern::Reduced { inner }
         | GraphPattern::Slice { inner, .. } => {
-            check_graph_pattern(inner, context_label, prebound, optional, false)
+            // Wrapper patterns around the root SELECT should not be treated as subqueries.
+            check_graph_pattern(inner, context_label, prebound, optional, is_root)
         }
         GraphPattern::Filter { expr, inner } => {
             check_expression(expr, context_label, prebound, optional)?;
@@ -278,7 +279,8 @@ fn check_graph_pattern(
             for expr in expression {
                 check_order_expression(expr, context_label, prebound, optional)?;
             }
-            check_graph_pattern(inner, context_label, prebound, optional, false)
+            // ORDER BY wrapping the root query should not flip is_root
+            check_graph_pattern(inner, context_label, prebound, optional, is_root)
         }
     }
 }
