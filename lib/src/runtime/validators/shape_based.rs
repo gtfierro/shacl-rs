@@ -77,12 +77,14 @@ impl ValidateComponent for NodeConstraintComponent {
                 c.trace_index(),
             );
 
-            match check_conformance_for_node(
+            let trace_len_before = trace.len();
+            let outcome = check_conformance_for_node(
                 &mut value_node_as_context,
                 target_node_shape,
                 validation_context,
                 trace,
-            )? {
+            )?;
+            match outcome {
                 ConformanceReport::Conforms => {
                     // Conforms, so this value node passes. Continue to the next.
                 }
@@ -100,6 +102,7 @@ impl ValidateComponent for NodeConstraintComponent {
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
             }
+            trace.truncate(trace_len_before);
         }
 
         Ok(results)

@@ -338,7 +338,6 @@ impl Component {
             Component::ClosedConstraint(comp) => comp.validate(component_id, c, context, trace),
             Component::CustomConstraint(comp) => comp.validate(component_id, c, context, trace),
         };
-        trace.pop();
         result
     }
 }
