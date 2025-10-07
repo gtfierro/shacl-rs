@@ -231,7 +231,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::GraphvizHeatmap(args) => {
             let validator = get_validator(&args.common)?;
-            // Run validation to populate execution traces
+            // Run validation first to populate execution traces used by graphviz_heatmap.
+            // include_all_nodes == args.all: when true, include shapes/components that did not execute.
             let _report = validator.validate();
 
             let dot_string = validator.to_graphviz_heatmap(args.all)?;
@@ -239,7 +240,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::PdfHeatmap(args) => {
             let validator = get_validator(&args.common)?;
-            // Run validation to populate execution traces
+            // Run validation first to populate execution traces used by graphviz_heatmap.
+            // include_all_nodes == args.all: when true, include shapes/components that did not execute.
             let _report = validator.validate();
 
             let dot_string = validator.to_graphviz_heatmap(args.all)?;
