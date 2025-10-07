@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::{Context, SourceShape, ValidationContext};
 use crate::report::ValidationReportBuilder;
 use crate::runtime::ComponentValidationResult;

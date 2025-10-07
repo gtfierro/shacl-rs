@@ -216,6 +216,7 @@ impl SHACL {
 }
 
 /// A struct holding static `NamedNodeRef`s for RDF vocabulary terms.
+#[allow(dead_code)]
 pub(crate) struct RDF {
     pub(crate) type_: NamedNodeRef<'static>,
     pub(crate) subject: NamedNodeRef<'static>,
@@ -244,6 +245,7 @@ impl RDF {
 }
 
 /// A struct holding static `NamedNodeRef`s for RDFS vocabulary terms.
+#[allow(dead_code)]
 pub(crate) struct RDFS {
     pub(crate) sub_class_of: NamedNodeRef<'static>,
     pub(crate) label: NamedNodeRef<'static>,
@@ -279,6 +281,7 @@ impl OWL {
 }
 
 /// A struct holding static `NamedNodeRef`s for W3C Test Manifest vocabulary terms.
+#[allow(dead_code)]
 pub(crate) struct MF {
     pub(crate) manifest: NamedNodeRef<'static>,
     pub(crate) entries: NamedNodeRef<'static>,

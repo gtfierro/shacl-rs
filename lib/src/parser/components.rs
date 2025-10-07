@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use oxigraph::model::{Literal, NamedNode, SubjectRef, Term, TermRef};
+use oxigraph::model::{Literal, NamedNode, NamedOrBlankNodeRef as SubjectRef, Term, TermRef};
 
 use crate::model::components::sparql::CustomConstraintComponentDefinition;
 use crate::model::components::ComponentDescriptor;

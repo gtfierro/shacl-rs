@@ -8,7 +8,7 @@ use components::parse_components;
 use log::debug;
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{vocab::xsd, GraphName, GraphNameRef, QuadRef, SubjectRef, Term, TermRef};
+use oxigraph::model::{vocab::xsd, GraphName, GraphNameRef, QuadRef, NamedOrBlankNodeRef as SubjectRef, Term, TermRef};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;

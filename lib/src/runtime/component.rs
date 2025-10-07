@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::context::{Context, ValidationContext};
 use crate::runtime::validators::{
     AndConstraintComponent, ClassConstraintComponent, ClosedConstraintComponent,
@@ -14,7 +15,7 @@ use crate::runtime::validators::{
 };
 use crate::shape::NodeShape;
 use crate::types::{ComponentID, Path, TraceItem};
-use oxigraph::model::{NamedNode, SubjectRef, Term, TermRef};
+use oxigraph::model::{NamedNode, NamedOrBlankNodeRef as SubjectRef, Term, TermRef};
 
 /// The result of validating a single value node against a constraint component.
 #[derive(Debug, Clone)]

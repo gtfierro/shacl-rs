@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::ParsingContext;
 use crate::types::Target;
 use oxigraph::model::Term;

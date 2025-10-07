@@ -5,7 +5,7 @@ use crate::types::{Path, Severity};
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::vocab::rdf;
 use oxigraph::model::{
-    BlankNode, Graph, Literal, NamedOrBlankNode, Subject, SubjectRef, Term, Triple,
+    BlankNode, Graph, Literal, NamedOrBlankNode, NamedOrBlankNode as Subject, NamedOrBlankNodeRef as SubjectRef, Term, Triple,
 };
 use std::collections::HashMap; // For using Term as a HashMap key
 use std::error::Error;
@@ -119,6 +119,7 @@ impl ValidationReportBuilder {
 
     /// Returns a slice of the validation results collected so far.
     /// Each item is a tuple containing the `Context` of the failure and the `ValidationFailure` details.
+    #[allow(dead_code)]
     pub fn results(&self) -> &[(Context, ValidationFailure)] {
         &self.results
     }
@@ -457,6 +458,7 @@ impl ValidationReportBuilder {
     }
 
     /// Merges results from another `ValidationReportBuilder` into this one.
+    #[allow(dead_code)]
     pub(crate) fn merge(&mut self, other: ValidationReportBuilder) {
         self.results.extend(other.results);
     }
@@ -471,6 +473,7 @@ fn severity_to_term(severity: &Severity, sh: &SHACL) -> Term {
     }
 }
 
+#[allow(dead_code)]
 fn result_path_term_for_property_shape(path: &Path, graph: &mut Graph) -> Term {
     match path {
         Path::Sequence(elements) => build_list_minimal(elements, graph),
@@ -486,6 +489,7 @@ fn result_path_term_for_property_shape(path: &Path, graph: &mut Graph) -> Term {
     }
 }
 
+#[allow(dead_code)]
 fn build_list_minimal(elements: &[Path], graph: &mut Graph) -> Term {
     let head_bnode = BlankNode::default();
     let head_subject: Subject = head_bnode.clone().into();

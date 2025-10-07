@@ -88,12 +88,6 @@ impl ValidateComponent for MinLengthConstraintComponent {
                         nn.as_str().chars().count()
                     }
                     TermRef::Literal(literal) => literal.value().chars().count(),
-                    _ => {
-                        return Err(format!(
-                            "Unexpected term type for minLength check: {:?}",
-                            vn
-                        ));
-                    }
                 };
                 if len < self.min_length as usize {
                     let mut error_context = c.clone();
@@ -197,12 +191,6 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                         nn.as_str().chars().count()
                     }
                     TermRef::Literal(literal) => literal.value().chars().count(),
-                    _ => {
-                        return Err(format!(
-                            "Unexpected term type for maxLength check: {:?}",
-                            vn
-                        ));
-                    }
                 };
                 if len > self.max_length as usize {
                     let mut error_context = c.clone();
@@ -325,9 +313,6 @@ impl ValidateComponent for PatternConstraintComponent {
                         nn.as_str().to_string()
                     }
                     TermRef::Literal(literal) => literal.value().to_string(),
-                    _ => {
-                        return Err(format!("Unexpected term type for pattern check: {:?}", vn));
-                    }
                 };
 
                 if !re.is_match(&value_str) {

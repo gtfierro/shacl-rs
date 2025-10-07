@@ -1,6 +1,6 @@
 use log::debug;
 use oxigraph::model::{
-    BlankNode, Graph, GraphNameRef, NamedNode, Quad, Subject, SubjectRef, Term, TermRef, Triple,
+    BlankNode, Graph, GraphNameRef, NamedNode, Quad, NamedOrBlankNode as Subject, NamedOrBlankNodeRef as SubjectRef, Term, TermRef, Triple,
 };
 use oxigraph::store::{StorageError, Store};
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -12,6 +12,7 @@ use std::collections::HashMap;
 /// Each unique subject and object in the oxigraph graph becomes a node in the petgraph graph.
 /// Each triple becomes a directed edge from the subject node to the object node, with the
 /// predicate as the edge weight.
+#[allow(dead_code)]
 pub(crate) fn oxigraph_to_petgraph(ox_graph: &Graph) -> DiGraph<Term, NamedNode> {
     let mut pg_graph = DiGraph::<Term, NamedNode>::new();
     let mut node_map = HashMap::<Term, NodeIndex>::new();

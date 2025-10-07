@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::{format_term_for_label, Context, ParsingContext, ValidationContext};
 use crate::model::components::sparql::{
     CustomConstraintComponentDefinition, Parameter, SPARQLValidator,

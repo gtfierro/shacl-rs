@@ -1,7 +1,7 @@
 use crate::named_nodes::{MF, RDF, RDFS, SHACL, SHT};
 use crate::runtime::ToSubjectRef;
 use oxigraph::io::{RdfFormat, RdfParser};
-use oxigraph::model::{vocab::xsd, Graph, SubjectRef, TermRef, TripleRef};
+use oxigraph::model::{vocab::xsd, Graph, NamedOrBlankNodeRef as SubjectRef, TermRef, TripleRef};
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -143,7 +143,6 @@ fn resolve_graph_path(
         }
         TermRef::BlankNode(_) => Ok(manifest_path.to_path_buf()), // Fallback to same file
         TermRef::Literal(l) => Ok(resolve_path(manifest_path, l.value())),
-        _ => Err("Unsupported RDF term for graph path".to_string()),
     }
 }
 

@@ -48,7 +48,6 @@ pub(crate) fn format_term_for_label(term: &Term) -> String {
         }
         Term::BlankNode(_) => "BlankNode".to_string(),
         Term::Literal(lit) => lit.value().to_string().replace('"', "\\\""), // Escape quotes for DOT language
-        _ => "rdf_triple".to_string(),
     }
 }
 
@@ -107,6 +106,7 @@ pub struct ShapesModel {
     /// Lookup table for property shape `Term`s to `PropShapeID`s.
     pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
     /// Lookup table for component `Term`s to `ComponentID`s.
+    #[allow(dead_code)]
     pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
     /// The Oxigraph `Store` containing the shapes graph.
     pub(crate) store: Store,
@@ -300,6 +300,7 @@ impl ShapesModel {
     }
 
     /// Returns a reference to the `OntoEnv`.
+    #[allow(dead_code)]
     pub(crate) fn env(&self) -> &OntoEnv {
         &self.env
     }

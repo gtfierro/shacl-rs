@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::{Context, SourceShape, ValidationContext};
 use crate::named_nodes::SHACL;
 use oxigraph::model::{NamedNode, NamedNodeRef, Term, TermRef, Variable};

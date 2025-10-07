@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::runtime::{
     ComponentValidationResult, GraphvizOutput, ValidateComponent, ValidationFailure,
@@ -21,6 +22,7 @@ fn escape_sparql_string(s: &str) -> String {
     out
 }
 
+#[allow(dead_code)]
 fn subject_to_sparql(subject: &Subject) -> String {
     match subject {
         Subject::NamedNode(nn) => format!("<{}>", nn.as_str()),
@@ -43,7 +45,6 @@ fn term_to_sparql(term: &Term) -> String {
                 )
             }
         }
-        _ => term.to_string(),
     }
 }
 

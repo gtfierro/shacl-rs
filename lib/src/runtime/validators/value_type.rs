@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::context::{format_term_for_label, Context, ValidationContext};
 use crate::named_nodes::SHACL;
 use crate::runtime::ToSubjectRef;
@@ -372,7 +373,6 @@ impl ValidateComponent for NodeKindConstraintComponent {
                     }
                     TermRef::BlankNode(_) => ValueCategory::Blank,
                     TermRef::Literal(_) => ValueCategory::Literal,
-                    _ => ValueCategory::Unsupported, // Triple, GraphName - should not occur as value nodes
                 };
 
                 let matches = match category {
