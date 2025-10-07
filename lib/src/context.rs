@@ -123,6 +123,7 @@ pub struct ShapesModel {
 
 impl ShapesModel {
     /// Creates a new `ShapesModel` by loading and parsing shapes from a file.
+    #[allow(dead_code)]
     pub fn from_file(shape_graph_path: &str) -> Result<Self, Box<dyn Error>> {
         let mut env = OntoEnv::new_in_memory_online_with_search()?;
 

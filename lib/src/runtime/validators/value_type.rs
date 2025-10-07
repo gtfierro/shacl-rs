@@ -359,6 +359,7 @@ impl ValidateComponent for NodeKindConstraintComponent {
                     Named,
                     Blank,
                     Literal,
+                    #[allow(dead_code)]
                     Unsupported,
                 }
 

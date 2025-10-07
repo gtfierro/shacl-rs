@@ -16,6 +16,7 @@ use url::Url;
 
 trait ToSubjectRef {
     fn to_subject_ref(&self) -> SubjectRef<'_>;
+    #[allow(dead_code)]
     fn try_to_subject_ref(&self) -> Result<SubjectRef<'_>, String>;
 }
 
@@ -28,6 +29,7 @@ impl ToSubjectRef for TermRef<'_> {
         }
     }
 
+    #[allow(dead_code)]
     fn try_to_subject_ref(&self) -> Result<SubjectRef<'_>, String> {
         match self {
             TermRef::NamedNode(n) => Ok(n.clone().into()),

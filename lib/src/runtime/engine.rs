@@ -5,10 +5,12 @@ use crate::runtime::validators;
 use crate::runtime::{Component, CustomConstraintComponent};
 
 /// Responsible for building runtime evaluators from high-level component descriptors.
+#[allow(dead_code)]
 pub(crate) struct RuntimeEngine;
 
 impl RuntimeEngine {
     /// Builds a runtime component from its structural descriptor.
+    #[allow(dead_code)]
     pub(crate) fn build_component(descriptor: &ComponentDescriptor) -> Component {
         build_component_from_descriptor(descriptor)
     }
