@@ -101,6 +101,10 @@ impl ValidateComponent for NotConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -215,6 +219,10 @@ impl ValidateComponent for AndConstraintComponent {
                             message,
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                         break 'conjunct_loop; // Fails one, fails all for this value node.
@@ -290,6 +298,10 @@ impl ValidateComponent for OrConstraintComponent {
                             .to_string(),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -354,6 +366,10 @@ impl ValidateComponent for OrConstraintComponent {
                     message,
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 results.push(ComponentValidationResult::Fail(error_context, failure));
             }
@@ -424,6 +440,10 @@ impl ValidateComponent for XoneConstraintComponent {
                     message: "sh:xone with an empty list of shapes cannot be satisfied by any value node.".to_string(),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -487,6 +507,10 @@ impl ValidateComponent for XoneConstraintComponent {
                     message,
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 results.push(ComponentValidationResult::Fail(error_context, failure));
             }

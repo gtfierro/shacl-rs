@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use oxigraph::model::{NamedNode, Term};
 
+use crate::types::Severity;
+
 /// Parameter definition for a custom SPARQL-based constraint component.
 #[derive(Debug, Clone)]
 pub struct Parameter {
@@ -16,6 +18,7 @@ pub struct SPARQLValidator {
     pub is_ask: bool,
     pub messages: Vec<Term>,
     pub prefixes: String,
+    pub severity: Option<Severity>,
 }
 
 /// Metadata that defines a SHACL custom constraint component.
@@ -26,6 +29,8 @@ pub struct CustomConstraintComponentDefinition {
     pub validator: Option<SPARQLValidator>,
     pub node_validator: Option<SPARQLValidator>,
     pub property_validator: Option<SPARQLValidator>,
+    pub messages: Vec<Term>,
+    pub severity: Option<Severity>,
 }
 
 /// Concrete values bound to a parameterized SPARQL validator during parsing time.

@@ -95,6 +95,10 @@ impl ValidateComponent for EqualsConstraintComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 },
             ));
         }
@@ -115,6 +119,10 @@ impl ValidateComponent for EqualsConstraintComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 },
             ));
         }
@@ -215,6 +223,10 @@ impl ValidateComponent for DisjointConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     },
                 ));
             }
@@ -327,6 +339,10 @@ impl ValidateComponent for LessThanConstraintComponent {
                             ),
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         },
                     ));
                 }
@@ -440,6 +456,10 @@ impl ValidateComponent for LessThanOrEqualsConstraintComponent {
                             ),
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         },
                     ));
                 }

@@ -63,6 +63,10 @@ impl ValidateComponent for MinLengthConstraintComponent {
                             message,
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                         continue;
@@ -81,6 +85,10 @@ impl ValidateComponent for MinLengthConstraintComponent {
                                 message,
                                 result_path: None,
                                 source_constraint: None,
+
+                                severity: None,
+
+                                message_terms: Vec::new(),
                             };
                             results.push(ComponentValidationResult::Fail(error_context, failure));
                             continue;
@@ -102,6 +110,10 @@ impl ValidateComponent for MinLengthConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -166,6 +178,10 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                             message,
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                         continue;
@@ -184,6 +200,10 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                                 message,
                                 result_path: None,
                                 source_constraint: None,
+
+                                severity: None,
+
+                                message_terms: Vec::new(),
                             };
                             results.push(ComponentValidationResult::Fail(error_context, failure));
                             continue;
@@ -205,6 +225,10 @@ impl ValidateComponent for MaxLengthConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -290,6 +314,10 @@ impl ValidateComponent for PatternConstraintComponent {
                             message,
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                         continue;
@@ -306,6 +334,10 @@ impl ValidateComponent for PatternConstraintComponent {
                                 message,
                                 result_path: None,
                                 source_constraint: None,
+
+                                severity: None,
+
+                                message_terms: Vec::new(),
                             };
                             results.push(ComponentValidationResult::Fail(error_context, failure));
                             continue;
@@ -332,6 +364,10 @@ impl ValidateComponent for PatternConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -455,6 +491,10 @@ impl ValidateComponent for LanguageInConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -536,6 +576,10 @@ impl ValidateComponent for UniqueLangConstraintComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 results.push(ComponentValidationResult::Fail(c.clone(), failure));
             }

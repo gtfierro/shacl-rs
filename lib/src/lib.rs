@@ -269,3 +269,137 @@ impl Validator {
         self.context.graphviz_heatmap(include_all_nodes)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::named_nodes::SHACL;
+    use oxigraph::model::vocab::rdf;
+    use oxigraph::model::{NamedOrBlankNode, Term, TermRef};
+    use std::error::Error;
+    use std::fs;
+    use std::io::Write;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_dir(prefix: &str) -> Result<PathBuf, Box<dyn Error>> {
+        let mut dir = std::env::temp_dir();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        dir.push(format!("{}_{}", prefix, timestamp));
+        fs::create_dir_all(&dir)?;
+        Ok(dir)
+    }
+
+    #[test]
+    fn custom_sparql_message_and_severity() -> Result<(), Box<dyn Error>> {
+        let temp_dir = unique_temp_dir("shacl_message_test")?;
+
+        let shapes_ttl = r#"@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix ex: <http://example.com/ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:MinScoreConstraintComponent
+    a sh:ConstraintComponent ;
+    sh:parameter [
+        sh:path ex:minScore ;
+        sh:optional false
+    ] ;
+    sh:propertyValidator [
+        sh:message "Score must be at least {?minScore} (got {?value})."@en ;
+        sh:select """
+            PREFIX ex: <http://example.com/ns#>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            SELECT ?this ?value ?minScore
+            WHERE {
+                ?this ex:score ?value .
+                FILTER(xsd:integer(?value) < xsd:integer(?minScore))
+            }
+        """ ;
+        sh:severity sh:Warning ;
+    ] ;
+    sh:message "Default {?minScore}"@en ;
+    sh:severity sh:Info .
+
+ex:ScoreShape
+    a sh:NodeShape ;
+    sh:targetClass ex:Person ;
+    sh:property [
+        sh:path ex:score ;
+        ex:minScore 5 ;
+    ] .
+"#;
+
+        let data_ttl = r#"@prefix ex: <http://example.com/ns#> .
+
+ex:Alice a ex:Person ;
+    ex:score 3 .
+"#;
+
+        let shapes_path = temp_dir.join("shapes.ttl");
+        let data_path = temp_dir.join("data.ttl");
+
+        {
+            let mut file = fs::File::create(&shapes_path)?;
+            file.write_all(shapes_ttl.as_bytes())?;
+        }
+        {
+            let mut file = fs::File::create(&data_path)?;
+            file.write_all(data_ttl.as_bytes())?;
+        }
+
+        let shapes_path_str = shapes_path.to_string_lossy().to_string();
+        let data_path_str = data_path.to_string_lossy().to_string();
+
+        let validator = Validator::from_files(&shapes_path_str, &data_path_str)?;
+        let report = validator.validate();
+        assert!(!report.conforms(), "Expected validation to fail");
+
+        let graph = report.to_graph();
+        let sh = SHACL::new();
+
+        let mut result_nodes: Vec<NamedOrBlankNode> = Vec::new();
+        for triple in graph.iter() {
+            if triple.predicate == rdf::TYPE
+                && triple.object == TermRef::NamedNode(sh.validation_result)
+            {
+                result_nodes.push(triple.subject.into_owned());
+            }
+        }
+
+        assert_eq!(
+            result_nodes.len(),
+            1,
+            "Expected exactly one validation result"
+        );
+        let result_subject = result_nodes[0].as_ref();
+
+        let severity_terms: Vec<Term> = graph
+            .objects_for_subject_predicate(result_subject, sh.result_severity)
+            .map(|t| t.into_owned())
+            .collect();
+        assert_eq!(
+            severity_terms,
+            vec![Term::from(sh.warning)],
+            "Severity should inherit sh:Warning from the validator"
+        );
+
+        let message_terms: Vec<Term> = graph
+            .objects_for_subject_predicate(result_subject, sh.result_message)
+            .map(|t| t.into_owned())
+            .collect();
+        assert!(
+            message_terms.iter().any(|term| {
+                if let Term::Literal(lit) = term {
+                    lit.value() == "Score must be at least 5 (got 3)."
+                        && matches!(lit.language(), Some(lang) if lang == "en")
+                } else {
+                    false
+                }
+            }),
+            "Expected substituted result message literal"
+        );
+
+        fs::remove_dir_all(&temp_dir)?;
+        Ok(())
+    }
+}

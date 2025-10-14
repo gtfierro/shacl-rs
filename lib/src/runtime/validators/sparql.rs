@@ -7,7 +7,7 @@ use crate::named_nodes::SHACL;
 use crate::runtime::{
     ComponentValidationResult, GraphvizOutput, ToSubjectRef, ValidateComponent, ValidationFailure,
 };
-use crate::types::{ComponentID, Path, TraceItem};
+use crate::types::{ComponentID, Path, Severity, TraceItem};
 use ontoenv::api::{OntoEnv, ResolveTarget};
 use oxigraph::model::vocab::xsd;
 use oxigraph::model::{GraphNameRef, Literal, NamedNode, NamedNodeRef, Term, TermRef};
@@ -161,6 +161,106 @@ fn query_mentions_var(query: &str, var: &str) -> bool {
     }
 
     contains(query, '?', var) || contains(query, '$', var)
+}
+
+fn substitute_placeholders(message: &str, substitutions: &[(String, String)]) -> String {
+    let mut text = message.to_string();
+    for (name, value) in substitutions {
+        let placeholder_q = format!("{{?{}}}", name);
+        let placeholder_dollar = format!("{{${}}}", name);
+        text = text.replace(&placeholder_q, value);
+        text = text.replace(&placeholder_dollar, value);
+    }
+    text
+}
+
+fn instantiate_message_terms(
+    templates: &[Term],
+    substitutions: &[(String, String)],
+) -> (Option<String>, Vec<Term>) {
+    if templates.is_empty() {
+        return (None, Vec::new());
+    }
+
+    let mut first_message = None;
+    let mut instantiated_terms = Vec::with_capacity(templates.len());
+
+    for template in templates {
+        match template {
+            Term::Literal(lit) => {
+                let substituted = substitute_placeholders(lit.value(), substitutions);
+                if first_message.is_none() {
+                    first_message = Some(substituted.clone());
+                }
+                let instantiated_literal = if let Some(lang) = lit.language() {
+                    Literal::new_language_tagged_literal(substituted.clone(), lang)
+                        .map(Term::Literal)
+                        .unwrap_or_else(|_| Term::Literal(Literal::from(substituted.clone())))
+                } else {
+                    let datatype = lit.datatype();
+                    if datatype.as_str() == xsd::STRING {
+                        Term::Literal(Literal::from(substituted.clone()))
+                    } else {
+                        Term::Literal(Literal::new_typed_literal(
+                            substituted.clone(),
+                            NamedNode::new_unchecked(datatype.as_str()),
+                        ))
+                    }
+                };
+                instantiated_terms.push(instantiated_literal);
+            }
+            other => {
+                let substituted = substitute_placeholders(&other.to_string(), substitutions);
+                if first_message.is_none() {
+                    first_message = Some(substituted.clone());
+                }
+                instantiated_terms.push(Term::Literal(Literal::from(substituted)));
+            }
+        }
+    }
+
+    (first_message, instantiated_terms)
+}
+
+fn gather_default_substitutions(
+    context: &Context,
+    current_shape_term: Option<&Term>,
+    value_term: Option<&Term>,
+    path_override: Option<&String>,
+) -> Vec<(String, String)> {
+    let mut substitutions = Vec::new();
+    substitutions.push((
+        "this".to_string(),
+        term_to_message_value(context.focus_node()),
+    ));
+
+    if let Some(shape_term) = current_shape_term {
+        substitutions.push((
+            "currentShape".to_string(),
+            term_to_message_value(shape_term),
+        ));
+    }
+
+    if let Some(value) = value_term {
+        substitutions.push(("value".to_string(), term_to_message_value(value)));
+    }
+
+    if let Some(path) = path_override {
+        substitutions.push(("PATH".to_string(), path.clone()));
+    }
+
+    substitutions
+}
+
+fn term_to_message_value(term: &Term) -> String {
+    match term {
+        Term::Literal(lit) => lit.value().to_string(),
+        _ => format_term_for_label(term),
+    }
+}
+
+fn term_ref_to_message_value(term: TermRef<'_>) -> String {
+    term_to_message_value(&term.into_owned())
 }
 
 fn ensure_pre_binding_semantics(
@@ -480,10 +580,12 @@ impl ValidateComponent for SPARQLConstraintComponent {
         )?;
 
         // Handle $PATH substitution for property shapes
+        let mut path_substitution_value: Option<String> = None;
         if c.source_shape().as_prop_id().is_some() {
             if let Some(prop_id) = c.source_shape().as_prop_id() {
                 if let Some(prop_shape) = context.model.get_prop_shape_by_id(prop_id) {
                     let path_str = prop_shape.sparql_path();
+                    path_substitution_value = Some(path_str.clone());
                     select_query = select_query.replace("$PATH", &path_str);
                 }
             }
@@ -531,15 +633,17 @@ impl ValidateComponent for SPARQLConstraintComponent {
         // Prepare pre-bound variables
         let mut substitutions = vec![];
 
+        let current_shape_term = c.source_shape().get_term(context);
+
         if query_mentions_var(&full_query_str, "this") {
             // Only add if the query uses it
             substitutions.push((Variable::new_unchecked("this"), c.focus_node().clone()));
         }
 
-        if let Some(current_shape_term) = c.source_shape().get_term(context) {
+        if let Some(shape_term) = current_shape_term.clone() {
             if query_mentions_var(&full_query_str, "currentShape") {
                 // Only add if the query uses it
-                substitutions.push((Variable::new_unchecked("currentShape"), current_shape_term));
+                substitutions.push((Variable::new_unchecked("currentShape"), shape_term));
             }
         }
         if query_mentions_var(&full_query_str, "shapesGraph") {
@@ -563,6 +667,19 @@ impl ValidateComponent for SPARQLConstraintComponent {
             .filter_map(Result::ok)
             .map(|q| q.object)
             .collect();
+
+        let severity = context
+            .model
+            .store()
+            .quads_for_pattern(
+                Some(constraint_subject),
+                Some(shacl.severity),
+                None,
+                Some(context.model.shape_graph_iri_ref()),
+            )
+            .filter_map(Result::ok)
+            .map(|q| q.object)
+            .find_map(|term| Severity::from_term(&term));
 
         // Execute query
         let query_results = context.model.store().query_opt_with_substituted_variables(
@@ -596,24 +713,34 @@ impl ValidateComponent for SPARQLConstraintComponent {
                         continue;
                     }
 
-                    let mut message = solution
-                        .get("message")
-                        .map(|t| t.to_string())
-                        .or_else(|| messages.first().map(|t| t.to_string()))
-                        .unwrap_or_else(|| {
-                            "Node does not conform to SPARQL constraint".to_string()
-                        });
+                    let mut message_templates = Vec::new();
+                    if let Some(term) = solution.get("message") {
+                        message_templates.push(term.clone());
+                    }
+                    if message_templates.is_empty() && !messages.is_empty() {
+                        message_templates.extend(messages.clone());
+                    }
 
-                    // Substitute variables in message
+                    let mut substitutions_for_messages = gather_default_substitutions(
+                        c,
+                        current_shape_term.as_ref(),
+                        failed_value_node.as_ref(),
+                        path_substitution_value.as_ref(),
+                    );
                     for var in solution.variables() {
                         if let Some(term) = solution.get(var) {
-                            let var_name = var.as_str();
-                            let placeholder1 = format!("{{?{}}}", var_name);
-                            let placeholder2 = format!("{{${}}}", var_name);
-                            message = message.replace(&placeholder1, &term.to_string());
-                            message = message.replace(&placeholder2, &term.to_string());
+                            substitutions_for_messages.push((
+                                var.as_str().to_string(),
+                                term_ref_to_message_value(term.into()),
+                            ));
                         }
                     }
+
+                    let (message_opt, message_terms) =
+                        instantiate_message_terms(&message_templates, &substitutions_for_messages);
+                    let message = message_opt.unwrap_or_else(|| {
+                        "Node does not conform to SPARQL constraint".to_string()
+                    });
 
                     // The path for the validation result is taken from the ?path variable if bound,
                     // otherwise it's taken from the context `c`.
@@ -624,16 +751,17 @@ impl ValidateComponent for SPARQLConstraintComponent {
                             None
                         };
 
-                    results.push(ComponentValidationResult::Fail(
-                        c.clone(),
-                        ValidationFailure {
-                            component_id,
-                            failed_value_node,
-                            message,
-                            result_path: result_path_override,
-                            source_constraint: Some(self.constraint_node.clone()),
-                        },
-                    ));
+                    let failure = ValidationFailure::new(
+                        component_id,
+                        failed_value_node.clone(),
+                        message,
+                        result_path_override,
+                        Some(self.constraint_node.clone()),
+                    )
+                    .with_severity(severity.clone())
+                    .with_message_terms(message_terms);
+
+                    results.push(ComponentValidationResult::Fail(c.clone(), failure));
                 }
                 Ok(results)
             }
@@ -726,6 +854,7 @@ pub(crate) fn parse_custom_constraint_components(
 ) {
     let mut definitions = HashMap::new();
     let mut param_to_component: HashMap<NamedNode, Vec<NamedNode>> = HashMap::new();
+    let shacl = SHACL::new();
 
     let shapes_graph_iri = context.shape_graph_iri.as_str();
     let query = format!(
@@ -786,59 +915,107 @@ pub(crate) fn parse_custom_constraint_components(
                     let mut node_validator = None;
                     let mut property_validator = None;
 
+                    let component_messages: Vec<Term> = context
+                        .store
+                        .quads_for_pattern(
+                            Some(cc_iri.as_ref().into()),
+                            Some(shacl.message),
+                            None,
+                            Some(context.shape_graph_iri_ref()),
+                        )
+                        .filter_map(Result::ok)
+                        .map(|q| q.object)
+                        .collect();
+
+                    let component_severity = context
+                        .store
+                        .quads_for_pattern(
+                            Some(cc_iri.as_ref().into()),
+                            Some(shacl.severity),
+                            None,
+                            Some(context.shape_graph_iri_ref()),
+                        )
+                        .filter_map(Result::ok)
+                        .map(|q| q.object)
+                        .find_map(|term| Severity::from_term(&term));
+
                     // Helper to parse a validator
                     let parse_validator = |v_term: &Term,
                                            is_ask: bool,
                                            context: &ParsingContext|
                      -> Option<SPARQLValidator> {
-                        if let Term::NamedNode(nn) = v_term {
-                            let validator_iri = nn.as_str();
-                            let query_prop = if is_ask { "ask" } else { "select" };
-                            let v_query = format!(
-                                "PREFIX sh: <http://www.w3.org/ns/shacl#>\nSELECT ?query (GROUP_CONCAT(?msg; separator=\"|||\") as ?messages) FROM <{}> WHERE {{ <{}> sh:{} ?query . OPTIONAL {{ <{}> sh:message ?msg }} }} GROUP BY ?query",
-                                context.shape_graph_iri.as_str(),
-                                validator_iri,
-                                query_prop,
-                                validator_iri
-                            );
+                        let subject = match v_term {
+                            Term::NamedNode(nn) => Some(nn.as_ref().into()),
+                            Term::BlankNode(bn) => Some(bn.as_ref().into()),
+                            _ => None,
+                        }?;
 
-                            match context.store.query_opt(&v_query, QueryOptions::default()) {
-                                Ok(QueryResults::Solutions(v_solutions_iter)) => {
-                                    let solutions: Vec<_> = v_solutions_iter.collect();
-                                    if let Some(Ok(v_sol)) = solutions.into_iter().next() {
-                                        if let Some(Term::Literal(query_lit)) = v_sol.get("query") {
-                                            let messages =
-                                                v_sol.get("messages").map_or(vec![], |t| {
-                                                    if let Term::Literal(lit) = t {
-                                                        vec![Term::Literal(
-                                                            Literal::new_simple_literal(
-                                                                lit.value(),
-                                                            ),
-                                                        )]
-                                                    } else {
-                                                        vec![]
-                                                    }
-                                                });
-                                            let prefixes = get_prefixes_for_sparql_node(
-                                                TermRef::NamedNode(nn.as_ref()),
-                                                &context.store,
-                                                &context.env,
-                                                context.shape_graph_iri_ref(),
-                                            )
-                                            .unwrap_or_default();
-                                            return Some(SPARQLValidator {
-                                                query: query_lit.value().to_string(),
-                                                is_ask,
-                                                messages,
-                                                prefixes,
-                                            });
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                        None
+                        let term_ref = match v_term {
+                            Term::NamedNode(nn) => TermRef::NamedNode(nn.as_ref()),
+                            Term::BlankNode(bn) => TermRef::BlankNode(bn.as_ref()),
+                            _ => return None,
+                        };
+
+                        let ask_pred =
+                            NamedNodeRef::new_unchecked("http://www.w3.org/ns/shacl#ask");
+                        let query_pred = if is_ask { ask_pred } else { shacl.select };
+
+                        let query_object = context
+                            .store
+                            .quads_for_pattern(
+                                Some(subject),
+                                Some(query_pred),
+                                None,
+                                Some(context.shape_graph_iri_ref()),
+                            )
+                            .filter_map(Result::ok)
+                            .map(|q| q.object)
+                            .next()?;
+
+                        let query_str = match query_object {
+                            Term::Literal(ref lit) => lit.value().to_string(),
+                            _ => return None,
+                        };
+
+                        let messages: Vec<Term> = context
+                            .store
+                            .quads_for_pattern(
+                                Some(subject),
+                                Some(shacl.message),
+                                None,
+                                Some(context.shape_graph_iri_ref()),
+                            )
+                            .filter_map(Result::ok)
+                            .map(|q| q.object)
+                            .collect();
+
+                        let severity = context
+                            .store
+                            .quads_for_pattern(
+                                Some(subject),
+                                Some(shacl.severity),
+                                None,
+                                Some(context.shape_graph_iri_ref()),
+                            )
+                            .filter_map(Result::ok)
+                            .map(|q| q.object)
+                            .find_map(|term| Severity::from_term(&term));
+
+                        let prefixes = get_prefixes_for_sparql_node(
+                            term_ref,
+                            &context.store,
+                            &context.env,
+                            context.shape_graph_iri_ref(),
+                        )
+                        .unwrap_or_default();
+
+                        Some(SPARQLValidator {
+                            query: query_str,
+                            is_ask,
+                            messages,
+                            prefixes,
+                            severity,
+                        })
                     };
 
                     let validator_prop =
@@ -899,6 +1076,8 @@ pub(crate) fn parse_custom_constraint_components(
                             validator,
                             node_validator,
                             property_validator,
+                            messages: component_messages,
+                            severity: component_severity,
                         },
                     );
                 }
@@ -972,11 +1151,13 @@ impl ValidateComponent for CustomConstraintComponent {
 
         let mut results = vec![];
         let mut query_body = validator.query.clone();
+        let mut path_substitution_value: Option<String> = None;
 
         if is_prop_shape {
             if let Some(prop_id) = c.source_shape().as_prop_id() {
                 if let Some(prop_shape) = context.model.get_prop_shape_by_id(prop_id) {
                     let path_str = prop_shape.sparql_path();
+                    path_substitution_value = Some(path_str.clone());
                     query_body = query_body.replace("$PATH", &path_str);
                 }
             }
@@ -1076,25 +1257,50 @@ impl ValidateComponent for CustomConstraintComponent {
                     ) {
                         Ok(QueryResults::Boolean(conforms)) => {
                             if !conforms {
-                                results.push(ComponentValidationResult::Fail(
-                                    c.clone(),
-                                    ValidationFailure {
-                                        component_id,
-                                        failed_value_node: Some(value_node.clone()),
-                                        message: validator
-                                            .messages
-                                            .first()
-                                            .map(|t| t.to_string())
-                                            .unwrap_or_else(|| {
-                                                format!(
-                                                    "Value does not conform to custom constraint {}",
-                                                    self.definition.iri
-                                                )
-                                            }),
-                                        result_path: None,
-                                        source_constraint: None,
-                                    },
-                                ));
+                                let message_templates = if !validator.messages.is_empty() {
+                                    validator.messages.clone()
+                                } else {
+                                    self.definition.messages.clone()
+                                };
+                                let mut substitutions_for_messages = gather_default_substitutions(
+                                    c,
+                                    current_shape_term.as_ref(),
+                                    Some(value_node),
+                                    path_substitution_value.as_ref(),
+                                );
+                                for (param_path, values) in &self.parameter_values {
+                                    if let Some(val) = values.first() {
+                                        substitutions_for_messages.push((
+                                            local_name(param_path),
+                                            term_to_message_value(val),
+                                        ));
+                                    }
+                                }
+                                let (message_opt, message_terms) = instantiate_message_terms(
+                                    &message_templates,
+                                    &substitutions_for_messages,
+                                );
+                                let message = message_opt.unwrap_or_else(|| {
+                                    format!(
+                                        "Value does not conform to custom constraint {}",
+                                        self.definition.iri
+                                    )
+                                });
+                                let severity_override = validator
+                                    .severity
+                                    .clone()
+                                    .or_else(|| self.definition.severity.clone());
+                                let failure = ValidationFailure::new(
+                                    component_id,
+                                    Some(value_node.clone()),
+                                    message,
+                                    None,
+                                    None,
+                                )
+                                .with_severity(severity_override)
+                                .with_message_terms(message_terms);
+
+                                results.push(ComponentValidationResult::Fail(c.clone(), failure));
                             }
                         }
                         Err(e) => return Err(format!("SPARQL query failed: {}", e)),
@@ -1137,27 +1343,46 @@ impl ValidateComponent for CustomConstraintComponent {
                             continue;
                         }
 
-                        let mut message = solution
-                            .get("message")
-                            .map(|t| t.to_string())
-                            .or_else(|| validator.messages.first().map(|t| t.to_string()))
-                            .unwrap_or_else(|| {
-                                format!(
-                                    "Node does not conform to custom constraint {}",
-                                    self.definition.iri
-                                )
-                            });
-
-                        // Substitute variables in message
+                        let mut message_templates = Vec::new();
+                        if let Some(term) = solution.get("message") {
+                            message_templates.push(term.clone());
+                        }
+                        if message_templates.is_empty() && !validator.messages.is_empty() {
+                            message_templates.extend(validator.messages.clone());
+                        }
+                        if message_templates.is_empty() && !self.definition.messages.is_empty() {
+                            message_templates.extend(self.definition.messages.clone());
+                        }
+                        let mut substitutions_for_messages = gather_default_substitutions(
+                            c,
+                            current_shape_term.as_ref(),
+                            failed_value_node.as_ref(),
+                            path_substitution_value.as_ref(),
+                        );
                         for var in solution.variables() {
                             if let Some(term) = solution.get(var) {
-                                let var_name = var.as_str();
-                                let placeholder1 = format!("{{?{}}}", var_name);
-                                let placeholder2 = format!("{{${}}}", var_name);
-                                message = message.replace(&placeholder1, &term.to_string());
-                                message = message.replace(&placeholder2, &term.to_string());
+                                substitutions_for_messages.push((
+                                    var.as_str().to_string(),
+                                    term_ref_to_message_value(term.into()),
+                                ));
                             }
                         }
+                        for (param_path, values) in &self.parameter_values {
+                            if let Some(val) = values.first() {
+                                substitutions_for_messages
+                                    .push((local_name(param_path), term_to_message_value(val)));
+                            }
+                        }
+                        let (message_opt, message_terms) = instantiate_message_terms(
+                            &message_templates,
+                            &substitutions_for_messages,
+                        );
+                        let message = message_opt.unwrap_or_else(|| {
+                            format!(
+                                "Node does not conform to custom constraint {}",
+                                self.definition.iri
+                            )
+                        });
 
                         let result_path_override =
                             if let Some(Term::NamedNode(path_iri)) = solution.get("path") {
@@ -1166,16 +1391,22 @@ impl ValidateComponent for CustomConstraintComponent {
                                 None
                             };
 
-                        results.push(ComponentValidationResult::Fail(
-                            c.clone(),
-                            ValidationFailure {
-                                component_id,
-                                failed_value_node,
-                                message,
-                                result_path: result_path_override,
-                                source_constraint: None,
-                            },
-                        ));
+                        let severity_override = validator
+                            .severity
+                            .clone()
+                            .or_else(|| self.definition.severity.clone());
+
+                        let failure = ValidationFailure::new(
+                            component_id,
+                            failed_value_node.clone(),
+                            message,
+                            result_path_override,
+                            None,
+                        )
+                        .with_severity(severity_override)
+                        .with_message_terms(message_terms);
+
+                        results.push(ComponentValidationResult::Fail(c.clone(), failure));
                     }
                 }
                 Err(e) => return Err(format!("SPARQL query failed: {}", e)),

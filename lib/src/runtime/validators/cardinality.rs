@@ -53,6 +53,10 @@ impl ValidateComponent for MinCountConstraintComponent {
                 ),
                 result_path: None,
                 source_constraint: None,
+
+                severity: None,
+
+                message_terms: Vec::new(),
             };
             Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
         } else {
@@ -109,6 +113,10 @@ impl ValidateComponent for MaxCountConstraintComponent {
                 ),
                 result_path: None,
                 source_constraint: None,
+
+                severity: None,
+
+                message_terms: Vec::new(),
             };
             Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
         } else {

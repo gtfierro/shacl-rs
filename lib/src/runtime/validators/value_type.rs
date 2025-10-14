@@ -96,6 +96,10 @@ impl ValidateComponent for ClassConstraintComponent {
                             message,
                             result_path: None,
                             source_constraint: None,
+
+                            severity: None,
+
+                            message_terms: Vec::new(),
                         };
                         results.push(ComponentValidationResult::Fail(error_context, failure));
                     }
@@ -301,6 +305,10 @@ impl ValidateComponent for DatatypeConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -408,6 +416,10 @@ impl ValidateComponent for NodeKindConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }

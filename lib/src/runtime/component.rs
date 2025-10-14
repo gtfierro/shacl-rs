@@ -14,7 +14,7 @@ use crate::runtime::validators::{
     UniqueLangConstraintComponent, XoneConstraintComponent,
 };
 use crate::shape::NodeShape;
-use crate::types::{ComponentID, Path, TraceItem};
+use crate::types::{ComponentID, Path, Severity, TraceItem};
 use oxigraph::model::{NamedNode, NamedOrBlankNodeRef as SubjectRef, Term, TermRef};
 
 /// The result of validating a single value node against a constraint component.
@@ -49,6 +49,45 @@ pub(crate) struct ValidationFailure {
     pub result_path: Option<Path>,
     /// The constraint that was violated, for `sh:sparql` constraints.
     pub source_constraint: Option<Term>,
+    /// An optional severity override provided by the constraint.
+    pub severity: Option<Severity>,
+    /// RDF message terms contributed by the constraint or validator.
+    pub message_terms: Vec<Term>,
+}
+
+impl ValidationFailure {
+    /// Convenience constructor that initializes optional metadata with sane defaults.
+    pub fn new(
+        component_id: ComponentID,
+        failed_value_node: Option<Term>,
+        message: String,
+        result_path: Option<Path>,
+        source_constraint: Option<Term>,
+    ) -> Self {
+        ValidationFailure {
+            component_id,
+            failed_value_node,
+            message,
+            result_path,
+            source_constraint,
+            severity: None,
+            message_terms: Vec::new(),
+        }
+    }
+
+    /// Attaches a severity override to the failure.
+    pub fn with_severity(mut self, severity: Option<Severity>) -> Self {
+        self.severity = severity;
+        self
+    }
+
+    /// Attaches message RDF terms to the failure.
+    pub fn with_message_terms(mut self, terms: Vec<Term>) -> Self {
+        if !terms.is_empty() {
+            self.message_terms = terms;
+        }
+        self
+    }
 }
 
 /// A trait for components that can be represented in Graphviz DOT format.

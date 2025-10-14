@@ -36,6 +36,10 @@ impl ValidateComponent for InConstraintComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             };
@@ -57,6 +61,10 @@ impl ValidateComponent for InConstraintComponent {
                         message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -204,6 +212,10 @@ impl ValidateComponent for ClosedConstraintComponent {
                         message,
                         result_path: Some(Path::Simple(Term::NamedNode(predicate))),
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -267,6 +279,10 @@ impl ValidateComponent for HasValueConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
                 }
@@ -282,6 +298,10 @@ impl ValidateComponent for HasValueConstraintComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 Ok(vec![ComponentValidationResult::Fail(c.clone(), failure)])
             }

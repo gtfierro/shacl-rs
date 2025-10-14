@@ -156,6 +156,10 @@ impl ValidateComponent for MinExclusiveConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     },
                 ));
             }
@@ -253,6 +257,10 @@ impl ValidateComponent for MinInclusiveConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     },
                 ));
             }
@@ -351,6 +359,10 @@ impl ValidateComponent for MaxExclusiveConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     },
                 ));
             }
@@ -448,6 +460,10 @@ impl ValidateComponent for MaxInclusiveConstraintComponent {
                         ),
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     },
                 ));
             }

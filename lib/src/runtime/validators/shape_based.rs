@@ -98,6 +98,10 @@ impl ValidateComponent for NodeConstraintComponent {
                         message: inner_failure.message,
                         result_path: None,
                         source_constraint: None,
+
+                        severity: None,
+
+                        message_terms: Vec::new(),
                     };
                     results.push(ComponentValidationResult::Fail(error_context, failure));
                 }
@@ -395,6 +399,10 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 validation_results.push(ComponentValidationResult::Fail(c.clone(), failure));
             }
@@ -411,6 +419,10 @@ impl ValidateComponent for QualifiedValueShapeComponent {
                     ),
                     result_path: None,
                     source_constraint: None,
+
+                    severity: None,
+
+                    message_terms: Vec::new(),
                 };
                 validation_results.push(ComponentValidationResult::Fail(c.clone(), failure));
             }

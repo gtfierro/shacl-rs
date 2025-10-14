@@ -155,9 +155,17 @@ impl ValidationReportBuilder {
         frequencies
     }
 
-    fn severity_term_for_result(context: &Context, vc: &ValidationContext) -> Term {
+    fn severity_term_for_result(
+        context: &Context,
+        failure: &ValidationFailure,
+        vc: &ValidationContext,
+    ) -> Term {
         let sh = SHACL::new();
         let default_violation = Term::from(sh.violation);
+
+        if let Some(severity) = &failure.severity {
+            return severity_to_term(severity, &sh);
+        }
 
         match context.source_shape() {
             SourceShape::PropertyShape(prop_id) => vc
@@ -228,6 +236,16 @@ impl ValidationReportBuilder {
                     }
                 }
 
+                for term in &failure.message_terms {
+                    if !message_terms.contains(term) {
+                        message_terms.push(term.clone());
+                    }
+                }
+
+                if message_terms.is_empty() && !failure.message.is_empty() {
+                    message_terms.push(Term::from(Literal::from(failure.message.clone())));
+                }
+
                 if !message_terms.is_empty() {
                     for message_term in message_terms {
                         graph.insert(&Triple::new(
@@ -237,11 +255,6 @@ impl ValidationReportBuilder {
                         ));
                     }
                 }
-
-                println!("failure result path: {:?}", failure.result_path);
-                println!("context result path: {:?}", context.result_path());
-                println!("context source shape: {:?}", context.source_shape());
-                println!("----");
 
                 // sh:resultPath
                 let result_path_term = if let Some(path_override) = &failure.result_path {
@@ -310,8 +323,11 @@ impl ValidationReportBuilder {
                     graph.insert(&Triple::new(result_node.clone(), sh.result_path, term));
                 }
 
-                let severity_term =
-                    ValidationReportBuilder::severity_term_for_result(context, validation_context);
+                let severity_term = ValidationReportBuilder::severity_term_for_result(
+                    context,
+                    failure,
+                    validation_context,
+                );
                 graph.insert(&Triple::new(
                     result_node.clone(),
                     sh.result_severity,
