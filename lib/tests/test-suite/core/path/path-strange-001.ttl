@@ -6,47 +6,42 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:i a ex:C ;
-  ex:p ex:ip .
-ex:ip ex:q ex:ipq .
-ex:ipq a ex:C .
 ex:pi ex:p ex:i .
 
+ex:i a ex:C ;
+    ex:p ex:ip .
+
+ex:ip ex:q ex:ipq .
+
+ex:ipq a ex:C .
+
 ex:j a ex:C ;
-  ex:p ex:jp .
+    ex:p ex:jp .
+
 ex:jp ex:q ex:jpq .
 
 ex:s1 a sh:PropertyShape ;
-  sh:targetClass ex:C ;
-  sh:path [ rdf:first ex:p ; rdf:rest [ rdf:first ex:q ; rdf:rest rdf:nil ] ;
-  	    sh:inversePath ex:p ] ;
-  sh:class ex:C .
+    sh:class ex:C ;
+    sh:path [ rdf:first ex:p ;
+            rdf:rest ( ex:q ) ;
+            sh:inversePath ex:p ] ;
+    sh:targetClass ex:C .
 
-<urn:path-strange-001.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:path-strange-001>
-    ) ;
-.
+<urn:path-strange-001> a sht:Validate ;
+    rdfs:label "Test of strange path 001 two valid paths together" ;
+    mf:action [ sht:dataGraph <urn:path-strange-001.ttl> ;
+            sht:shapesGraph <urn:path-strange-001.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:j ;
+                    sh:resultPath ( ex:p ex:q ) ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:s1 ;
+                    sh:value ex:jpq ] ] ;
+    mf:status sht:approved .
 
-<urn:path-strange-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of strange path 001 two valid paths together" ;
-  mf:action [
-      sht:dataGraph <urn:path-strange-001.ttl> ;
-      sht:shapesGraph <urn:path-strange-001.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [ a sh:ValidationResult ;
-          sh:focusNode ex:j ;
-          sh:value ex:jpq ;
-          sh:resultPath ( ex:p ex:q ) ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:s1 ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
+<urn:path-strange-001.ttl> a mf:Manifest ;
+    mf:entries ( <urn:path-strange-001> ) .
+

@@ -1,67 +1,49 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/sparql/pre-binding/pre-binding-002.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:
-	sh:declare [
-		sh:prefix "ex" ;
-		sh:namespace "http://datashapes.org/sh/tests/sparql/pre-binding/pre-binding-002.test#"^^xsd:anyURI ;
-	] .
+ex:ValidResource1 a rdfs:Resource .
 
-ex:TestShape
-  rdf:type sh:NodeShape ;
-  rdfs:label "Test shape" ;
-  sh:sparql ex:TestShape-sparql ;
-  sh:targetNode ex:InvalidResource ;
-.
-ex:TestShape-sparql
-  sh:prefixes ex: ;
-  sh:select """
+ex: sh:declare [ sh:namespace "http://datashapes.org/sh/tests/sparql/pre-binding/pre-binding-002.test#"^^xsd:anyURI ;
+            sh:prefix "ex" ] .
+
+ex:TestShape a sh:NodeShape ;
+    rdfs:label "Test shape" ;
+    sh:sparql ex:TestShape-sparql ;
+    sh:targetNode ex:InvalidResource .
+
+<urn:pre-binding-002> a sht:Validate ;
+    rdfs:label "Test of pre-binding in UNION" ;
+    mf:action [ sht:dataGraph <urn:pre-binding-002.ttl> ;
+            sht:shapesGraph <urn:pre-binding-002.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:InvalidResource ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraint ex:TestShape-sparql ;
+                    sh:sourceConstraintComponent sh:SPARQLConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value ex:InvalidResource ] ] ;
+    mf:status sht:approved .
+
+ex:TestShape-sparql sh:prefixes ex: ;
+    sh:select """
   	SELECT $this
-	WHERE {
+	WHERE {\r
+		{\r
+			FILTER (false) .\r
+		}\r
+		UNION\r
 		{
-			FILTER (false) .
+			FILTER ($this = ex:InvalidResource) .\r
 		}
-		UNION
-		{
-			FILTER ($this = ex:InvalidResource) .
-		}
-	}""" ;
-.
-ex:ValidResource1
-  rdf:type rdfs:Resource ;
-.
-<urn:pre-binding-002.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:pre-binding-002>
-    ) ;
-.
-<urn:pre-binding-002>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of pre-binding in UNION" ;
-  mf:action [
-      sht:dataGraph <urn:pre-binding-002.ttl> ;
-      sht:shapesGraph <urn:pre-binding-002.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InvalidResource ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraint ex:TestShape-sparql ;
-          sh:sourceConstraintComponent sh:SPARQLConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value ex:InvalidResource ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
+	}""" .
+
+<urn:pre-binding-002.ttl> a mf:Manifest ;
+    mf:entries ( <urn:pre-binding-002> ) .
+

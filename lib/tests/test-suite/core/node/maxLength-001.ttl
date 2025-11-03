@@ -1,87 +1,65 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/core/node/maxLength-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:TestShape
-  rdf:type sh:NodeShape ;
-  sh:maxLength 4 ;
-  sh:targetClass ex:TestClass ;
-  sh:targetNode <a:b> ;
-  sh:targetNode ex:John ;
-  sh:targetNode 123 ;
-  sh:targetNode 1234 ;
-  sh:targetNode 12345 ;
-  sh:targetNode "2017-03-29"^^xsd:date ;
-  sh:targetNode "Hel" ;
-  sh:targetNode "Hell" ;
-  sh:targetNode "Hell"@en ;
-  sh:targetNode "Hello" ;
-.
-<urn:maxLength-001.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:maxLength-001>
-    ) ;
-.
-<urn:maxLength-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of sh:maxLength at node shape 001" ;
-  mf:action [
-      sht:dataGraph <urn:maxLength-001.ttl> ;
-      sht:shapesGraph <urn:maxLength-001.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:John ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value ex:John ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode 12345 ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value 12345 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode "2017-03-29"^^xsd:date ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value "2017-03-29"^^xsd:date ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode "Hello" ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value "Hello" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode _:b34236 ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value _:b34236 ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
-_:b34236
-  rdf:type ex:TestClass ;
-.
+<urn:maxLength-001> a sht:Validate ;
+    rdfs:label "Test of sh:maxLength at node shape 001" ;
+    mf:action [ sht:dataGraph <urn:maxLength-001.ttl> ;
+            sht:shapesGraph <urn:maxLength-001.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:John ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value ex:John ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode 12345 ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value 12345 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode "2017-03-29"^^xsd:date ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value "2017-03-29"^^xsd:date ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode "Hello" ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value "Hello" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode _:n773028c261c6440399f4a04ab8fcd8f3b9 ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:MaxLengthConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value _:n773028c261c6440399f4a04ab8fcd8f3b9 ] ] ;
+    mf:status sht:approved .
+
+<urn:maxLength-001.ttl> a mf:Manifest ;
+    mf:entries ( <urn:maxLength-001> ) .
+
+ex:TestShape a sh:NodeShape ;
+    sh:maxLength 4 ;
+    sh:targetClass ex:TestClass ;
+    sh:targetNode <a:b>,
+        ex:John,
+        "2017-03-29"^^xsd:date,
+        123,
+        1234,
+        12345,
+        "Hel",
+        "Hell",
+        "Hello",
+        "Hell"@en .
+
+_:n773028c261c6440399f4a04ab8fcd8f3b9 a ex:TestClass .
+

@@ -1,7 +1,8 @@
 @prefix ex: <http://example.org/shacl/tests/> .
 
-ex:j ex:p ex:i .
-
 ex:k ex:p ex:j .
 
 ex:l ex:p ex:j .
+
+ex:j ex:p ex:i .
+

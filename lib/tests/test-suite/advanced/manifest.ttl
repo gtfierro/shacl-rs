@@ -1,14 +1,11 @@
-@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix sht:     <http://www.w3.org/ns/shacl-test#> .
+@prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<>
-	a mf:Manifest ;
-	mf:include <core/manifest.ttl> ;
-	mf:include <expression/manifest.ttl> ;
-	mf:include <function/manifest.ttl> ;
-	mf:include <rules/manifest.ttl> ;
-	mf:include <shapedefs/manifest.ttl> ;
-	mf:include <sparql/manifest.ttl> ;
-	mf:include <target/manifest.ttl> ;
-	.
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/manifest.ttl> a mf:Manifest ;
+    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/function/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/manifest.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/manifest.ttl> .
+

@@ -1,7 +1,3 @@
-# baseURI: http://datashapes.org/shasf/tests/expression/booleans-001.test
-# imports: http://datashapes.org/dash
-# prefix: ex
-
 @prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/shasf/tests/expression/booleans-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
@@ -12,60 +8,42 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<http://datashapes.org/shasf/tests/expression/booleans-001.test>
-  rdf:type owl:Ontology ;
-  rdfs:label "Test of filterShape-001" ;
-  owl:imports <http://datashapes.org/dash> ;
-  owl:versionInfo "Created with TopBraid Composer" ;
-.
-ex:GraphValidationTestCase
-  rdf:type dash:GraphValidationTestCase ;
-  dash:expectedResult [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode "false"^^xsd:boolean ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraint sh:this ;
-          sh:sourceConstraintComponent sh:ExpressionConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value "false"^^xsd:boolean ;
-        ] ;
-    ] ;
-.
-ex:TestShape
-  rdf:type sh:NodeShape ;
-  sh:expression sh:this ;
-  sh:targetNode "false"^^xsd:boolean ;
-  sh:targetNode "true"^^xsd:boolean ;
-.
+<http://datashapes.org/shasf/tests/expression/booleans-001.test> a owl:Ontology ;
+    rdfs:label "Test of filterShape-001" ;
+    owl:imports <http://datashapes.org/dash> ;
+    owl:versionInfo "Created with TopBraid Composer" .
 
-<>
-  a mf:Manifest ;
-  mf:entries (
-      <booleans-001>
-    ) ;
-.
-<booleans-001>
-  a sht:Validate ;
-  rdfs:label "Test of filterShape-001" ;
-  mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode "false"^^xsd:boolean ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraint sh:this ;
-          sh:sourceConstraintComponent sh:ExpressionConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value "false"^^xsd:boolean ;
-        ] ;
-    ] ;
-  mf:status sht:proposed ;
-.
+ex:GraphValidationTestCase a dash:GraphValidationTestCase ;
+    dash:expectedResult [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode false ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraint sh:this ;
+                    sh:sourceConstraintComponent sh:ExpressionConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value false ] ] .
+
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/booleans-001> a sht:Validate ;
+    rdfs:label "Test of filterShape-001" ;
+    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/booleans-001.test.ttl> ;
+            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/booleans-001.test.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode false ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraint sh:this ;
+                    sh:sourceConstraintComponent sh:ExpressionConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value false ] ] ;
+    mf:status sht:proposed .
+
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/booleans-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/booleans-001> ) .
+
+ex:TestShape a sh:NodeShape ;
+    sh:expression sh:this ;
+    sh:targetNode false,
+        true .
+

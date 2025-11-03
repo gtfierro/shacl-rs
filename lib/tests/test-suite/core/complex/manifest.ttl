@@ -1,10 +1,8 @@
-@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix sht:     <http://www.w3.org/ns/shacl-test#> .
+@prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<urn:manifest.ttl>
-	a mf:Manifest ;
-	rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/complex" ;
-	mf:include <personexample.ttl> ;
-	mf:include <shacl-shacl.ttl> ;
-	.
+<urn:manifest.ttl> a mf:Manifest ;
+    rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/complex" ;
+    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/personexample.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/shacl-shacl.ttl> .
+

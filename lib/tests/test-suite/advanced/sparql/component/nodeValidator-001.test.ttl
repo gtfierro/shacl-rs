@@ -1,83 +1,58 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test>
-  sh:declare [
-      rdf:type sh:PrefixDeclaration ;
-      sh:namespace "http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test#"^^xsd:anyURI ;
-      sh:prefix "ex" ;
-    ] ;
-.
-ex:InvalidResource1
-  ex:property "Other" ;
-.
-ex:TestConstraintComponent
-  rdf:type sh:ConstraintComponent ;
-  rdfs:label "Test constraint component" ;
-  sh:nodeValidator [
-      rdf:type sh:SPARQLSelectValidator ;
-      sh:select """
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/nodeValidator-001> a sht:Validate ;
+    rdfs:label "Test of sh:nodeValidator 001" ;
+    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/nodeValidator-001.test.ttl> ;
+            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/nodeValidator-001.test.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:InvalidResource1 ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent ex:TestConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value ex:InvalidResource1 ] ] ;
+    mf:status sht:proposed .
+
+<http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test> sh:declare [ a sh:PrefixDeclaration ;
+            sh:namespace "http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test#"^^xsd:anyURI ;
+            sh:prefix "ex" ] .
+
+ex:TestConstraintComponent a sh:ConstraintComponent ;
+    rdfs:label "Test constraint component" ;
+    sh:nodeValidator [ a sh:SPARQLSelectValidator ;
+            sh:prefixes <http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test> ;
+            sh:select """
       SELECT DISTINCT $this
       WHERE {
         $this ?p ?o .
         FILTER NOT EXISTS {
             $this ex:property ?requiredParam .
-      }}""" ;
-      sh:prefixes <http://datashapes.org/sh/tests/sparql/component/nodeValidator-001.test> ;
-    ] ;
-  sh:parameter [
-      sh:path ex:optionalParam ;
-      sh:datatype xsd:integer ;
-      sh:name "optional param" ;
-      sh:optional "true"^^xsd:boolean ;
-    ] ;
-  sh:parameter [
-      sh:path ex:requiredParam ;
-      sh:datatype xsd:string ;
-      sh:name "required param" ;
-    ] ;
-.
-ex:TestShape
-  rdf:type sh:NodeShape ;
-  ex:requiredParam "Value" ;
-  rdfs:label "Test shape" ;
-  sh:targetNode ex:InvalidResource1 ;
-  sh:targetNode ex:ValidResource1 ;
-.
-ex:ValidResource1
-  ex:property "Value" ;
-.
-<>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <nodeValidator-001>
-    ) ;
-.
-<nodeValidator-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of sh:nodeValidator 001" ;
-  mf:action [
-      sht:dataGraph <> ;
-      sht:shapesGraph <> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InvalidResource1 ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent ex:TestConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value ex:InvalidResource1 ;
-        ] ;
-    ] ;
-  mf:status sht:proposed ;
-.
+      }}""" ] ;
+    sh:parameter [ sh:datatype xsd:integer ;
+            sh:name "optional param" ;
+            sh:optional true ;
+            sh:path ex:optionalParam ],
+        [ sh:datatype xsd:string ;
+            sh:name "required param" ;
+            sh:path ex:requiredParam ] .
+
+ex:TestShape a sh:NodeShape ;
+    rdfs:label "Test shape" ;
+    ex:requiredParam "Value" ;
+    sh:targetNode ex:InvalidResource1,
+        ex:ValidResource1 .
+
+ex:ValidResource1 ex:property "Value" .
+
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/nodeValidator-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/nodeValidator-001> ) .
+
+ex:InvalidResource1 ex:property "Other" .
+

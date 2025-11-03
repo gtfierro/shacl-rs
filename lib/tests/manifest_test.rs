@@ -89,19 +89,10 @@ fn skip_reason(test: &TestCase) -> Option<&'static str> {
     let data_path = test.data_graph_path.to_string_lossy();
     let shapes_path = test.shapes_graph_path.to_string_lossy();
     let allow_af = std::env::var("SHACL_W3C_ALLOW_AF").ok().as_deref() == Some("1");
-    let allow_pre_binding =
-        std::env::var("SHACL_W3C_ALLOW_PRE_BINDING").ok().as_deref() == Some("1");
-
     let is_advanced = data_path.contains("/advanced/") || shapes_path.contains("/advanced/");
 
     if is_advanced && !allow_af {
         return Some("SHACL-AF validation disabled (set SHACL_W3C_ALLOW_AF=1 to opt in)");
-    }
-
-    let is_pre_binding =
-        data_path.contains("/sparql/pre-binding/") || shapes_path.contains("/sparql/pre-binding/");
-    if is_pre_binding && !allow_pre_binding {
-        return Some("SPARQL pre-binding disabled (set SHACL_W3C_ALLOW_PRE_BINDING=1 to opt in)");
     }
 
     None

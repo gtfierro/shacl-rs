@@ -1,371 +1,284 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/core/property/nodeKind-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:InstanceWithBlankNode
-  rdf:type ex:MyClass ;
-  ex:myProperty _:b55454 ;
-.
-ex:InstanceWithBlankNodeAndIRI
-  rdf:type ex:MyClass ;
-  ex:myProperty rdfs:Class ;
-  ex:myProperty _:b67098 ;
-.
-ex:InstanceWithBlankNodeAndLiteral
-  rdf:type ex:MyClass ;
-  ex:myProperty "Literal" ;
-  ex:myProperty _:b99026 ;
-.
-ex:InstanceWithIRI
-  rdf:type ex:MyClass ;
-  ex:myProperty rdfs:Class ;
-.
-ex:InstanceWithIRIAndLiteral
-  rdf:type ex:MyClass ;
-  ex:myProperty rdfs:Class ;
-  ex:myProperty "Literal" ;
-.
-ex:InstanceWithLiteral
-  rdf:type ex:MyClass ;
-  ex:myProperty "Literal" ;
-.
-ex:MyClass
-  rdf:type rdfs:Class ;
-  rdfs:label "My class" ;
-.
-ex:ShapeWithBlankNode
-  rdf:type sh:NodeShape ;
-  sh:property _:b38619 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:ShapeWithBlankNodeOrIRI
-  rdf:type sh:NodeShape ;
-  sh:property _:b3078 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:ShapeWithBlankNodeOrLiteral
-  rdf:type sh:NodeShape ;
-  sh:property _:b14975 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:ShapeWithIRI
-  rdf:type sh:NodeShape ;
-  sh:property _:b97614 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:ShapeWithIRIOrLiteral
-  rdf:type sh:NodeShape ;
-  sh:property _:b97860 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:ShapeWithLiteral
-  rdf:type sh:NodeShape ;
-  sh:property _:b79526 ;
-  sh:targetClass ex:MyClass ;
-.
-ex:myProperty
-  rdf:type rdf:Property ;
-  rdfs:domain ex:MyClass ;
-  rdfs:label "my property" ;
-.
-<urn:nodeKind-001.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:nodeKind-001>
-    ) ;
-.
-<urn:nodeKind-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of sh:nodeKind at property shape 001" ;
-  mf:action [
-      sht:dataGraph <urn:nodeKind-001.ttl> ;
-      sht:shapesGraph <urn:nodeKind-001.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNode ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value _:b55454 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNode ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value _:b55454 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNode ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97860 ;
-          sh:value _:b55454 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b14975 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value _:b67098 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value _:b67098 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97860 ;
-          sh:value _:b67098 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b3078 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value _:b99026 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value _:b99026 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97860 ;
-          sh:value _:b99026 ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b14975 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRI ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b3078 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b14975 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b79526 ;
-          sh:value rdfs:Class ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithIRIAndLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b3078 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b38619 ;
-          sh:value "Literal" ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InstanceWithLiteral ;
-          sh:resultPath ex:myProperty ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
-          sh:sourceShape _:b97614 ;
-          sh:value "Literal" ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
-_:b3078
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:BlankNodeOrIRI ;
-.
-_:b14975
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:BlankNodeOrLiteral ;
-.
-_:b38619
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:BlankNode ;
-.
-_:b55454
-  rdf:type rdfs:Resource ;
-.
-_:b67098
-  rdf:type rdfs:Resource ;
-.
-_:b79526
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:Literal ;
-.
-_:b97614
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:IRI ;
-.
-_:b97860
-  sh:path ex:myProperty ;
-  sh:nodeKind sh:IRIOrLiteral ;
-.
-_:b99026
-  rdf:type rdfs:Resource ;
-.
+ex:MyClass a rdfs:Class ;
+    rdfs:label "My class" .
+
+ex:ShapeWithBlankNode a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+    sh:targetClass ex:MyClass .
+
+ex:ShapeWithBlankNodeOrIRI a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b5 ;
+    sh:targetClass ex:MyClass .
+
+ex:ShapeWithBlankNodeOrLiteral a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b6 ;
+    sh:targetClass ex:MyClass .
+
+ex:ShapeWithIRI a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+    sh:targetClass ex:MyClass .
+
+ex:ShapeWithIRIOrLiteral a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b8 ;
+    sh:targetClass ex:MyClass .
+
+ex:ShapeWithLiteral a sh:NodeShape ;
+    sh:property _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+    sh:targetClass ex:MyClass .
+
+<urn:nodeKind-001> a sht:Validate ;
+    rdfs:label "Test of sh:nodeKind at property shape 001" ;
+    mf:action [ sht:dataGraph <urn:nodeKind-001.ttl> ;
+            sht:shapesGraph <urn:nodeKind-001.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNode ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b1 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNode ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b1 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNode ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b8 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b1 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b6 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b2 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b2 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b8 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b2 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b5 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b3 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b3 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithBlankNodeAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b8 ;
+                    sh:value _:n48198f9d62d043fc9be1a4829fa95672b3 ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b6 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRI ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b5 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b6 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b9 ;
+                    sh:value rdfs:Class ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithIRIAndLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b5 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b4 ;
+                    sh:value "Literal" ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InstanceWithLiteral ;
+                    sh:resultPath ex:myProperty ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:NodeKindConstraintComponent ;
+                    sh:sourceShape _:n48198f9d62d043fc9be1a4829fa95672b7 ;
+                    sh:value "Literal" ] ] ;
+    mf:status sht:approved .
+
+<urn:nodeKind-001.ttl> a mf:Manifest ;
+    mf:entries ( <urn:nodeKind-001> ) .
+
+ex:InstanceWithBlankNode a ex:MyClass ;
+    ex:myProperty _:n48198f9d62d043fc9be1a4829fa95672b1 .
+
+ex:InstanceWithIRI a ex:MyClass ;
+    ex:myProperty rdfs:Class .
+
+ex:InstanceWithLiteral a ex:MyClass ;
+    ex:myProperty "Literal" .
+
+ex:InstanceWithBlankNodeAndIRI a ex:MyClass ;
+    ex:myProperty _:n48198f9d62d043fc9be1a4829fa95672b2,
+        rdfs:Class .
+
+ex:InstanceWithBlankNodeAndLiteral a ex:MyClass ;
+    ex:myProperty _:n48198f9d62d043fc9be1a4829fa95672b3,
+        "Literal" .
+
+ex:InstanceWithIRIAndLiteral a ex:MyClass ;
+    ex:myProperty rdfs:Class,
+        "Literal" .
+
+ex:myProperty a rdf:Property ;
+    rdfs:label "my property" ;
+    rdfs:domain ex:MyClass .
+
+_:n48198f9d62d043fc9be1a4829fa95672b1 a rdfs:Resource .
+
+_:n48198f9d62d043fc9be1a4829fa95672b2 a rdfs:Resource .
+
+_:n48198f9d62d043fc9be1a4829fa95672b3 a rdfs:Resource .
+
+_:n48198f9d62d043fc9be1a4829fa95672b5 sh:nodeKind sh:BlankNodeOrIRI ;
+    sh:path ex:myProperty .
+
+_:n48198f9d62d043fc9be1a4829fa95672b6 sh:nodeKind sh:BlankNodeOrLiteral ;
+    sh:path ex:myProperty .
+
+_:n48198f9d62d043fc9be1a4829fa95672b8 sh:nodeKind sh:IRIOrLiteral ;
+    sh:path ex:myProperty .
+
+_:n48198f9d62d043fc9be1a4829fa95672b4 sh:nodeKind sh:BlankNode ;
+    sh:path ex:myProperty .
+
+_:n48198f9d62d043fc9be1a4829fa95672b7 sh:nodeKind sh:IRI ;
+    sh:path ex:myProperty .
+
+_:n48198f9d62d043fc9be1a4829fa95672b9 sh:nodeKind sh:Literal ;
+    sh:path ex:myProperty .
+

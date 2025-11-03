@@ -1,6 +1,7 @@
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix ex: <http://example.org/shacl-test/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:i ex:p "300"^^xsd:byte .
-ex:i ex:p "55"^^xsd:integer .
-ex:i ex:p "c"^^xsd:byte .
+ex:i ex:p "300"^^xsd:byte,
+        "c"^^xsd:byte,
+        55 .
+

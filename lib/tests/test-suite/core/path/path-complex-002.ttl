@@ -1,7 +1,5 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://example.org/shacl/tests/> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -9,43 +7,41 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <urn:path-complex-002.ttl> a mf:Manifest ;
-  mf:entries (
-      <urn:path-complex-002>
-    ) .
+    mf:entries ( <urn:path-complex-002> ) .
 
 <urn:path-complex-002> a sht:Validate ;
-  rdfs:label "Test of complex path validation results" ;
-  mf:action [
-      sht:dataGraph <path-complex-002-data.ttl> ;
-      sht:shapesGraph <path-complex-002-shapes.ttl> ] ;
-  mf:result [ a sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [ a sh:ValidationResult ;
-          sh:focusNode ex:i ;
-	  sh:value ex:k ;
-          sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:s1 ] ;
-      sh:result [ a sh:ValidationResult ;
-          sh:focusNode ex:i ;
-	  sh:value ex:l ;
-          sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:s1 ] ;
-      sh:result [ a sh:ValidationResult ;
-          sh:focusNode ex:i ;
-	  sh:value ex:l ;
-          sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:s2 ] ;
-      sh:result [ a sh:ValidationResult ;
-          sh:focusNode ex:i ;
-	  sh:value ex:k ;
-          sh:resultPath( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:s2 ] ] ;
-  mf:status sht:approved .
+    rdfs:label "Test of complex path validation results" ;
+    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-complex-002-data.ttl> ;
+            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-complex-002-shapes.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:i ;
+                    sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:s2 ;
+                    sh:value ex:l ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:i ;
+                    sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:s2 ;
+                    sh:value ex:k ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:i ;
+                    sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:s1 ;
+                    sh:value ex:k ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:i ;
+                    sh:resultPath ( [ sh:inversePath ex:p ] [ sh:inversePath ex:p ] ) ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:s1 ;
+                    sh:value ex:l ] ] ;
+    mf:status sht:approved .
+

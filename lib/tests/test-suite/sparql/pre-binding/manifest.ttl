@@ -1,22 +1,20 @@
-@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix sht:     <http://www.w3.org/ns/shacl-test#> .
+@prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<urn:manifest.ttl>
-	a mf:Manifest ;
-	rdfs:label "Tests for pre-binding" ;
-	mf:include <pre-binding-001.ttl> ;
-	mf:include <pre-binding-002.ttl> ;
-	mf:include <pre-binding-003.ttl> ;
-	mf:include <pre-binding-004.ttl> ;
-	mf:include <pre-binding-005.ttl> ;
-	mf:include <pre-binding-006.ttl> ;
-	mf:include <pre-binding-007.ttl> ;
-	mf:include <shapesGraph-001.ttl> ;
-	mf:include <unsupported-sparql-001.ttl> ;
-	mf:include <unsupported-sparql-002.ttl> ;
-	mf:include <unsupported-sparql-003.ttl> ;
-	mf:include <unsupported-sparql-004.ttl> ;
-	mf:include <unsupported-sparql-005.ttl> ;
-	mf:include <unsupported-sparql-006.ttl> ;
-.
+<urn:manifest.ttl> a mf:Manifest ;
+    rdfs:label "Tests for pre-binding" ;
+    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-001.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-002.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-003.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-004.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-005.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-006.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-007.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/shapesGraph-001.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-001.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-002.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-003.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-004.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-005.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-006.ttl> .
+

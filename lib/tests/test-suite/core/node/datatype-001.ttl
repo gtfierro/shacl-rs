@@ -1,64 +1,46 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/core/node/datatype-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:TestShape
-  rdf:type sh:NodeShape ;
-  sh:datatype xsd:integer ;
-  sh:targetClass ex:TestClass ;
-  sh:targetNode xsd:integer ;
-  sh:targetNode 42 ;
-  sh:targetNode "aldi"^^xsd:integer ;
-.
-<urn:datatype-001.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:datatype-001>
-    ) ;
-.
-<urn:datatype-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of sh:datatype at node shape 001" ;
-  mf:action [
-      sht:dataGraph <urn:datatype-001.ttl> ;
-      sht:shapesGraph <urn:datatype-001.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode xsd:integer ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value xsd:integer ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode "aldi"^^xsd:integer ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value "aldi"^^xsd:integer ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode _:b30507 ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
-          sh:sourceShape ex:TestShape ;
-          sh:value _:b30507 ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
-_:b30507
-  rdf:type ex:TestClass ;
-.
+<urn:datatype-001> a sht:Validate ;
+    rdfs:label "Test of sh:datatype at node shape 001" ;
+    mf:action [ sht:dataGraph <urn:datatype-001.ttl> ;
+            sht:shapesGraph <urn:datatype-001.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode xsd:integer ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value xsd:integer ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode "aldi"^^xsd:integer ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value "aldi"^^xsd:integer ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode _:ncf71c64195cc45d6bb4fd11a88345c8db7 ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:DatatypeConstraintComponent ;
+                    sh:sourceShape ex:TestShape ;
+                    sh:value _:ncf71c64195cc45d6bb4fd11a88345c8db7 ] ] ;
+    mf:status sht:approved .
+
+<urn:datatype-001.ttl> a mf:Manifest ;
+    mf:entries ( <urn:datatype-001> ) .
+
+ex:TestShape a sh:NodeShape ;
+    sh:datatype xsd:integer ;
+    sh:targetClass ex:TestClass ;
+    sh:targetNode xsd:integer,
+        42,
+        "aldi"^^xsd:integer .
+
+_:ncf71c64195cc45d6bb4fd11a88345c8db7 a ex:TestClass .
+

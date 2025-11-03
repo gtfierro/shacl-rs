@@ -1,11 +1,8 @@
-@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix sht:     <http://www.w3.org/ns/shacl-test#> .
+@prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<>
-	a mf:Manifest ;
-	mf:include <deactivated-001.test.ttl> ;
-	mf:include <deactivated-002.test.ttl> ;
-	mf:include <severity-001.test.ttl> ;
-	mf:include <severity-002.test.ttl> ;
-	.
+<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/manifest.ttl> a mf:Manifest ;
+    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001.test.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-002.test.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-001.test.ttl>,
+        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002.test.ttl> .
+

@@ -1,9 +1,7 @@
-@prefix mf:      <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix sht:     <http://www.w3.org/ns/shacl-test#> .
+@prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<urn:manifest.ttl>
-	a mf:Manifest ;
-	rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/sparql/property" ;
-	mf:include <sparql-001.ttl> ;
-	.
+<urn:manifest.ttl> a mf:Manifest ;
+    rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/sparql/property" ;
+    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/property/sparql-001.ttl> .
+

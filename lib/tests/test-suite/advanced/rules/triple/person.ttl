@@ -1,44 +1,34 @@
-# baseURI: http://datashapes.org/shasf/tests/rules/triple/person
-# imports: http://datashapes.org/dash
-# prefix: person
-
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix person: <http://datashapes.org/shasf/tests/rules/triple/person#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<http://datashapes.org/shasf/tests/rules/triple/person>
-  rdf:type owl:Ontology ;
-  owl:imports <http://datashapes.org/dash> ;
-  owl:versionInfo "Created with TopBraid Composer" ;
-.
-person:JohnDoe
-  rdf:type person:Person ;
-  person:firstName "John" ;
-  person:lastName "Doe" ;
-  person:zipCode 12345 ;
-  rdfs:label "John doe" ;
-.
-person:Person
-  rdf:type rdfs:Class ;
-  rdfs:label "Person" ;
-.
-person:firstName
-  rdf:type rdf:Property ;
-  rdfs:domain person:Person ;
-  rdfs:label "first name" ;
-  rdfs:range xsd:string ;
-.
-person:lastName
-  rdf:type rdf:Property ;
-  rdfs:domain person:Person ;
-  rdfs:label "last name" ;
-  rdfs:range xsd:string ;
-.
-person:zipCode
-  rdf:type rdf:Property ;
-  rdfs:domain person:Person ;
-  rdfs:label "zip code" ;
-  rdfs:range xsd:integer ;
-.
+person:Person a rdfs:Class ;
+    rdfs:label "Person" .
+
+<http://datashapes.org/shasf/tests/rules/triple/person> a owl:Ontology ;
+    owl:imports <http://datashapes.org/dash> ;
+    owl:versionInfo "Created with TopBraid Composer" .
+
+person:JohnDoe a person:Person ;
+    rdfs:label "John doe" ;
+    person:firstName "John" ;
+    person:lastName "Doe" ;
+    person:zipCode 12345 .
+
+person:firstName a rdf:Property ;
+    rdfs:label "first name" ;
+    rdfs:domain person:Person ;
+    rdfs:range xsd:string .
+
+person:lastName a rdf:Property ;
+    rdfs:label "last name" ;
+    rdfs:domain person:Person ;
+    rdfs:range xsd:string .
+
+person:zipCode a rdf:Property ;
+    rdfs:label "zip code" ;
+    rdfs:domain person:Person ;
+    rdfs:range xsd:integer .
+

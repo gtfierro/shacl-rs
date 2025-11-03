@@ -1,100 +1,73 @@
-@prefix dash: <http://datashapes.org/dash#> .
 @prefix ex: <http://datashapes.org/sh/tests/core/property/property-001.test#> .
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:Address
-  rdf:type rdfs:Class ;
-  rdfs:label "Address" ;
-  rdfs:subClassOf rdfs:Resource ;
-.
-ex:City
-  rdf:type rdfs:Class ;
-  rdfs:label "City" ;
-  rdfs:subClassOf rdfs:Resource ;
-.
-ex:InvalidAddress
-  rdf:type ex:Address ;
-  ex:city ex:InvalidCity ;
-.
-ex:InvalidPerson1
-  rdf:type ex:Person ;
-  ex:address ex:InvalidAddress ;
-.
-ex:InvalidPerson2
-  rdf:type ex:Person ;
-  ex:address ex:InvalidAddress ;
-  ex:address ex:ValidAddress ;
-.
-ex:Person
-  rdf:type rdfs:Class ;
-  rdfs:label "Person" ;
-  rdfs:subClassOf rdfs:Resource ;
-.
-ex:PersonShape
-  rdf:type sh:NodeShape ;
-  rdfs:label "Person shape" ;
-  sh:property [
-      sh:path ex:address ;
-      sh:property ex:PersonShape-address-city ;
-    ] ;
-  sh:targetClass ex:Person ;
-.
-ex:PersonShape-address-city
-  sh:path ex:city ;
-  sh:class ex:City ;
-.
-ex:ProperCity
-  rdf:type ex:City ;
-  rdfs:label "Proper city" ;
-.
-ex:ValidAddress
-  rdf:type ex:Address ;
-  ex:city ex:ProperCity ;
-.
-ex:ValidPerson1
-  rdf:type ex:Person ;
-  ex:address ex:ValidAddress ;
-.
-<urn:property-001.ttl>
-  rdf:type mf:Manifest ;
-  mf:entries (
-      <urn:property-001>
-    ) ;
-.
-<urn:property-001>
-  rdf:type sht:Validate ;
-  rdfs:label "Test of sh:property at property shape 001" ;
-  mf:action [
-      sht:dataGraph <urn:property-001.ttl> ;
-      sht:shapesGraph <urn:property-001.ttl> ;
-    ] ;
-  mf:result [
-      rdf:type sh:ValidationReport ;
-      sh:conforms "false"^^xsd:boolean ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InvalidAddress ;
-          sh:resultPath ex:city ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:PersonShape-address-city ;
-          sh:value ex:InvalidCity ;
-        ] ;
-      sh:result [
-          rdf:type sh:ValidationResult ;
-          sh:focusNode ex:InvalidAddress ;
-          sh:resultPath ex:city ;
-          sh:resultSeverity sh:Violation ;
-          sh:sourceConstraintComponent sh:ClassConstraintComponent ;
-          sh:sourceShape ex:PersonShape-address-city ;
-          sh:value ex:InvalidCity ;
-        ] ;
-    ] ;
-  mf:status sht:approved ;
-.
+ex:Address a rdfs:Class ;
+    rdfs:label "Address" ;
+    rdfs:subClassOf rdfs:Resource .
+
+ex:City a rdfs:Class ;
+    rdfs:label "City" ;
+    rdfs:subClassOf rdfs:Resource .
+
+ex:Person a rdfs:Class ;
+    rdfs:label "Person" ;
+    rdfs:subClassOf rdfs:Resource .
+
+ex:InvalidPerson1 a ex:Person ;
+    ex:address ex:InvalidAddress .
+
+ex:InvalidPerson2 a ex:Person ;
+    ex:address ex:InvalidAddress,
+        ex:ValidAddress .
+
+ex:PersonShape a sh:NodeShape ;
+    rdfs:label "Person shape" ;
+    sh:property [ sh:path ex:address ;
+            sh:property ex:PersonShape-address-city ] ;
+    sh:targetClass ex:Person .
+
+ex:ValidPerson1 a ex:Person ;
+    ex:address ex:ValidAddress .
+
+ex:ProperCity a ex:City ;
+    rdfs:label "Proper city" .
+
+<urn:property-001> a sht:Validate ;
+    rdfs:label "Test of sh:property at property shape 001" ;
+    mf:action [ sht:dataGraph <urn:property-001.ttl> ;
+            sht:shapesGraph <urn:property-001.ttl> ] ;
+    mf:result [ a sh:ValidationReport ;
+            sh:conforms false ;
+            sh:result [ a sh:ValidationResult ;
+                    sh:focusNode ex:InvalidAddress ;
+                    sh:resultPath ex:city ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:PersonShape-address-city ;
+                    sh:value ex:InvalidCity ],
+                [ a sh:ValidationResult ;
+                    sh:focusNode ex:InvalidAddress ;
+                    sh:resultPath ex:city ;
+                    sh:resultSeverity sh:Violation ;
+                    sh:sourceConstraintComponent sh:ClassConstraintComponent ;
+                    sh:sourceShape ex:PersonShape-address-city ;
+                    sh:value ex:InvalidCity ] ] ;
+    mf:status sht:approved .
+
+ex:ValidAddress a ex:Address ;
+    ex:city ex:ProperCity .
+
+<urn:property-001.ttl> a mf:Manifest ;
+    mf:entries ( <urn:property-001> ) .
+
+ex:PersonShape-address-city sh:class ex:City ;
+    sh:path ex:city .
+
+ex:InvalidAddress a ex:Address ;
+    ex:city ex:InvalidCity .
+
