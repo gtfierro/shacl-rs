@@ -1,8 +1,11 @@
 //! Builds executable validators from structural descriptors.
 
+use crate::model::components::sparql::CustomConstraintComponentDefinition;
 use crate::model::components::ComponentDescriptor;
 use crate::runtime::validators;
 use crate::runtime::{Component, CustomConstraintComponent};
+use oxigraph::model::{NamedNode, Term};
+use std::collections::HashMap;
 
 /// Responsible for building runtime evaluators from high-level component descriptors.
 #[allow(dead_code)]
@@ -124,9 +127,19 @@ pub(crate) fn build_component_from_descriptor(descriptor: &ComponentDescriptor) 
         ComponentDescriptor::Custom {
             definition,
             parameter_values,
-        } => Component::CustomConstraint(CustomConstraintComponent {
-            definition: definition.clone(),
-            parameter_values: parameter_values.clone(),
-        }),
+        } => Component::CustomConstraint(build_custom_constraint_component(
+            definition,
+            parameter_values,
+        )),
+    }
+}
+
+pub(crate) fn build_custom_constraint_component(
+    definition: &CustomConstraintComponentDefinition,
+    parameter_values: &HashMap<NamedNode, Vec<Term>>,
+) -> CustomConstraintComponent {
+    CustomConstraintComponent {
+        definition: definition.clone(),
+        parameter_values: parameter_values.clone(),
     }
 }

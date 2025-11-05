@@ -43,6 +43,10 @@ pub(crate) struct SHACL {
     pub(crate) target_node: NamedNodeRef<'static>,
     pub(crate) target_objects_of: NamedNodeRef<'static>,
     pub(crate) target_subjects_of: NamedNodeRef<'static>,
+    pub(crate) target: NamedNodeRef<'static>,
+    pub(crate) target_validator: NamedNodeRef<'static>,
+    pub(crate) target_shape: NamedNodeRef<'static>,
+    pub(crate) filter_shape: NamedNodeRef<'static>,
 
     pub(crate) equals: NamedNodeRef<'static>,
     pub(crate) disjoint: NamedNodeRef<'static>,
@@ -70,6 +74,7 @@ pub(crate) struct SHACL {
 
     // SPARQL
     pub(crate) select: NamedNodeRef<'static>,
+    pub(crate) ask: NamedNodeRef<'static>,
     pub(crate) deactivated: NamedNodeRef<'static>,
     pub(crate) message: NamedNodeRef<'static>,
     pub(crate) sparql: NamedNodeRef<'static>,
@@ -77,6 +82,27 @@ pub(crate) struct SHACL {
     pub(crate) declare: NamedNodeRef<'static>,
     pub(crate) prefix: NamedNodeRef<'static>,
     pub(crate) namespace: NamedNodeRef<'static>,
+    pub(crate) default_value: NamedNodeRef<'static>,
+    pub(crate) name: NamedNodeRef<'static>,
+    pub(crate) description: NamedNodeRef<'static>,
+    pub(crate) parameter: NamedNodeRef<'static>,
+    pub(crate) optional: NamedNodeRef<'static>,
+    pub(crate) var_name: NamedNodeRef<'static>,
+    pub(crate) validator: NamedNodeRef<'static>,
+    pub(crate) node_validator: NamedNodeRef<'static>,
+    pub(crate) property_validator: NamedNodeRef<'static>,
+    pub(crate) shape_class: NamedNodeRef<'static>,
+    pub(crate) shape_prop: NamedNodeRef<'static>,
+    pub(crate) rule: NamedNodeRef<'static>,
+    pub(crate) triple_rule: NamedNodeRef<'static>,
+    pub(crate) sparql_rule: NamedNodeRef<'static>,
+    pub(crate) construct: NamedNodeRef<'static>,
+    pub(crate) condition: NamedNodeRef<'static>,
+    pub(crate) rule_subject: NamedNodeRef<'static>,
+    pub(crate) rule_predicate: NamedNodeRef<'static>,
+    pub(crate) rule_object: NamedNodeRef<'static>,
+    pub(crate) order: NamedNodeRef<'static>,
+    pub(crate) this: NamedNodeRef<'static>,
 
     // Validation Report
     pub(crate) validation_report: NamedNodeRef<'static>,
@@ -150,6 +176,11 @@ impl SHACL {
                 .unwrap(),
             target_subjects_of: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetSubjectsOf")
                 .unwrap(),
+            target: NamedNodeRef::new("http://www.w3.org/ns/shacl#target").unwrap(),
+            target_validator: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetValidator")
+                .unwrap(),
+            target_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#targetShape").unwrap(),
+            filter_shape: NamedNodeRef::new("http://www.w3.org/ns/shacl#filterShape").unwrap(),
 
             equals: NamedNodeRef::new("http://www.w3.org/ns/shacl#equals").unwrap(),
             disjoint: NamedNodeRef::new("http://www.w3.org/ns/shacl#disjoint").unwrap(),
@@ -183,6 +214,7 @@ impl SHACL {
 
             // SPARQL
             select: NamedNodeRef::new("http://www.w3.org/ns/shacl#select").unwrap(),
+            ask: NamedNodeRef::new("http://www.w3.org/ns/shacl#ask").unwrap(),
             deactivated: NamedNodeRef::new("http://www.w3.org/ns/shacl#deactivated").unwrap(),
             message: NamedNodeRef::new("http://www.w3.org/ns/shacl#message").unwrap(),
             sparql: NamedNodeRef::new("http://www.w3.org/ns/shacl#sparql").unwrap(),
@@ -190,6 +222,28 @@ impl SHACL {
             declare: NamedNodeRef::new("http://www.w3.org/ns/shacl#declare").unwrap(),
             prefix: NamedNodeRef::new("http://www.w3.org/ns/shacl#prefix").unwrap(),
             namespace: NamedNodeRef::new("http://www.w3.org/ns/shacl#namespace").unwrap(),
+            default_value: NamedNodeRef::new("http://www.w3.org/ns/shacl#defaultValue").unwrap(),
+            name: NamedNodeRef::new("http://www.w3.org/ns/shacl#name").unwrap(),
+            description: NamedNodeRef::new("http://www.w3.org/ns/shacl#description").unwrap(),
+            parameter: NamedNodeRef::new("http://www.w3.org/ns/shacl#parameter").unwrap(),
+            optional: NamedNodeRef::new("http://www.w3.org/ns/shacl#optional").unwrap(),
+            var_name: NamedNodeRef::new("http://www.w3.org/ns/shacl#varName").unwrap(),
+            validator: NamedNodeRef::new("http://www.w3.org/ns/shacl#validator").unwrap(),
+            node_validator: NamedNodeRef::new("http://www.w3.org/ns/shacl#nodeValidator").unwrap(),
+            property_validator: NamedNodeRef::new("http://www.w3.org/ns/shacl#propertyValidator")
+                .unwrap(),
+            shape_class: NamedNodeRef::new("http://www.w3.org/ns/shacl#Shape").unwrap(),
+            shape_prop: NamedNodeRef::new("http://www.w3.org/ns/shacl#shape").unwrap(),
+            rule: NamedNodeRef::new("http://www.w3.org/ns/shacl#rule").unwrap(),
+            triple_rule: NamedNodeRef::new("http://www.w3.org/ns/shacl#TripleRule").unwrap(),
+            sparql_rule: NamedNodeRef::new("http://www.w3.org/ns/shacl#SPARQLRule").unwrap(),
+            construct: NamedNodeRef::new("http://www.w3.org/ns/shacl#construct").unwrap(),
+            condition: NamedNodeRef::new("http://www.w3.org/ns/shacl#condition").unwrap(),
+            rule_subject: NamedNodeRef::new("http://www.w3.org/ns/shacl#subject").unwrap(),
+            rule_predicate: NamedNodeRef::new("http://www.w3.org/ns/shacl#predicate").unwrap(),
+            rule_object: NamedNodeRef::new("http://www.w3.org/ns/shacl#object").unwrap(),
+            order: NamedNodeRef::new("http://www.w3.org/ns/shacl#order").unwrap(),
+            this: NamedNodeRef::new("http://www.w3.org/ns/shacl#this").unwrap(),
 
             // Validation Report
             validation_report: NamedNodeRef::new("http://www.w3.org/ns/shacl#ValidationReport")

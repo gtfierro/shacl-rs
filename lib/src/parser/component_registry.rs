@@ -1,4 +1,7 @@
-use super::{parse_rdf_list, ParsingContext};
+use super::{
+    components::ensure_node_shape, components::resolve_shape_reference, parse_rdf_list,
+    ParsingContext,
+};
 use crate::model::components::ComponentDescriptor;
 use crate::named_nodes::SHACL;
 use crate::types::{ComponentID, ID};
@@ -216,9 +219,9 @@ fn handle_node_kind_constraint(
 
 fn handle_node_constraint(
     shacl: &SHACL,
-    _shape_term: &Term,
+    shape_term: &Term,
     context: &mut ParsingContext,
-    _unique_lang: &HashMap<Term, String>,
+    unique_lang: &HashMap<Term, String>,
     pred_obj_pairs: &HashMap<NamedNode, Vec<Term>>,
     processed: &mut HashSet<NamedNode>,
     descriptors: &mut HashMap<ComponentID, ComponentDescriptor>,
@@ -228,9 +231,29 @@ fn handle_node_constraint(
     if let Some(terms) = pred_obj_pairs.get(&predicate) {
         processed.insert(predicate.clone());
         for term in terms {
-            let target_shape_id = context.get_or_create_node_id(term.clone());
+            let target_shape_id = ensure_node_shape(context, term.clone(), unique_lang)?;
             let key = Term::Literal(Literal::new_simple_literal(format!(
                 "NodeConstraint:{}",
+                term
+            )));
+            insert_descriptor(
+                context,
+                descriptors,
+                key,
+                ComponentDescriptor::Node {
+                    shape: target_shape_id,
+                },
+            );
+        }
+    }
+
+    let shape_predicate = owned_predicate(shacl.shape_prop);
+    if let Some(terms) = pred_obj_pairs.get(&shape_predicate) {
+        processed.insert(shape_predicate.clone());
+        for term in terms {
+            let target_shape_id = resolve_shape_reference(context, term, shape_term, unique_lang)?;
+            let key = Term::Literal(Literal::new_simple_literal(format!(
+                "ShapeConstraint:{}",
                 term
             )));
             insert_descriptor(

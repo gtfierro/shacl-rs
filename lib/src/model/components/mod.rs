@@ -6,6 +6,7 @@ use crate::types::{PropShapeID, ID};
 
 pub mod sparql;
 
+use crate::model::templates::ComponentTemplateDefinition;
 use sparql::CustomConstraintComponentDefinition;
 
 /// Data-only description of a SHACL constraint component extracted during parsing.
@@ -107,4 +108,15 @@ pub enum ComponentDescriptor {
         definition: CustomConstraintComponentDefinition,
         parameter_values: HashMap<NamedNode, Vec<Term>>,
     },
+}
+
+impl ComponentDescriptor {
+    #[allow(dead_code)]
+    /// Returns the template definition that produced this descriptor, if any.
+    pub fn template_definition(&self) -> Option<&ComponentTemplateDefinition> {
+        match self {
+            ComponentDescriptor::Custom { definition, .. } => definition.template.as_ref(),
+            _ => None,
+        }
+    }
 }

@@ -1,0 +1,55 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+
+ex:AdvancedTargetShapeGraph
+    a owl:Ontology .
+
+ex:AdvancedTargetShape
+    a sh:NodeShape ;
+    sh:target [
+        sh:declare [
+            sh:prefix "ex" ;
+            sh:namespace "http://example.org/" ;
+        ] ;
+        sh:select """
+            SELECT ?this WHERE {
+                ?this a ex:Targeted .
+            }
+        """ ;
+    ] ;
+    sh:property [
+        sh:path ex:flag ;
+        sh:hasValue "yes" ;
+    ] .
+
+ex:PopulationShape
+    a sh:NodeShape ;
+    sh:targetClass ex:Thing .
+
+ex:FilterShape
+    a sh:NodeShape ;
+    sh:property [
+        sh:path ex:flag ;
+        sh:hasValue "keep" ;
+    ] .
+
+ex:FilteredShape
+    a sh:NodeShape ;
+    sh:target [
+        sh:declare [
+            sh:prefix "ex" ;
+            sh:namespace "http://example.org/" ;
+        ] ;
+        sh:targetShape ex:PopulationShape ;
+        sh:filterShape ex:FilterShape ;
+        sh:ask """
+            ASK {
+                $this ex:status "review" .
+            }
+        """ ;
+    ] ;
+    sh:property [
+        sh:path ex:status ;
+        sh:hasValue "complete" ;
+    ] .

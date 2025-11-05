@@ -1,0 +1,44 @@
+@prefix ex: <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:LengthComponent
+    a sh:ConstraintComponent ;
+    sh:parameter [
+        sh:path ex:activate ;
+        sh:optional true ;
+    ] ;
+    sh:parameter [
+        sh:path ex:minLength ;
+        sh:optional true ;
+        sh:defaultValue "5"^^xsd:integer ;
+        sh:varName "minLength" ;
+    ] ;
+    sh:message "Value shorter than {?minLength} characters." ;
+    sh:prefixes [
+        a sh:PrefixDeclaration ;
+        sh:prefix "ex" ;
+        sh:namespace "http://example.org/"^^xsd:anyURI ;
+    ] ;
+    sh:propertyValidator [
+        rdf:type sh:SPARQLSelectValidator ;
+        sh:select """
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            SELECT $this ?value
+            WHERE {
+                $this $PATH ?value .
+                FILTER(strlen(str(?value)) < ?minLength)
+            }
+        """ ;
+    ] ;
+.
+
+ex:NameShape
+    a sh:NodeShape ;
+    sh:targetClass ex:Item ;
+    sh:property [
+        sh:path ex:name ;
+        ex:activate true ;
+    ] ;
+.

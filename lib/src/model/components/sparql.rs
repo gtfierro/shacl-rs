@@ -1,15 +1,21 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use oxigraph::model::{NamedNode, Term};
 
+use crate::model::templates::ComponentTemplateDefinition;
 use crate::types::Severity;
 
 /// Parameter definition for a custom SPARQL-based constraint component.
 #[derive(Debug, Clone)]
 pub struct Parameter {
+    pub subject: Term,
     pub path: NamedNode,
     pub optional: bool,
     pub var_name: Option<String>,
+    pub default_values: Vec<Term>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub extra: BTreeMap<NamedNode, Vec<Term>>,
 }
 
 /// Represents a SPARQL validator (either ASK or SELECT) defined on a custom constraint component.
@@ -34,6 +40,7 @@ pub struct CustomConstraintComponentDefinition {
     pub property_validator: Option<SPARQLValidator>,
     pub messages: Vec<Term>,
     pub severity: Option<Severity>,
+    pub template: Option<ComponentTemplateDefinition>,
 }
 
 /// Concrete values bound to a parameterized SPARQL validator during parsing time.

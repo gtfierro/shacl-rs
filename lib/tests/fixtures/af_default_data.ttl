@@ -1,0 +1,9 @@
+@prefix ex: <http://example.org/> .
+
+ex:ShortName
+    a ex:Item ;
+    ex:name "abc" .
+
+ex:LongName
+    a ex:Item ;
+    ex:name "acceptable" .

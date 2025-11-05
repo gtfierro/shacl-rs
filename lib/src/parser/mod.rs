@@ -1,5 +1,6 @@
 mod component_registry;
 mod components;
+mod rules;
 
 use crate::context::ParsingContext;
 use crate::named_nodes::{OWL, RDF, RDFS, SHACL};
@@ -12,6 +13,7 @@ use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{
     vocab::xsd, GraphName, GraphNameRef, NamedOrBlankNodeRef as SubjectRef, QuadRef, Term, TermRef,
 };
+use rules::parse_rules_for_shape;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -304,7 +306,7 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
     node_shapes.into_iter().collect()
 }
 
-fn parse_node_shape(
+pub(crate) fn parse_node_shape(
     context: &mut ParsingContext,
     shape_term: Term,
     unique_lang_lexicals: &HashMap<Term, String>,
@@ -399,6 +401,10 @@ fn parse_node_shape(
     let deactivated = shape_is_deactivated(context, subject, shape_graph_name.as_ref());
 
     let node_shape = NodeShape::new(id, targets, component_ids, severity, deactivated);
+    let rule_ids = parse_rules_for_shape(context, &shape_term, unique_lang_lexicals)?;
+    if !rule_ids.is_empty() {
+        context.node_shape_rules.insert(id, rule_ids);
+    }
     context.node_shapes.insert(id, node_shape);
     Ok(id)
 }
@@ -483,6 +489,10 @@ fn parse_property_shape(
         severity,
         deactivated,
     );
+    let rule_ids = parse_rules_for_shape(context, &shape_term, unique_lang_lexicals)?;
+    if !rule_ids.is_empty() {
+        context.prop_shape_rules.insert(id, rule_ids);
+    }
     context.prop_shapes.insert(id, prop_shape);
     Ok(id)
 }
@@ -500,7 +510,7 @@ fn shape_is_deactivated(
         .any(|quad| term_is_true(&quad.object))
 }
 
-fn term_is_true(term: &Term) -> bool {
+pub(super) fn term_is_true(term: &Term) -> bool {
     match term {
         Term::Literal(lit) => {
             let value = lit.value();
@@ -517,7 +527,7 @@ fn term_is_true(term: &Term) -> bool {
 }
 
 // Helper function to recursively parse SHACL paths
-fn parse_shacl_path_recursive(
+pub(super) fn parse_shacl_path_recursive(
     context: &ParsingContext,
     path_term_ref: TermRef,
 ) -> Result<PShapePath, String> {

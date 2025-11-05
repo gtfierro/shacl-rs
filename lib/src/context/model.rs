@@ -1,11 +1,13 @@
 #![allow(deprecated)]
 use super::ids::IDLookupTable;
-use crate::model::components::ComponentDescriptor;
+use crate::model::{
+    components::ComponentDescriptor, ComponentTemplateDefinition, Rule, ShapeTemplateDefinition,
+};
 use crate::optimize::Optimizer;
 use crate::parser;
 use crate::shape::{NodeShape, PropertyShape};
 use crate::sparql::SparqlServices;
-use crate::types::{ComponentID, PropShapeID, ID};
+use crate::types::{ComponentID, PropShapeID, RuleID, ID};
 use log::info;
 use ontoenv::api::OntoEnv;
 use ontoenv::ontology::OntologyLocation;
@@ -169,11 +171,22 @@ pub struct ShapesModel {
     pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
     #[allow(dead_code)]
     pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
+    #[allow(dead_code)]
+    pub(crate) rule_id_lookup: RefCell<IDLookupTable<RuleID>>,
     pub(crate) store: Store,
     pub(crate) shape_graph_iri: NamedNode,
     pub(crate) node_shapes: HashMap<ID, NodeShape>,
     pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     pub(crate) component_descriptors: HashMap<ComponentID, ComponentDescriptor>,
+    #[allow(dead_code)]
+    pub(crate) component_templates: HashMap<NamedNode, ComponentTemplateDefinition>,
+    #[allow(dead_code)]
+    pub(crate) shape_templates: HashMap<NamedNode, ShapeTemplateDefinition>,
+    #[allow(dead_code)]
+    pub(crate) shape_template_cache: HashMap<String, ID>,
+    pub(crate) rules: HashMap<RuleID, Rule>,
+    pub(crate) node_shape_rules: HashMap<ID, Vec<RuleID>>,
+    pub(crate) prop_shape_rules: HashMap<PropShapeID, Vec<RuleID>>,
     pub(crate) env: OntoEnv,
     pub(crate) sparql: Rc<SparqlServices>,
     #[allow(dead_code)]
@@ -243,11 +256,18 @@ impl ShapesModel {
             nodeshape_id_lookup: final_ctx.nodeshape_id_lookup,
             propshape_id_lookup: final_ctx.propshape_id_lookup,
             component_id_lookup: final_ctx.component_id_lookup,
+            rule_id_lookup: final_ctx.rule_id_lookup,
             store: final_ctx.store,
             shape_graph_iri: final_ctx.shape_graph_iri,
             node_shapes: final_ctx.node_shapes,
             prop_shapes: final_ctx.prop_shapes,
             component_descriptors: final_ctx.component_descriptors,
+            component_templates: final_ctx.component_templates,
+            shape_templates: final_ctx.shape_templates,
+            shape_template_cache: final_ctx.shape_template_cache,
+            rules: final_ctx.rules,
+            node_shape_rules: final_ctx.node_shape_rules,
+            prop_shape_rules: final_ctx.prop_shape_rules,
             env: final_ctx.env,
             sparql: final_ctx.sparql.clone(),
             features: final_ctx.features.clone(),
@@ -296,12 +316,19 @@ pub(crate) struct ParsingContext {
     pub(crate) nodeshape_id_lookup: RefCell<IDLookupTable<ID>>,
     pub(crate) propshape_id_lookup: RefCell<IDLookupTable<PropShapeID>>,
     pub(crate) component_id_lookup: RefCell<IDLookupTable<ComponentID>>,
+    pub(crate) rule_id_lookup: RefCell<IDLookupTable<RuleID>>,
     pub(crate) store: Store,
     pub(crate) shape_graph_iri: NamedNode,
     pub(crate) data_graph_iri: NamedNode,
     pub(crate) node_shapes: HashMap<ID, NodeShape>,
     pub(crate) prop_shapes: HashMap<PropShapeID, PropertyShape>,
     pub(crate) component_descriptors: HashMap<ComponentID, ComponentDescriptor>,
+    pub(crate) component_templates: HashMap<NamedNode, ComponentTemplateDefinition>,
+    pub(crate) shape_templates: HashMap<NamedNode, ShapeTemplateDefinition>,
+    pub(crate) shape_template_cache: HashMap<String, ID>,
+    pub(crate) rules: HashMap<RuleID, Rule>,
+    pub(crate) node_shape_rules: HashMap<ID, Vec<RuleID>>,
+    pub(crate) prop_shape_rules: HashMap<PropShapeID, Vec<RuleID>>,
     pub(crate) env: OntoEnv,
     pub(crate) sparql: Rc<SparqlServices>,
     #[allow(dead_code)]
@@ -326,12 +353,19 @@ impl ParsingContext {
             nodeshape_id_lookup: RefCell::new(IDLookupTable::<ID>::new()),
             propshape_id_lookup: RefCell::new(IDLookupTable::<PropShapeID>::new()),
             component_id_lookup: RefCell::new(IDLookupTable::<ComponentID>::new()),
+            rule_id_lookup: RefCell::new(IDLookupTable::<RuleID>::new()),
             store,
             shape_graph_iri,
             data_graph_iri,
             node_shapes: HashMap::new(),
             prop_shapes: HashMap::new(),
             component_descriptors: HashMap::new(),
+            component_templates: HashMap::new(),
+            shape_templates: HashMap::new(),
+            shape_template_cache: HashMap::new(),
+            rules: HashMap::new(),
+            node_shape_rules: HashMap::new(),
+            prop_shape_rules: HashMap::new(),
             env,
             sparql: Rc::new(SparqlServices::new()),
             features,
@@ -349,5 +383,9 @@ impl ParsingContext {
 
     pub(crate) fn get_or_create_component_id(&self, term: Term) -> ComponentID {
         self.component_id_lookup.borrow_mut().get_or_create_id(term)
+    }
+
+    pub(crate) fn get_or_create_rule_id(&self, term: Term) -> RuleID {
+        self.rule_id_lookup.borrow_mut().get_or_create_id(term)
     }
 }

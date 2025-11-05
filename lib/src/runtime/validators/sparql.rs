@@ -313,10 +313,16 @@ impl ValidateComponent for SPARQLConstraintComponent {
             &prepared_query,
             context.model.store(),
             &substitutions,
+            true,
         ) {
             Ok(QueryResults::Solutions(solutions)) => {
                 let mut results = vec![];
                 let mut seen_solutions = HashSet::new();
+                #[cfg(debug_assertions)]
+                let debug_prebinding = std::env::var("SHACL_DEBUG_PRE_BINDING").is_ok();
+                #[cfg(not(debug_assertions))]
+                let debug_prebinding = false;
+                let mut solution_count = 0usize;
                 for solution_res in solutions {
                     let solution = solution_res.map_err(|e| e.to_string())?;
 
@@ -387,6 +393,15 @@ impl ValidateComponent for SPARQLConstraintComponent {
                     .with_message_terms(message_terms);
 
                     results.push(ComponentValidationResult::Fail(c.clone(), failure));
+                    solution_count += 1;
+                }
+                #[cfg(debug_assertions)]
+                if debug_prebinding {
+                    let debug_label = format_term_for_label(&self.constraint_node);
+                    eprintln!(
+                        "SPARQL constraint {} produced {} solutions",
+                        debug_label, solution_count
+                    );
                 }
                 Ok(results)
             }
@@ -586,7 +601,32 @@ impl ValidateComponent for CustomConstraintComponent {
             })?;
             let var = Variable::new_unchecked(&var_name);
             substitutions.push((var.clone(), value.clone()));
-            prebound_vars.insert(var);
+            prebound_vars.insert(var.clone());
+            if param_meta.map(|p| p.optional).unwrap_or(false) {
+                optional_prebound_vars.insert(var);
+            }
+        }
+
+        for param in &self.definition.parameters {
+            let var_name = param
+                .var_name
+                .clone()
+                .unwrap_or_else(|| local_name(&param.path));
+            if !query_mentions_var(&query_body, &var_name) {
+                continue;
+            }
+            if self.parameter_values.contains_key(&param.path) {
+                continue;
+            }
+            let var = Variable::new_unchecked(&var_name);
+            if param.optional {
+                optional_prebound_vars.insert(var);
+                continue;
+            }
+            return Err(format!(
+                "Custom constraint {} is missing required parameter {} for query variable ?{}.",
+                self.definition.iri, param.path, var_name
+            ));
         }
 
         let include_value = validator.is_ask && query_mentions_var(&query_body, "value");
@@ -641,6 +681,7 @@ impl ValidateComponent for CustomConstraintComponent {
                         &prepared_query,
                         context.model.store(),
                         &ask_substitutions,
+                        true,
                     ) {
                         Ok(QueryResults::Boolean(conforms)) => {
                             if !conforms {
@@ -702,6 +743,7 @@ impl ValidateComponent for CustomConstraintComponent {
                 &prepared_query,
                 context.model.store(),
                 &substitutions,
+                true,
             ) {
                 Ok(QueryResults::Solutions(solutions)) => {
                     let mut seen_solutions = HashSet::new();

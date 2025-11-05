@@ -83,6 +83,7 @@ impl ValidateComponent for ClassConstraintComponent {
                 &prepared,
                 context.model.store(),
                 &[(cc_var.clone(), vn.clone())],
+                false,
             ) {
                 Ok(QueryResults::Boolean(result)) => {
                     if !result {
@@ -485,11 +486,18 @@ mod tests {
             nodeshape_id_lookup: RefCell::new(IDLookupTable::new()),
             propshape_id_lookup: RefCell::new(IDLookupTable::new()),
             component_id_lookup: RefCell::new(IDLookupTable::new()),
+            rule_id_lookup: RefCell::new(IDLookupTable::new()),
             store,
             shape_graph_iri,
             node_shapes: HashMap::new(),
             prop_shapes: HashMap::new(),
             component_descriptors: HashMap::<ComponentID, ComponentDescriptor>::new(),
+            component_templates: HashMap::new(),
+            shape_templates: HashMap::new(),
+            shape_template_cache: HashMap::new(),
+            rules: HashMap::new(),
+            node_shape_rules: HashMap::new(),
+            prop_shape_rules: HashMap::new(),
             env,
             sparql: Rc::new(SparqlServices::new()),
             features: FeatureToggles::default(),

@@ -305,7 +305,13 @@ impl PropertyShape {
             let results = context
                 .model
                 .sparql
-                .execute_with_substitutions(&query_str, &prepared, context.model.store(), &[])
+                .execute_with_substitutions(
+                    &query_str,
+                    &prepared,
+                    context.model.store(),
+                    &[],
+                    false,
+                )
                 .map_err(|e| {
                     format!(
                         "Failed to execute query for PropertyShape {}: {}",

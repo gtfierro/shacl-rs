@@ -1,0 +1,18 @@
+@prefix ex: <http://example.org/> .
+
+ex:Alpha
+    a ex:Targeted ;
+    a ex:Thing ;
+    ex:flag "yes" ;
+    ex:flag "keep" ;
+    ex:status "review" .
+
+ex:Beta
+    a ex:Targeted ;
+    a ex:Thing ;
+    ex:status "review" .
+
+ex:Gamma
+    a ex:Thing ;
+    ex:flag "keep" ;
+    ex:status "complete" .

@@ -67,7 +67,7 @@ impl Optimizer {
         let results = self
             .ctx
             .sparql
-            .execute_with_substitutions(&query, &prepared, &self.ctx.store, &[])
+            .execute_with_substitutions(&query, &prepared, &self.ctx.store, &[], false)
             .map_err(|e| e.to_string())?;
 
         let mut types = HashSet::<Term>::new();

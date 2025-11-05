@@ -1,6 +1,9 @@
 use super::graphviz::format_term_for_label;
 use super::model::ShapesModel;
-use crate::runtime::{build_component_from_descriptor, Component};
+use crate::model::components::sparql::CustomConstraintComponentDefinition;
+use crate::model::components::ComponentDescriptor;
+use crate::runtime::engine::build_custom_constraint_component;
+use crate::runtime::{build_component_from_descriptor, Component, CustomConstraintComponent};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, TraceItem, ID};
 use oxigraph::model::{GraphNameRef, NamedNode, NamedNodeRef, Term};
 use std::cell::RefCell;
@@ -16,6 +19,7 @@ pub struct ValidationContext {
     shape_graph_skolem_base: String,
     pub(crate) execution_traces: RefCell<Vec<Vec<TraceItem>>>,
     pub(crate) components: HashMap<ComponentID, Component>,
+    pub(crate) advanced_target_cache: RefCell<HashMap<Term, Vec<Term>>>,
 }
 
 impl ValidationContext {
@@ -28,10 +32,26 @@ impl ValidationContext {
             "{}/.well-known/skolem/",
             model.shape_graph_iri.as_str().trim_end_matches('/')
         );
+        let mut custom_cache: HashMap<String, CustomConstraintComponent> = HashMap::new();
         let components = model
             .component_descriptors
             .iter()
-            .map(|(id, descriptor)| (*id, build_component_from_descriptor(descriptor)))
+            .map(|(id, descriptor)| {
+                let component = match descriptor {
+                    ComponentDescriptor::Custom {
+                        definition,
+                        parameter_values,
+                    } => {
+                        let cache_key = custom_component_cache_key(definition, parameter_values);
+                        let cached = custom_cache.entry(cache_key).or_insert_with(|| {
+                            build_custom_constraint_component(definition, parameter_values)
+                        });
+                        Component::CustomConstraint(cached.clone())
+                    }
+                    _ => build_component_from_descriptor(descriptor),
+                };
+                (*id, component)
+            })
             .collect();
 
         Self {
@@ -41,6 +61,7 @@ impl ValidationContext {
             shape_graph_skolem_base,
             execution_traces: RefCell::new(Vec::new()),
             components,
+            advanced_target_cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -56,6 +77,16 @@ impl ValidationContext {
 
     pub(crate) fn get_component(&self, id: &ComponentID) -> Option<&Component> {
         self.components.get(id)
+    }
+
+    pub(crate) fn cached_advanced_target(&self, selector: &Term) -> Option<Vec<Term>> {
+        self.advanced_target_cache.borrow().get(selector).cloned()
+    }
+
+    pub(crate) fn store_advanced_target(&self, selector: &Term, nodes: &[Term]) {
+        self.advanced_target_cache
+            .borrow_mut()
+            .insert(selector.clone(), nodes.to_vec());
     }
 
     pub(crate) fn is_data_skolem_iri(&self, node: NamedNodeRef<'_>) -> bool {
@@ -97,6 +128,23 @@ impl ValidationContext {
             }
         }
     }
+}
+
+fn custom_component_cache_key(
+    definition: &CustomConstraintComponentDefinition,
+    parameter_values: &HashMap<NamedNode, Vec<Term>>,
+) -> String {
+    let mut entries: Vec<String> = parameter_values
+        .iter()
+        .map(|(param, values)| {
+            let mut value_strings: Vec<String> =
+                values.iter().map(|term| term.to_string()).collect();
+            value_strings.sort();
+            format!("{}={}", param.as_str(), value_strings.join(","))
+        })
+        .collect();
+    entries.sort();
+    format!("{}|{}", definition.iri.as_str(), entries.join("|"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

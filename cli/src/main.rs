@@ -3,7 +3,7 @@ use env_logger;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use oxigraph::io::RdfFormat;
-use shacl::{Source, Validator};
+use shacl::{InferenceConfig, Source, Validator};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -87,6 +87,48 @@ struct ValidateArgs {
     /// The output format for the validation report
     #[arg(long, value_enum, default_value_t = ValidateOutputFormat::Turtle)]
     format: ValidateOutputFormat,
+
+    /// Run SHACL rule inference before validation
+    #[arg(long)]
+    run_inference: bool,
+
+    /// Minimum iterations for inference (requires --run-inference)
+    #[arg(long, requires = "run_inference")]
+    inference_min_iterations: Option<usize>,
+
+    /// Maximum iterations for inference (requires --run-inference)
+    #[arg(long, requires = "run_inference")]
+    inference_max_iterations: Option<usize>,
+
+    /// Disable convergence-based early exit (requires --run-inference)
+    #[arg(long, requires = "run_inference")]
+    inference_no_converge: bool,
+
+    /// Fail if inference produces blank nodes (requires --run-inference)
+    #[arg(long, requires = "run_inference")]
+    inference_error_on_blank_nodes: bool,
+}
+
+#[derive(Parser)]
+struct InferenceArgs {
+    #[clap(flatten)]
+    common: CommonArgs,
+
+    /// Minimum iterations for inference
+    #[arg(long)]
+    min_iterations: Option<usize>,
+
+    /// Maximum iterations for inference
+    #[arg(long)]
+    max_iterations: Option<usize>,
+
+    /// Disable convergence-based early exit
+    #[arg(long)]
+    no_converge: bool,
+
+    /// Fail if inference produces blank nodes
+    #[arg(long)]
+    error_on_blank_nodes: bool,
 }
 
 #[derive(Parser)]
@@ -141,6 +183,8 @@ enum Commands {
     PdfHeatmap(PdfHeatmapArgs),
     /// Validate the data against the shapes
     Validate(ValidateArgs),
+    /// Run SHACL rule inference without performing validation
+    Inference(InferenceArgs),
     /// Print the execution traces for debugging
     Trace(TraceArgs),
 }
@@ -160,6 +204,26 @@ fn get_validator(common: &CommonArgs) -> Result<Validator, Box<dyn std::error::E
 
     Validator::from_sources(shapes_source, data_source)
         .map_err(|e| format!("Error creating validator: {}", e).into())
+}
+
+fn build_inference_config(
+    min_iterations: Option<usize>,
+    max_iterations: Option<usize>,
+    no_converge: bool,
+    error_on_blank_nodes: bool,
+) -> InferenceConfig {
+    let mut config = InferenceConfig::default();
+    if let Some(min) = min_iterations {
+        config.min_iterations = min;
+    }
+    if let Some(max) = max_iterations {
+        config.max_iterations = max;
+    }
+    if no_converge {
+        config.run_until_converged = false;
+    }
+    config.error_on_blank_nodes = error_on_blank_nodes;
+    config
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -194,7 +258,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Validate(args) => {
             let validator = get_validator(&args.common)?;
-            let report = validator.validate();
+            let (report, inference_outcome) = if args.run_inference {
+                let config = build_inference_config(
+                    args.inference_min_iterations,
+                    args.inference_max_iterations,
+                    args.inference_no_converge,
+                    args.inference_error_on_blank_nodes,
+                );
+                match validator.validate_with_inference(config) {
+                    Ok((outcome, report)) => (report, Some(outcome)),
+                    Err(err) => return Err(format!("Inference failed: {}", err).into()),
+                }
+            } else {
+                (validator.validate(), None)
+            };
+
+            if let Some(outcome) = inference_outcome {
+                eprintln!(
+                    "Inference added {} triple(s) in {} iteration(s); converged={}",
+                    outcome.triples_added, outcome.iterations_executed, outcome.converged
+                );
+            }
 
             match args.format {
                 ValidateOutputFormat::Turtle => {
@@ -213,6 +297,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", report_str);
                 }
             }
+        }
+        Commands::Inference(args) => {
+            let validator = get_validator(&args.common)?;
+            let config = build_inference_config(
+                args.min_iterations,
+                args.max_iterations,
+                args.no_converge,
+                args.error_on_blank_nodes,
+            );
+            let outcome = validator
+                .run_inference_with_config(config)
+                .map_err(|e| format!("Inference failed: {}", e))?;
+            println!(
+                "Inference added {} triple(s) in {} iteration(s); converged={}",
+                outcome.triples_added, outcome.iterations_executed, outcome.converged
+            );
         }
         Commands::Heat(args) => {
             let validator = get_validator(&args.common)?;

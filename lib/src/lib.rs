@@ -2,10 +2,12 @@
 #![deny(clippy::all)]
 
 // Publicly visible items
+pub mod inference;
 pub mod model;
 pub mod shape;
 pub mod types;
 
+pub use inference::{InferenceConfig, InferenceError, InferenceOutcome};
 pub use report::ValidationReport;
 
 // Internal modules.
@@ -283,11 +285,18 @@ impl ValidatorBuilder {
             nodeshape_id_lookup: final_ctx.nodeshape_id_lookup,
             propshape_id_lookup: final_ctx.propshape_id_lookup,
             component_id_lookup: final_ctx.component_id_lookup,
+            rule_id_lookup: final_ctx.rule_id_lookup,
             store: final_ctx.store,
             shape_graph_iri: final_ctx.shape_graph_iri,
             node_shapes: final_ctx.node_shapes,
             prop_shapes: final_ctx.prop_shapes,
             component_descriptors: final_ctx.component_descriptors,
+            component_templates: final_ctx.component_templates,
+            shape_templates: final_ctx.shape_templates,
+            shape_template_cache: final_ctx.shape_template_cache,
+            rules: final_ctx.rules,
+            node_shape_rules: final_ctx.node_shape_rules,
+            prop_shape_rules: final_ctx.prop_shape_rules,
             env: final_ctx.env,
             sparql: final_ctx.sparql.clone(),
             features: final_ctx.features.clone(),
@@ -362,6 +371,29 @@ impl Validator {
         ValidationReport::new(report_builder.unwrap(), &self.context)
     }
 
+    /// Executes inference with a custom configuration and returns the outcome.
+    pub fn run_inference_with_config(
+        &self,
+        config: InferenceConfig,
+    ) -> Result<InferenceOutcome, InferenceError> {
+        crate::inference::run_inference(&self.context, config)
+    }
+
+    /// Runs inference using the default configuration.
+    pub fn run_inference(&self) -> Result<InferenceOutcome, InferenceError> {
+        self.run_inference_with_config(InferenceConfig::default())
+    }
+
+    /// Runs inference followed by validation, yielding both the inference outcome and report.
+    pub fn validate_with_inference(
+        &self,
+        config: InferenceConfig,
+    ) -> Result<(InferenceOutcome, ValidationReport<'_>), InferenceError> {
+        let outcome = self.run_inference_with_config(config)?;
+        let report = self.validate();
+        Ok((outcome, report))
+    }
+
     /// Generates a Graphviz DOT string representation of the shapes.
     ///
     /// This can be used to visualize the structure of the SHACL shapes, including
@@ -377,15 +409,21 @@ impl Validator {
     pub fn to_graphviz_heatmap(&self, include_all_nodes: bool) -> Result<String, String> {
         render_heatmap_graphviz(&self.context, include_all_nodes)
     }
+
+    #[cfg(test)]
+    pub(crate) fn context(&self) -> &ValidationContext {
+        &self.context
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::named_nodes::SHACL;
+    use crate::runtime::Component;
     use crate::sparql::validate_prebound_variable_usage;
     use oxigraph::model::vocab::rdf;
-    use oxigraph::model::{NamedOrBlankNode, Term, TermRef};
+    use oxigraph::model::{NamedNode, NamedOrBlankNode, Term, TermRef};
     use std::error::Error;
     use std::fs;
     use std::io::Write;
@@ -522,7 +560,132 @@ ex:Alice a ex:Person ;
     }
 
     #[test]
-    fn sparql_constraint_requires_this() {
+    fn template_definitions_registered_and_executed() -> Result<(), Box<dyn Error>> {
+        let _guard = validator_lock().lock().unwrap();
+        let temp_dir = unique_temp_dir("shacl_template_test")?;
+
+        let shapes_path = temp_dir.join("shapes.ttl");
+        let data_path = temp_dir.join("data.ttl");
+
+        let shapes_ttl = r#"@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix ex: <http://example.com/ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:MinLabelConstraint
+    a sh:ConstraintComponent ;
+    sh:declare [
+        sh:prefix "rdfs" ;
+        sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ;
+    ] ;
+    sh:parameter [
+        sh:path ex:minLength ;
+        sh:varName "minLen" ;
+        sh:description "Minimum label length" ;
+    ] ;
+    sh:message "Label shorter than {?minLen}" ;
+    sh:propertyValidator [
+        a sh:SPARQLSelectValidator ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this $PATH ?value .
+                FILTER(strlen(str(?value)) < ?minLen)
+            }
+        """ ;
+    ] ;
+.
+
+ex:ItemShape
+    a sh:NodeShape ;
+    sh:targetClass ex:Thing ;
+    sh:property ex:LabelProperty ;
+.
+
+ex:LabelProperty
+    a sh:PropertyShape ;
+    sh:path rdfs:label ;
+    sh:constraint ex:MinLabelConstraint ;
+    ex:minLength 5 ;
+    ex:templatePath rdfs:label ;
+.
+
+ex:LabelShapeTemplate
+    a sh:Shape ;
+    sh:parameter [
+        sh:path ex:templatePath ;
+        sh:varName "templPath" ;
+    ] ;
+    sh:shape [
+        sh:path ex:templatePath ;
+        sh:minCount 1 ;
+    ] ;
+.
+"#;
+
+        let data_ttl = r#"@prefix ex: <http://example.com/ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:ThingA a ex:Thing ;
+    rdfs:label "abc" .
+
+ex:ThingB a ex:Thing ;
+    rdfs:label "adequate" .
+"#;
+
+        fs::write(&shapes_path, shapes_ttl)?;
+        fs::write(&data_path, data_ttl)?;
+
+        let validator =
+            Validator::from_files(shapes_path.to_str().unwrap(), data_path.to_str().unwrap())?;
+
+        // Template metadata registered.
+        let template_iri = NamedNode::new("http://example.com/ns#MinLabelConstraint")?;
+        let template = validator
+            .context
+            .model
+            .component_templates
+            .get(&template_iri)
+            .expect("template definition missing");
+        assert_eq!(template.parameters.len(), 1);
+        assert_eq!(template.parameters[0].var_name.as_deref(), Some("minLen"));
+        assert_eq!(
+            template.parameters[0].description.as_deref(),
+            Some("Minimum label length")
+        );
+        assert_eq!(template.prefix_declarations.len(), 1);
+
+        // Components that originate from the template keep a back-reference.
+        let custom_components: Vec<_> = validator
+            .context
+            .components
+            .values()
+            .filter_map(|component| match component {
+                Component::CustomConstraint(custom) => Some(custom.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(custom_components
+            .iter()
+            .any(|c| c.definition.iri == template_iri && c.definition.template.is_some()));
+
+        let shape_template_iri = NamedNode::new("http://example.com/ns#LabelShapeTemplate")?;
+        let shape_template = validator
+            .context
+            .model
+            .shape_templates
+            .get(&shape_template_iri)
+            .expect("shape template definition missing");
+        assert_eq!(shape_template.parameters.len(), 1);
+
+        // Validation should catch the short label.
+        let report = validator.validate();
+        assert!(!report.conforms());
+
+        Ok(())
+    }
+
+    #[test]
+    fn sparql_constraint_allows_missing_path_but_requires_this() {
         let _guard = validator_lock().lock().unwrap();
         let temp_dir = unique_temp_dir("shacl_prebinding_this").unwrap();
 
@@ -558,7 +721,7 @@ ex:Alice a ex:Person ;
             true,
             true,
         )
-        .is_err());
+        .is_ok());
 
         let result =
             Validator::from_files(&shapes_path.to_string_lossy(), &data_path.to_string_lossy());
@@ -576,7 +739,7 @@ ex:Alice a ex:Person ;
     }
 
     #[test]
-    fn custom_property_validator_requires_path() {
+    fn custom_property_validator_allows_missing_path() {
         let _guard = validator_lock().lock().unwrap();
         assert!(validate_prebound_variable_usage(
             "SELECT ?this ?value WHERE { ?this ex:score ?value . }",
@@ -584,6 +747,6 @@ ex:Alice a ex:Person ;
             true,
             true,
         )
-        .is_err());
+        .is_ok());
     }
 }

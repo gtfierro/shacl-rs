@@ -1,8 +1,12 @@
 use crate::context::{Context, SourceShape, ValidationContext};
 use crate::named_nodes::SHACL;
+use crate::runtime::component::{check_conformance_for_node, ConformanceReport};
 use crate::sparql::SparqlExecutor;
-use oxigraph::model::{NamedNode, NamedNodeRef, Term, TermRef, Variable};
+use oxigraph::model::{
+    Literal, NamedNode, NamedNodeRef, NamedOrBlankNodeRef, Term, TermRef, Variable,
+};
 use oxigraph::sparql::QueryResults;
+use std::collections::HashSet;
 use std::fmt; // Added for Display trait
 use std::hash::Hash; // Added Hash for derived traits
 
@@ -49,6 +53,29 @@ impl ComponentID {
     /// Converts the ComponentID to a string suitable for use as a node identifier in Graphviz.
     pub fn to_graphviz_id(&self) -> String {
         format!("c{}", self.0)
+    }
+}
+
+/// A unique identifier for a `Rule`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RuleID(pub u64);
+
+impl From<u64> for RuleID {
+    fn from(item: u64) -> Self {
+        RuleID(item)
+    }
+}
+
+impl fmt::Display for RuleID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl RuleID {
+    /// Converts the RuleID to a string suitable for use as a node identifier in Graphviz.
+    pub fn to_graphviz_id(&self) -> String {
+        format!("r{}", self.0)
     }
 }
 
@@ -182,6 +209,8 @@ pub enum Target {
     SubjectsOf(Term),
     /// Targets all objects of triples with a given predicate (`sh:targetObjectsOf`).
     ObjectsOf(Term),
+    /// Targets nodes defined by an advanced target selector (`sh:target`, `sh:targetValidator`).
+    Advanced(Term),
 }
 
 /// Represents the severity level of a validation result, corresponding to `sh:severity`.
@@ -229,6 +258,8 @@ impl Target {
             Some(Target::SubjectsOf(object.into_owned()))
         } else if predicate == shacl.target_objects_of {
             Some(Target::ObjectsOf(object.into_owned()))
+        } else if predicate == shacl.target || predicate == shacl.target_validator {
+            Some(Target::Advanced(object.into_owned()))
         } else {
             None
         }
@@ -241,16 +272,11 @@ impl Target {
         source_shape: SourceShape,
     ) -> Result<Vec<Context>, String> {
         match self {
-            Target::Node(t) => {
-                let trace_index = context.new_trace();
-                Ok(vec![Context::new(
-                    t.clone(),
-                    None,
-                    Some(vec![t.clone()]),
-                    source_shape,
-                    trace_index,
-                )])
-            }
+            Target::Node(t) => Ok(contexts_from_terms(
+                context,
+                std::iter::once(t.clone()),
+                source_shape,
+            )),
             Target::Class(c) => {
                 let query_str = "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -276,6 +302,7 @@ impl Target {
                         &prepared,
                         context.model.store(),
                         &[(target_class_var, c.clone())],
+                        false,
                     )
                     .map_err(|e| {
                         format!("SPARQL query error for Target::Class: {} {}", query_str, e)
@@ -288,13 +315,10 @@ impl Target {
                             solution
                                 .get("inst")
                                 .map(|term_ref| {
-                                    let trace_index = context.new_trace();
-                                    Context::new(
+                                    build_context(
+                                        context,
                                         term_ref.to_owned(),
-                                        None,
-                                        Some(vec![term_ref.clone()]),
                                         source_shape.clone(),
-                                        trace_index,
                                     )
                                 })
                                 .ok_or_else(|| {
@@ -335,6 +359,7 @@ impl Target {
                             &prepared,
                             context.model.store(),
                             &[],
+                            false,
                         )
                         .map_err(|e| e.to_string())?;
 
@@ -343,21 +368,18 @@ impl Target {
                             .map(|solution_result| {
                                 let solution = solution_result.map_err(|e| e.to_string())?;
                                 solution
-                                    .get("s")
-                                    .map(|term_ref| {
-                                        let trace_index = context.new_trace();
-                                        Context::new(
-                                            term_ref.to_owned(),
-                                            None,
-                                            Some(vec![term_ref.clone()]),
-                                            source_shape.clone(),
-                                            trace_index,
-                                        )
-                                    })
-                                    .ok_or_else(|| {
-                                        "Variable 's' not found in Target::SubjectsOf query solution"
-                                            .to_string()
-                                    })
+                                .get("s")
+                                .map(|term_ref| {
+                                    build_context(
+                                        context,
+                                        term_ref.to_owned(),
+                                        source_shape.clone(),
+                                    )
+                                })
+                                .ok_or_else(|| {
+                                    "Variable 's' not found in Target::SubjectsOf query solution"
+                                        .to_string()
+                                })
                             })
                             .collect(),
                         _ => Err("Unexpected result type for Target::SubjectsOf query".to_string()),
@@ -392,6 +414,7 @@ impl Target {
                             &prepared,
                             context.model.store(),
                             &[],
+                            false,
                         )
                         .map_err(|e| e.to_string())?;
 
@@ -402,13 +425,10 @@ impl Target {
                                 solution
                                     .get("o")
                                     .map(|term_ref| {
-                                        let trace_index = context.new_trace();
-                                        Context::new(
+                                        build_context(
+                                            context,
                                             term_ref.to_owned(),
-                                            None,
-                                            Some(vec![term_ref.clone()]),
                                             source_shape.clone(),
-                                            trace_index,
                                         )
                                     })
                                     .ok_or_else(|| {
@@ -423,7 +443,425 @@ impl Target {
                     Ok(vec![]) // Predicate for ObjectsOf must be an IRI
                 }
             }
+            Target::Advanced(selector) => evaluate_advanced_target(context, selector, source_shape),
         }
+    }
+}
+
+fn contexts_from_terms(
+    context: &ValidationContext,
+    terms: impl IntoIterator<Item = Term>,
+    source_shape: SourceShape,
+) -> Vec<Context> {
+    terms
+        .into_iter()
+        .map(|term| build_context(context, term, source_shape.clone()))
+        .collect()
+}
+
+fn build_context(context: &ValidationContext, term: Term, source_shape: SourceShape) -> Context {
+    let trace_index = context.new_trace();
+    Context::new(
+        term.clone(),
+        None,
+        Some(vec![term]),
+        source_shape,
+        trace_index,
+    )
+}
+
+fn evaluate_advanced_target(
+    context: &ValidationContext,
+    selector: &Term,
+    source_shape: SourceShape,
+) -> Result<Vec<Context>, String> {
+    if let Some(cached) = context.cached_advanced_target(selector) {
+        return Ok(contexts_from_terms(context, cached, source_shape));
+    }
+
+    let selector_ref = term_to_subject_ref(selector)?;
+    let shacl = SHACL::new();
+    let store = context.model.store();
+    let shape_graph = context.model.shape_graph_iri_ref();
+
+    let mut focus_terms: Vec<Term> = Vec::new();
+
+    // Reuse existing target handling for core target predicates nested inside the advanced selector.
+    focus_terms.extend(collect_nested_targets(
+        context,
+        selector_ref,
+        shacl.target_node,
+        |term| Target::Node(term).get_target_nodes(context, source_shape.clone()),
+        shape_graph,
+    )?);
+    focus_terms.extend(collect_nested_targets(
+        context,
+        selector_ref,
+        shacl.target_class,
+        |term| Target::Class(term).get_target_nodes(context, source_shape.clone()),
+        shape_graph,
+    )?);
+    focus_terms.extend(collect_nested_targets(
+        context,
+        selector_ref,
+        shacl.target_subjects_of,
+        |term| Target::SubjectsOf(term).get_target_nodes(context, source_shape.clone()),
+        shape_graph,
+    )?);
+    focus_terms.extend(collect_nested_targets(
+        context,
+        selector_ref,
+        shacl.target_objects_of,
+        |term| Target::ObjectsOf(term).get_target_nodes(context, source_shape.clone()),
+        shape_graph,
+    )?);
+    focus_terms.extend(collect_target_shape_nodes(
+        context,
+        selector_ref,
+        shape_graph,
+    )?);
+
+    // SPARQL-based selector via sh:select.
+    for quad in store
+        .quads_for_pattern(
+            Some(selector_ref),
+            Some(shacl.select),
+            None,
+            Some(shape_graph),
+        )
+        .filter_map(Result::ok)
+    {
+        if let Term::Literal(lit) = quad.object {
+            let query = build_prefixed_query(store, selector_ref, &lit, shape_graph)?;
+            let nodes = execute_select_query(context, &query)?;
+            focus_terms.extend(nodes);
+        }
+    }
+
+    let mut focus_terms = deduplicate_terms(focus_terms);
+    focus_terms = apply_filter_shapes(context, selector_ref, focus_terms, shape_graph)?;
+    focus_terms = apply_ask_validators(context, selector_ref, focus_terms, shape_graph)?;
+
+    context.store_advanced_target(selector, &focus_terms);
+    Ok(contexts_from_terms(context, focus_terms, source_shape))
+}
+
+fn collect_nested_targets<F>(
+    context: &ValidationContext,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    predicate: NamedNodeRef<'_>,
+    mut evaluator: F,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<Vec<Term>, String>
+where
+    F: FnMut(Term) -> Result<Vec<Context>, String>,
+{
+    let store = context.model.store();
+    let mut terms = Vec::new();
+    for quad in store
+        .quads_for_pattern(Some(selector_ref), Some(predicate), None, Some(shape_graph))
+        .filter_map(Result::ok)
+    {
+        let evaluated = evaluator(quad.object)?;
+        terms.extend(contexts_to_terms(evaluated));
+    }
+    Ok(terms)
+}
+
+fn collect_target_shape_nodes(
+    context: &ValidationContext,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<Vec<Term>, String> {
+    let shacl = SHACL::new();
+    let shape_ids = collect_shape_ids(context, selector_ref, shacl.target_shape, shape_graph)?;
+    let mut terms = Vec::new();
+    for shape_id in shape_ids {
+        terms.extend(target_nodes_for_shape(context, shape_id)?);
+    }
+    Ok(terms)
+}
+
+fn collect_shape_ids(
+    context: &ValidationContext,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    predicate: NamedNodeRef<'_>,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<Vec<ID>, String> {
+    let store = context.model.store();
+    let mut ids = Vec::new();
+    for quad in store
+        .quads_for_pattern(Some(selector_ref), Some(predicate), None, Some(shape_graph))
+        .filter_map(Result::ok)
+    {
+        let term = quad.object;
+        let id = {
+            let lookup = context.model.nodeshape_id_lookup().borrow();
+            lookup.get(&term).ok_or_else(|| {
+                format!(
+                    "Shape {} referenced via {} is not recognised as a node shape",
+                    term,
+                    predicate.as_str()
+                )
+            })?
+        };
+        ids.push(id);
+    }
+    Ok(ids)
+}
+
+fn target_nodes_for_shape(context: &ValidationContext, shape_id: ID) -> Result<Vec<Term>, String> {
+    let shape = context
+        .model
+        .get_node_shape_by_id(&shape_id)
+        .ok_or_else(|| format!("Target shape {:?} not found in model", shape_id))?;
+
+    let mut terms = Vec::new();
+    for target in &shape.targets {
+        let contexts = target.get_target_nodes(context, SourceShape::NodeShape(shape_id))?;
+        terms.extend(contexts_to_terms(contexts));
+    }
+    Ok(deduplicate_terms(terms))
+}
+
+fn apply_filter_shapes(
+    context: &ValidationContext,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    focus_terms: Vec<Term>,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<Vec<Term>, String> {
+    let shacl = SHACL::new();
+    let filter_ids = collect_shape_ids(context, selector_ref, shacl.filter_shape, shape_graph)?;
+    if filter_ids.is_empty() {
+        return Ok(focus_terms);
+    }
+
+    let mut filtered = Vec::new();
+    for term in focus_terms {
+        let mut conforms = true;
+        for shape_id in &filter_ids {
+            if !node_conforms_to_shape(context, &term, *shape_id)? {
+                conforms = false;
+                break;
+            }
+        }
+        if conforms {
+            filtered.push(term);
+        }
+    }
+    Ok(filtered)
+}
+
+fn apply_ask_validators(
+    context: &ValidationContext,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    focus_terms: Vec<Term>,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<Vec<Term>, String> {
+    let shacl = SHACL::new();
+    let store = context.model.store();
+    let mut current_terms = focus_terms;
+    for quad in store
+        .quads_for_pattern(Some(selector_ref), Some(shacl.ask), None, Some(shape_graph))
+        .filter_map(Result::ok)
+    {
+        let lit = match quad.object {
+            Term::Literal(l) => l,
+            other => {
+                return Err(format!(
+                    "sh:ask expects a literal query string, found {:?}",
+                    other
+                ))
+            }
+        };
+        let query = build_prefixed_query(store, selector_ref, &lit, shape_graph)?;
+        let mut next_terms = Vec::new();
+        for term in current_terms.into_iter() {
+            if execute_ask_query(context, &query, &term)? {
+                next_terms.push(term);
+            }
+        }
+        current_terms = next_terms;
+    }
+    Ok(current_terms)
+}
+
+fn build_prefixed_query(
+    store: &oxigraph::store::Store,
+    selector_ref: NamedOrBlankNodeRef<'_>,
+    literal: &Literal,
+    shape_graph: oxigraph::model::GraphNameRef<'_>,
+) -> Result<String, String> {
+    let shacl = SHACL::new();
+    let mut lines: Vec<String> = Vec::new();
+    for quad in store
+        .quads_for_pattern(
+            Some(selector_ref),
+            Some(shacl.declare),
+            None,
+            Some(shape_graph),
+        )
+        .filter_map(Result::ok)
+    {
+        let declaration_term = quad.object;
+        let declaration_ref = term_to_subject_ref(&declaration_term)?;
+        let prefix = store
+            .quads_for_pattern(
+                Some(declaration_ref),
+                Some(shacl.prefix),
+                None,
+                Some(shape_graph),
+            )
+            .filter_map(Result::ok)
+            .find_map(|q| match q.object {
+                Term::Literal(lit) => Some(lit.value().to_string()),
+                _ => None,
+            })
+            .ok_or_else(|| "sh:declare entry missing sh:prefix literal".to_string())?;
+        let namespace = store
+            .quads_for_pattern(
+                Some(declaration_ref),
+                Some(shacl.namespace),
+                None,
+                Some(shape_graph),
+            )
+            .filter_map(Result::ok)
+            .find_map(|q| match q.object {
+                Term::Literal(lit) => Some(lit.value().to_string()),
+                _ => None,
+            })
+            .ok_or_else(|| "sh:declare entry missing sh:namespace literal".to_string())?;
+        lines.push(format!("PREFIX {}: <{}>", prefix, namespace));
+    }
+
+    let mut query = literal.value().to_string();
+    if !lines.is_empty() {
+        let prefix_block = lines.join("\n");
+        if query.starts_with('\n') {
+            query = query.trim_start_matches('\n').to_string();
+        }
+        query = format!("{}\n{}", prefix_block, query);
+    }
+    Ok(query)
+}
+
+fn execute_select_query(context: &ValidationContext, query: &str) -> Result<Vec<Term>, String> {
+    let sparql = context.model.sparql.as_ref();
+    let prepared = sparql
+        .prepared_query(query)
+        .map_err(|e| format!("SPARQL parse error for advanced target: {} {:?}", query, e))?;
+    let results = sparql
+        .execute_with_substitutions(query, &prepared, context.model.store(), &[], false)
+        .map_err(|e| format!("SPARQL execution error for advanced target: {}", e))?;
+
+    match results {
+        QueryResults::Solutions(solutions) => {
+            let mut terms = Vec::new();
+            for solution_result in solutions {
+                let solution = solution_result.map_err(|e| e.to_string())?;
+                if let Some(term) = solution.get("this") {
+                    terms.push(term.clone());
+                    continue;
+                }
+                let mut fallback = None;
+                for var in solution.variables() {
+                    if let Some(term) = solution.get(var) {
+                        fallback = Some(term.clone());
+                        break;
+                    }
+                }
+                if let Some(term) = fallback {
+                    terms.push(term);
+                } else {
+                    return Err(
+                        "Advanced target query did not bind any variables for a solution"
+                            .to_string(),
+                    );
+                }
+            }
+            Ok(terms)
+        }
+        _ => Err("Advanced target query must be a SELECT query".to_string()),
+    }
+}
+
+fn term_to_subject_ref(term: &Term) -> Result<NamedOrBlankNodeRef<'_>, String> {
+    match term {
+        Term::NamedNode(nn) => Ok(nn.as_ref().into()),
+        Term::BlankNode(bn) => Ok(bn.as_ref().into()),
+        _ => Err(format!(
+            "Advanced target selector must be a named node or blank node, found {:?}",
+            term
+        )),
+    }
+}
+
+fn contexts_to_terms(contexts: Vec<Context>) -> Vec<Term> {
+    contexts
+        .into_iter()
+        .map(|ctx| ctx.focus_node().clone())
+        .collect()
+}
+
+fn deduplicate_terms(terms: Vec<Term>) -> Vec<Term> {
+    let mut seen = HashSet::new();
+    let mut deduped = Vec::new();
+    for term in terms {
+        if seen.insert(term.clone()) {
+            deduped.push(term);
+        }
+    }
+    deduped
+}
+
+pub(crate) fn node_conforms_to_shape(
+    context: &ValidationContext,
+    node: &Term,
+    shape_id: ID,
+) -> Result<bool, String> {
+    let shape = context
+        .model
+        .get_node_shape_by_id(&shape_id)
+        .ok_or_else(|| format!("Filter shape {:?} not found in model", shape_id))?;
+
+    let trace_index = context.new_trace();
+    let mut node_context = Context::new(
+        node.clone(),
+        None,
+        Some(vec![node.clone()]),
+        SourceShape::NodeShape(shape_id),
+        trace_index,
+    );
+    let mut temp_trace = Vec::new();
+    match check_conformance_for_node(&mut node_context, shape, context, &mut temp_trace)? {
+        ConformanceReport::Conforms => Ok(true),
+        ConformanceReport::NonConforms(_) => Ok(false),
+    }
+}
+
+fn execute_ask_query(
+    context: &ValidationContext,
+    query: &str,
+    term: &Term,
+) -> Result<bool, String> {
+    let sparql = context.model.sparql.as_ref();
+    let prepared = sparql.prepared_query(query).map_err(|e| {
+        format!(
+            "SPARQL parse error for advanced target ASK: {} {:?}",
+            query, e
+        )
+    })?;
+    let var_this = Variable::new("this").map_err(|e| e.to_string())?;
+    let results = sparql.execute_with_substitutions(
+        query,
+        &prepared,
+        context.model.store(),
+        &[(var_this, term.clone())],
+        false,
+    )?;
+    match results {
+        QueryResults::Boolean(value) => Ok(value),
+        _ => Err("Advanced target ASK query must return a boolean result".to_string()),
     }
 }
 
