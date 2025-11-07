@@ -7,7 +7,7 @@ use crate::named_nodes::{OWL, RDF, RDFS, SHACL};
 use crate::shape::{NodeShape, PropertyShape};
 use crate::types::{ComponentID, Path as PShapePath, PropShapeID, Severity, ID};
 use components::parse_components;
-use log::debug;
+use log::{debug, warn};
 use ontoenv::ontology::OntologyLocation;
 use oxigraph::io::{RdfFormat, RdfParser};
 use oxigraph::model::{
@@ -127,13 +127,38 @@ pub(crate) fn run_parser(context: &mut ParsingContext) -> Result<(), String> {
         context.shape_graph_iri, property_shape_count, property_shape_total
     );
     let shapes = get_node_shapes(context);
+    let skip_invalid = context.features.skip_invalid_rules;
+
     for shape in shapes {
-        parse_node_shape(context, shape, &unique_lang_lexicals)?;
+        let shape_term = shape.clone();
+        if let Err(err) = parse_node_shape(context, shape_term.clone(), &unique_lang_lexicals) {
+            if skip_invalid {
+                warn!(
+                    "Skipping node shape {} due to parse error: {}",
+                    shape_term, err
+                );
+                continue;
+            } else {
+                return Err(err);
+            }
+        }
     }
 
     let pshapes = get_property_shapes(context);
     for pshape in pshapes {
-        parse_property_shape(context, pshape, &unique_lang_lexicals)?;
+        let pshape_term = pshape.clone();
+        if let Err(err) = parse_property_shape(context, pshape_term.clone(), &unique_lang_lexicals)
+        {
+            if skip_invalid {
+                warn!(
+                    "Skipping property shape {} due to parse error: {}",
+                    pshape_term, err
+                );
+                continue;
+            } else {
+                return Err(err);
+            }
+        }
     }
     eprintln!(
         "run_parser parsed node_shapes={} prop_shapes={}",
@@ -253,6 +278,7 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
 
     // Shapes with explicit targets (sh:targetNode, sh:targetClass, sh:targetSubjectsOf, sh:targetObjectsOf)
     for target_predicate in [
+        shacl.target,
         shacl.target_node,
         shacl.target_class,
         shacl.target_subjects_of,
@@ -302,6 +328,17 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
 
     // ? sh:xone (list of <shape>)
     process_list_constraint(shacl.xone);
+
+    // Shapes that declare sh:rule but are otherwise implicit.
+    for quad_res in
+        context
+            .store
+            .quads_for_pattern(None, Some(shacl.rule), None, Some(shape_graph_name_ref))
+    {
+        if let Ok(quad) = quad_res {
+            node_shapes.insert(quad.subject.into());
+        }
+    }
 
     node_shapes.into_iter().collect()
 }

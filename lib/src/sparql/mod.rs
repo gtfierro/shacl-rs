@@ -16,6 +16,12 @@ use spargebra::{Query as AlgebraQuery, SparqlParser};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+fn is_builtin_component(iri: &NamedNode) -> bool {
+    let iri_str = iri.as_str();
+    iri_str.starts_with("http://www.w3.org/ns/shacl#")
+        || iri_str.starts_with("https://www.w3.org/ns/shacl#")
+}
+
 /// Executes SHACL SPARQL queries with prefix and prepared-query caching.
 pub trait SparqlExecutor {
     /// Resolves `sh:declare` and inline prefixes for a SPARQL node.
@@ -797,7 +803,8 @@ pub fn parse_custom_constraint_components<E: SparqlExecutor>(
 
     let shapes_graph_iri = context.shape_graph_iri.as_str();
     let query = format!(
-        "PREFIX sh: <http://www.w3.org/ns/shacl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT DISTINCT ?cc FROM <{}> WHERE {{ ?cc a ?ccType . ?ccType rdfs:subClassOf* sh:ConstraintComponent }}",
+        // "PREFIX sh: <http://www.w3.org/ns/shacl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT DISTINCT ?cc FROM <{}> WHERE {{ ?cc a ?ccType . ?ccType rdfs:subClassOf* sh:ConstraintComponent }}",
+        "PREFIX sh: <http://www.w3.org/ns/shacl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT DISTINCT ?cc FROM <{}> WHERE {{ ?cc a sh:ConstraintComponent }}",
         shapes_graph_iri
     );
     let prepared_components = services
@@ -814,6 +821,9 @@ pub fn parse_custom_constraint_components<E: SparqlExecutor>(
         for solution_res in solutions {
             if let Ok(solution) = solution_res {
                 if let Some(Term::NamedNode(cc_iri)) = solution.get("cc") {
+                    if is_builtin_component(&cc_iri) {
+                        continue;
+                    }
                     // Quick structural validation before running heavier SPARQL queries.
                     let has_validator = context
                         .store
@@ -850,9 +860,9 @@ pub fn parse_custom_constraint_components<E: SparqlExecutor>(
                         .is_some();
                     if !has_parameter {
                         return Err(format!(
-                            "Custom constraint component {} must declare at least one sh:parameter.",
-                            cc_iri
-                        ));
+                        "Custom constraint component {} must declare at least one sh:parameter.",
+                        cc_iri
+                    ));
                     }
 
                     let mut parameters = vec![];

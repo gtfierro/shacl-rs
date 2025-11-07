@@ -58,6 +58,7 @@ pub struct ValidatorBuilder {
     skolemize_data: bool,
     enable_af: bool,
     enable_rules: bool,
+    skip_invalid_rules: bool,
 }
 
 impl ValidatorBuilder {
@@ -71,6 +72,7 @@ impl ValidatorBuilder {
             skolemize_data: true,
             enable_af: true,
             enable_rules: true,
+            skip_invalid_rules: false,
         }
     }
 
@@ -111,6 +113,12 @@ impl ValidatorBuilder {
         self
     }
 
+    /// Skip invalid SHACL constructs instead of failing fast.
+    pub fn with_skip_invalid_rules(mut self, skip: bool) -> Self {
+        self.skip_invalid_rules = skip;
+        self
+    }
+
     /// Builds a `Validator` from the configured options.
     pub fn build(self) -> Result<Validator, Box<dyn Error>> {
         let Self {
@@ -121,6 +129,7 @@ impl ValidatorBuilder {
             skolemize_data,
             enable_af,
             enable_rules,
+            skip_invalid_rules,
         } = self;
 
         let shapes_source =
@@ -167,6 +176,7 @@ impl ValidatorBuilder {
         let features = FeatureToggles {
             enable_af,
             enable_rules,
+            skip_invalid_rules,
         };
         let model = Self::build_shapes_model(
             env,

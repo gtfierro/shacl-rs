@@ -1,27 +1,155 @@
-# SHACL Validator
+# shacl-rs
 
-A Shapes Constraint Language (SHACL) validator written in Rust. It provides both a command-line interface (CLI) for quick validation and a library for integration into other Rust applications.
+`shacl-rs` is a Rust implementation of the Shapes Constraint Language (SHACL) with two crates:
 
-This validator parses SHACL shapes and RDF data, executes the validation logic, and produces a standard SHACL validation report. It also includes powerful tools for visualizing shape graphs and debugging the validation process.
+- `lib/`: reusable validation engine
+- `cli/`: end-user binary that wraps the engine with visualization and debugging tools
 
-## Features
+The workspace also ships with Python bindings (`python/`) so the same validator can run inside a notebook or existing RDFlib pipeline.
 
-- **SHACL Core Validation**: Implements core SHACL constraints to validate RDF data against a set of shapes.
-- **Multiple Report Formats**: Generates validation reports in Turtle (default), RDF/XML, and N-Triples.
-- **Shape Graph Visualization**: Generates Graphviz DOT files to visualize the structure of your SHACL shapes, making them easier to understand and debug.
-- **Performance Profiling**:
-    - `heat` command: Shows which validation components are triggered most frequently, helping to identify performance bottlenecks.
-    - `graphviz-heatmap`: Visualizes execution frequency directly on the shape graph, with hotter colors indicating more frequent execution.
-- **Debugging Tools**: Provides detailed execution traces to understand the validation process step-by-step.
+## Building
 
-## Installation
+```bash
+cargo build --workspace
+```
 
-To build and install the CLI from source, you will need Rust and Cargo installed.
+Format, lint, and test when contributing:
 
-1. Clone the repository.
-2. Navigate to the project directory and run:
+```bash
+cargo fmt --all
+cargo clippy --workspace --all-targets --all-features
+cargo test --workspace
+```
 
+## CLI Overview
 
-## Desired features
-- add a 'data-graph' argument which takes an ontology name (from the local ontoenv) and uses `ontoenv.add` to fetch it into the ontology
-- add configuration options for using the imports closure from ontoenv
+Run `cargo run -p cli -- --help` to see every subcommand. The most common entry points are:
+
+- `validate`: run SHACL validation (optionally with rule inference)
+- `inference`: emit only the triples inferred by SHACL rules
+- `graphviz` / `graphviz-heatmap`: output DOT graphs for shapes or execution counts
+- `pdf` / `pdf-heatmap`: render the DOT graphs directly to PDF
+
+You can now request the visualization artifacts directly from `validate` or `inference` by appending:
+
+- `--graphviz` to print the DOT description after execution
+- `--pdf-heatmap heatmap.pdf [--pdf-heatmap-all]` to write the heatmap PDF (the inference command will trigger a validation pass when this flag is set)
+
+### Validation example
+
+```bash
+cargo run -p cli -- \
+  validate \
+  --shapes-file examples/shapes.ttl \
+  --data-file examples/data.ttl \
+  --format turtle \
+  --run-inference \
+  --inference-min-iterations 1 \
+  --inference-max-iterations 8 \
+  --inference-debug
+```
+
+- `--format` chooses the report output (`turtle`, `rdf-xml`, `ntriples`, or `dump`).
+- Inference flags mirror the standalone `inference` subcommand (`--inference-no-converge`, `--inference-error-on-blank-nodes`, etc.).
+
+### Inference example
+
+```bash
+cargo run -p cli -- \
+  inference \
+  --shapes-file examples/shapes.ttl \
+  --data-file examples/data.ttl \
+  --min-iterations 1 \
+  --max-iterations 12 \
+  --debug \
+  --output-file inferred.ttl
+```
+
+Use `--union` to emit the original data plus inferred triples.
+
+## Python API
+
+Install the extension module with `uvx maturin develop` (or `maturin develop --release`) inside `python/`. The module exposes two functions:
+
+```python
+import shacl_rs
+
+shacl_rs.infer(
+    data_graph: rdflib.Graph,
+    shapes_graph: rdflib.Graph,
+    *,
+    min_iterations=None,
+    max_iterations=None,
+    run_until_converged=None,
+    no_converge=None,
+    error_on_blank_nodes=None,
+    enable_af=True,
+    enable_rules=True,
+    debug=None,
+    skip_invalid_rules=None,
+) -> rdflib.Graph
+
+shacl_rs.validate(
+    data_graph: rdflib.Graph,
+    shapes_graph: rdflib.Graph,
+    *,
+    run_inference=False,
+    min_iterations=None,
+    max_iterations=None,
+    run_until_converged=None,
+    no_converge=None,
+    inference_min_iterations=None,
+    inference_max_iterations=None,
+    inference_no_converge=None,
+    error_on_blank_nodes=None,
+    inference_error_on_blank_nodes=None,
+    enable_af=True,
+    enable_rules=True,
+    debug=None,
+    inference_debug=None,
+    skip_invalid_rules=None,
+) -> (bool, rdflib.Graph, str)
+```
+
+- `infer` returns only the new triples.
+- `validate` returns `(conforms, results_graph, report_turtle)`.
+- CLI-style inference aliases (`inference_min_iterations`, `inference_no_converge`, etc.) are available so Python scripts mirror the CLI flags.
+
+### Python example (adapted from `python/brick.py`)
+
+```python
+from rdflib import Graph
+from ontoenv import OntoEnv
+import shacl_rs
+
+env = OntoEnv()
+model_iri = env.add("https://example.com/model.ttl")
+data_graph = env.get_graph(model_iri)
+shapes_graph, imports = env.get_closure(model_iri)
+
+print(f"SHACL graph imports: {imports}")
+
+inferred = shacl_rs.infer(data_graph, shapes_graph, debug=True)
+print(inferred.serialize(format="turtle"))
+
+conforms, results_graph, report_text = shacl_rs.validate(
+    data_graph,
+    shapes_graph,
+    run_inference=True,
+    inference_max_iterations=12,
+    inference_debug=True,
+)
+print(f"Model conforms: {conforms}")
+print(report_text)
+```
+
+## Repository layout
+
+```
+lib/      # core validator crate (exported as `shacl`)
+cli/      # command-line interface
+python/   # PyO3 bindings and RDFlib examples
+docs/     # additional design docs and profiles
+```
+
+Need help? Open an issue or discussion in this repo with the failing SHACL shapes and data.

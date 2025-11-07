@@ -29,6 +29,7 @@ pub struct FeatureToggles {
     pub enable_af: bool,
     #[allow(dead_code)]
     pub enable_rules: bool,
+    pub skip_invalid_rules: bool,
 }
 
 impl Default for FeatureToggles {
@@ -36,6 +37,7 @@ impl Default for FeatureToggles {
         Self {
             enable_af: true,
             enable_rules: true,
+            skip_invalid_rules: false,
         }
     }
 }

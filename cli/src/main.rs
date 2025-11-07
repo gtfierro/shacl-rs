@@ -4,7 +4,7 @@ use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use oxigraph::io::{RdfFormat, RdfSerializer};
 use oxigraph::model::{Quad, TripleRef};
-use shacl::{InferenceConfig, Source, Validator};
+use shacl::{InferenceConfig, Source, Validator, ValidatorBuilder};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
@@ -55,6 +55,10 @@ struct CommonArgs {
     shapes: ShapesSourceCli,
     #[clap(flatten)]
     data: DataSourceCli,
+
+    /// Skip invalid SHACL constructs (log and continue)
+    #[arg(long)]
+    skip_invalid_rules: bool,
 }
 
 #[derive(Parser)]
@@ -110,6 +114,22 @@ struct ValidateArgs {
     /// Fail if inference produces blank nodes (requires --run-inference)
     #[arg(long, requires = "run_inference")]
     inference_error_on_blank_nodes: bool,
+
+    /// Enable verbose inference logging (requires --run-inference)
+    #[arg(long, requires = "run_inference")]
+    inference_debug: bool,
+
+    /// Print the Graphviz DOT for the shape graph after validation
+    #[arg(long)]
+    graphviz: bool,
+
+    /// Write a PDF heatmap for the executed shapes
+    #[arg(long, value_name = "FILE")]
+    pdf_heatmap: Option<PathBuf>,
+
+    /// Include shapes/components that did not execute in the heatmap (requires --pdf-heatmap)
+    #[arg(long, requires = "pdf_heatmap")]
+    pdf_heatmap_all: bool,
 }
 
 #[derive(Parser)]
@@ -133,6 +153,10 @@ struct InferenceArgs {
     #[arg(long)]
     error_on_blank_nodes: bool,
 
+    /// Enable verbose inference logging
+    #[arg(long)]
+    debug: bool,
+
     /// Path to write the inferred triples as Turtle
     #[arg(long, value_name = "FILE")]
     output_file: Option<PathBuf>,
@@ -140,6 +164,18 @@ struct InferenceArgs {
     /// Output the union of the original data graph with inferred triples
     #[arg(long)]
     union: bool,
+
+    /// Print the Graphviz DOT for the shape graph after inference
+    #[arg(long)]
+    graphviz: bool,
+
+    /// Write a PDF heatmap for the executed shapes
+    #[arg(long, value_name = "FILE")]
+    pdf_heatmap: Option<PathBuf>,
+
+    /// Include shapes/components that did not execute in the heatmap (requires --pdf-heatmap)
+    #[arg(long, requires = "pdf_heatmap")]
+    pdf_heatmap_all: bool,
 }
 
 #[derive(Parser)]
@@ -213,7 +249,11 @@ fn get_validator(common: &CommonArgs) -> Result<Validator, Box<dyn std::error::E
         Source::Graph(common.data.data_graph.clone().unwrap())
     };
 
-    Validator::from_sources(shapes_source, data_source)
+    ValidatorBuilder::new()
+        .with_shapes_source(shapes_source)
+        .with_data_source(data_source)
+        .with_skip_invalid_rules(common.skip_invalid_rules)
+        .build()
         .map_err(|e| format!("Error creating validator: {}", e).into())
 }
 
@@ -222,6 +262,7 @@ fn build_inference_config(
     max_iterations: Option<usize>,
     no_converge: bool,
     error_on_blank_nodes: bool,
+    trace: bool,
 ) -> InferenceConfig {
     let mut config = InferenceConfig::default();
     if let Some(min) = min_iterations {
@@ -234,6 +275,7 @@ fn build_inference_config(
         config.run_until_converged = false;
     }
     config.error_on_blank_nodes = error_on_blank_nodes;
+    config.trace = trace;
     config
 }
 
@@ -292,6 +334,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     args.inference_max_iterations,
                     args.inference_no_converge,
                     args.inference_error_on_blank_nodes,
+                    args.inference_debug,
                 );
                 match validator.validate_with_inference(config) {
                     Ok((outcome, report)) => (report, Some(outcome)),
@@ -325,6 +368,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", report_str);
                 }
             }
+
+            if args.graphviz {
+                let dot_string = validator.to_graphviz()?;
+                println!("{}", dot_string);
+            }
+
+            if let Some(pdf_path) = args.pdf_heatmap.as_ref() {
+                let dot_string = validator.to_graphviz_heatmap(args.pdf_heatmap_all)?;
+                let output_file_path_str = pdf_path
+                    .to_str()
+                    .ok_or("Invalid heatmap output file path")?;
+                let cmd_args = vec![
+                    CommandArg::Format(Format::Pdf),
+                    CommandArg::Output(output_file_path_str.to_string()),
+                ];
+                exec_dot(dot_string, cmd_args)
+                    .map_err(|e| format!("Graphviz execution error: {}", e))?;
+                println!("PDF heatmap generated at: {}", pdf_path.display());
+            }
         }
         Commands::Inference(args) => {
             let validator = get_validator(&args.common)?;
@@ -333,6 +395,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 args.max_iterations,
                 args.no_converge,
                 args.error_on_blank_nodes,
+                args.debug,
             );
             let outcome = validator
                 .run_inference_with_config(config)
@@ -362,6 +425,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             } else {
                 io::stdout().write_all(&turtle_bytes)?;
+            }
+
+            if args.graphviz {
+                let dot_string = validator.to_graphviz()?;
+                println!("{}", dot_string);
+            }
+
+            if let Some(pdf_path) = args.pdf_heatmap.as_ref() {
+                // Need a validation pass to populate execution traces for the heatmap
+                let _report = validator.validate();
+                let dot_string = validator.to_graphviz_heatmap(args.pdf_heatmap_all)?;
+                let output_file_path_str = pdf_path
+                    .to_str()
+                    .ok_or("Invalid heatmap output file path")?;
+                let cmd_args = vec![
+                    CommandArg::Format(Format::Pdf),
+                    CommandArg::Output(output_file_path_str.to_string()),
+                ];
+                exec_dot(dot_string, cmd_args)
+                    .map_err(|e| format!("Graphviz execution error: {}", e))?;
+                println!("PDF heatmap generated at: {}", pdf_path.display());
             }
         }
         Commands::Heat(args) => {

@@ -3,8 +3,10 @@ use crate::model::rules::{Rule, RuleCondition, SparqlRule, TriplePatternTerm, Tr
 use crate::model::shapes::{NodeShape, PropertyShape};
 use crate::sparql::SparqlExecutor;
 use crate::types::{node_conforms_to_shape, ComponentID, PropShapeID, RuleID, ID};
+use log::{debug, info};
 use oxigraph::model::{GraphName, NamedNode, NamedOrBlankNode, Quad, Term};
 use oxigraph::sparql::{QueryResults, Variable};
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
@@ -16,6 +18,7 @@ pub struct InferenceConfig {
     pub max_iterations: usize,
     pub run_until_converged: bool,
     pub error_on_blank_nodes: bool,
+    pub trace: bool,
 }
 
 impl Default for InferenceConfig {
@@ -25,6 +28,7 @@ impl Default for InferenceConfig {
             max_iterations: 8,
             run_until_converged: true,
             error_on_blank_nodes: false,
+            trace: false,
         }
     }
 }
@@ -134,6 +138,7 @@ pub struct InferenceEngine<'a> {
     context: &'a ValidationContext,
     config: InferenceConfig,
     graph: InferenceGraph,
+    skipped_rules: RefCell<HashSet<RuleID>>,
 }
 
 impl<'a> InferenceEngine<'a> {
@@ -145,6 +150,7 @@ impl<'a> InferenceEngine<'a> {
             context,
             config,
             graph: InferenceGraph::from_context(context),
+            skipped_rules: RefCell::new(HashSet::new()),
         };
         engine.validate_config()?;
         Ok(engine)
@@ -166,11 +172,25 @@ impl<'a> InferenceEngine<'a> {
         let mut converged = false;
         let mut inferred_quads = Vec::new();
 
+        if self.config.trace {
+            info!(
+                "Starting inference: {} node-shape rule set(s), {} property-shape rule set(s)",
+                self.graph.node_shape_rules.len(),
+                self.graph.property_shape_rules.len()
+            );
+        }
+
         for iteration in 1..=self.config.max_iterations {
             self.context.advanced_target_cache.borrow_mut().clear();
             iterations_executed = iteration;
             let added_this_round = self.apply_rules_once(&mut inferred_quads)?;
             total_added += added_this_round;
+            if self.config.trace {
+                info!(
+                    "Inference iteration {} added {} triple(s)",
+                    iteration, added_this_round
+                );
+            }
 
             let reached_min = iteration >= self.config.min_iterations;
             if added_this_round == 0 {
@@ -187,6 +207,13 @@ impl<'a> InferenceEngine<'a> {
             if iteration == self.config.max_iterations {
                 converged = added_this_round == 0;
             }
+        }
+
+        if self.config.trace {
+            info!(
+                "Inference finished after {} iteration(s); triples added={}; converged={}",
+                iterations_executed, total_added, converged
+            );
         }
 
         Ok(InferenceOutcome {
@@ -229,7 +256,18 @@ impl<'a> InferenceEngine<'a> {
                 )));
             };
             let focus_nodes = self.focus_nodes_for_shape(shape_id, shape)?;
+            if self.config.trace {
+                debug!(
+                    "Node shape {:?} has {} focus node(s) and {} rule(s)",
+                    shape_id,
+                    focus_nodes.len(),
+                    rule_ids.len()
+                );
+            }
             for rule_id in rule_ids {
+                if self.skipped_rules.borrow().contains(rule_id) {
+                    continue;
+                }
                 let Some(rule) = self.context.model.rules.get(rule_id) else {
                     return Err(InferenceError::Configuration(format!(
                         "Rule {:?} referenced by shape {:?} but missing from model",
@@ -237,6 +275,16 @@ impl<'a> InferenceEngine<'a> {
                     )));
                 };
                 if rule.is_deactivated() {
+                    continue;
+                }
+                if focus_nodes.is_empty() && shape.targets.is_empty() {
+                    if self.config.trace {
+                        debug!(
+                            "Skipping rule {:?} for node shape {:?} (no targets, no focus nodes)",
+                            rule_id, shape_id
+                        );
+                    }
+                    self.skipped_rules.borrow_mut().insert(*rule_id);
                     continue;
                 }
                 let added = match rule {
@@ -248,6 +296,12 @@ impl<'a> InferenceEngine<'a> {
                     }
                 };
                 iteration_added += added;
+                if self.config.trace && added > 0 {
+                    debug!(
+                        "Rule {:?} for node shape {:?} produced {} triple(s)",
+                        rule_id, shape_id, added
+                    );
+                }
             }
         }
 
@@ -259,7 +313,18 @@ impl<'a> InferenceEngine<'a> {
                 )));
             };
             let focus_nodes = self.focus_nodes_for_property_shape(shape_id, shape)?;
+            if self.config.trace {
+                debug!(
+                    "Property shape {:?} has {} focus node(s) and {} rule(s)",
+                    shape_id,
+                    focus_nodes.len(),
+                    rule_ids.len()
+                );
+            }
             for rule_id in rule_ids {
+                if self.skipped_rules.borrow().contains(rule_id) {
+                    continue;
+                }
                 let Some(rule) = self.context.model.rules.get(rule_id) else {
                     return Err(InferenceError::Configuration(format!(
                         "Rule {:?} referenced by property shape {:?} but missing from model",
@@ -267,6 +332,16 @@ impl<'a> InferenceEngine<'a> {
                     )));
                 };
                 if rule.is_deactivated() {
+                    continue;
+                }
+                if focus_nodes.is_empty() && shape.targets.is_empty() {
+                    if self.config.trace {
+                        debug!(
+                            "Skipping rule {:?} for property shape {:?} (no targets, no focus nodes)",
+                            rule_id, shape_id
+                        );
+                    }
+                    self.skipped_rules.borrow_mut().insert(*rule_id);
                     continue;
                 }
                 let added = match rule {
@@ -278,6 +353,12 @@ impl<'a> InferenceEngine<'a> {
                     }
                 };
                 iteration_added += added;
+                if self.config.trace && added > 0 {
+                    debug!(
+                        "Rule {:?} for property shape {:?} produced {} triple(s)",
+                        rule_id, shape_id, added
+                    );
+                }
             }
         }
 
