@@ -260,6 +260,4 @@ macro_rules! generate_test_cases {
     }
 }
 
-const MANIFEST_TESTS: &str = env!("SHACL_GENERATED_MANIFEST_TESTS");
-
-include!(MANIFEST_TESTS);
+include!(env!("SHACL_GENERATED_MANIFEST_TESTS"));
