@@ -1,7 +1,6 @@
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
 <urn:manifest.ttl> a mf:Manifest ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/manifest.ttl> .
-
+    mf:include <advanced/manifest.ttl>,
+        <core/manifest.ttl>,
+        <sparql/manifest.ttl> .

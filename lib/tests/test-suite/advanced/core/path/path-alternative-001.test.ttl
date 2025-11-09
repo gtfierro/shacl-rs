@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-alternative-001> a sht:Validate ;
+<path-alternative-001> a sht:Validate ;
     rdfs:label "Test of path sh:alternativePath 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-alternative-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-alternative-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <path-alternative-001.test.ttl> ;
+            sht:shapesGraph <path-alternative-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -35,8 +35,8 @@ ex:ValidResource2 ex:property1 "One" ;
 ex:ValidResource3 ex:property2 "One",
         "Two" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-alternative-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-alternative-001> ) .
+<path-alternative-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <path-alternative-001> ) .
 
 ex:InvalidResource1 ex:property1 "One" ;
     ex:property3 "Three" .

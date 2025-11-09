@@ -1,11 +1,11 @@
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/manifest.ttl> a mf:Manifest ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/expression/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/function/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/manifest.ttl> .
+<manifest.ttl> a mf:Manifest ;
+    mf:include <core/manifest.ttl>,
+        <expression/manifest.ttl>,
+        <function/manifest.ttl>,
+        <rules/manifest.ttl>,
+        <shapedefs/manifest.ttl>,
+        <sparql/manifest.ttl>,
+        <target/manifest.ttl> .
 

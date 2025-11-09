@@ -28,10 +28,10 @@ ex:ValidRectangle3 a ex:RectangleWithArea ;
     ex:area 6 ;
     ex:height 3 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/or-001> a sht:Validate ;
+<or-001> a sht:Validate ;
     rdfs:label "Test of sh:or at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/or-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/or-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <or-001.test.ttl> ;
+            sht:shapesGraph <or-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -48,8 +48,8 @@ ex:ValidRectangle3 a ex:RectangleWithArea ;
                     sh:value ex:InvalidRectangle2 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/or-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/or-001> ) .
+<or-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <or-001> ) .
 
 ex:InvalidRectangle1 a ex:RectangleWithArea ;
     ex:height 3 .

@@ -25,10 +25,10 @@ ex:TestShape a sh:NodeShape ;
     sh:property ex:TestShape-P ;
     sh:targetClass ex:Person .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-inverse-001> a sht:Validate ;
+<path-inverse-001> a sht:Validate ;
     rdfs:label "Test of path sh:inversePath 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-inverse-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-inverse-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <path-inverse-001.test.ttl> ;
+            sht:shapesGraph <path-inverse-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -45,8 +45,8 @@ ex:TestShape a sh:NodeShape ;
                     sh:sourceShape ex:TestShape-P ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-inverse-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-inverse-001> ) .
+<path-inverse-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <path-inverse-001> ) .
 
 ex:InvalidResource1 a ex:Person .
 

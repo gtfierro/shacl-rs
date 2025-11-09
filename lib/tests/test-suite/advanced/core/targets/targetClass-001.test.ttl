@@ -18,10 +18,10 @@ ex:ValidInstance1 a ex:MyClass ;
 ex:ValidInstance2 ex:myProperty "A",
         "B" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClass-001> a sht:Validate ;
+<targetClass-001> a sht:Validate ;
     rdfs:label "Test of sh:targetClass 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClass-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClass-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <targetClass-001.test.ttl> ;
+            sht:shapesGraph <targetClass-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -36,8 +36,8 @@ ex:InvalidInstance1 a ex:MyClass ;
     ex:myProperty "A",
         "B" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClass-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClass-001> ) .
+<targetClass-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <targetClass-001> ) .
 
 ex:MyShape-myProperty sh:maxCount 1 ;
     sh:path ex:myProperty .

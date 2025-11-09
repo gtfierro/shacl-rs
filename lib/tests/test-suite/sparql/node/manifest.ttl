@@ -3,8 +3,8 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/sparql/node" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/node/prefixes-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/node/sparql-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/node/sparql-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/node/sparql-003.ttl> .
+    mf:include <prefixes-001.ttl>,
+        <sparql-001.ttl>,
+        <sparql-002.ttl>,
+        <sparql-003.ttl> .
 

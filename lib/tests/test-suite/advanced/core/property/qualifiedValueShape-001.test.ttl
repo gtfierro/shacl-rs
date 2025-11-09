@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShape-001> a sht:Validate ;
+<qualifiedValueShape-001> a sht:Validate ;
     rdfs:label "Test of sh:qualifiedValueShape at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShape-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShape-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <qualifiedValueShape-001.test.ttl> ;
+            sht:shapesGraph <qualifiedValueShape-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -24,8 +24,8 @@ ex:APGARObservationShape a sh:NodeShape ;
     sh:property ex:APGARObservationShape-related ;
     sh:targetNode ex:Observation1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShape-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShape-001> ) .
+<qualifiedValueShape-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <qualifiedValueShape-001> ) .
 
 ex:APGARObservationShape-related sh:path ex:related ;
     sh:qualifiedMaxCount 3 ;

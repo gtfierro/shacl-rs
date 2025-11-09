@@ -12,10 +12,10 @@ ex:TestShape a sh:NodeShape ;
     sh:targetNode ex:InvalidResource1,
         ex:ValidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetNode-001> a sht:Validate ;
+<targetNode-001> a sht:Validate ;
     rdfs:label "Test of sh:targetNode 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetNode-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetNode-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <targetNode-001.test.ttl> ;
+            sht:shapesGraph <targetNode-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -28,8 +28,8 @@ ex:TestShape a sh:NodeShape ;
 
 ex:ValidResource1 a rdfs:Resource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetNode-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetNode-001> ) .
+<targetNode-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <targetNode-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource ;
     rdfs:label "Invalid resource 1" .

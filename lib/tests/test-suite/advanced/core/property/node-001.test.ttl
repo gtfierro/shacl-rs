@@ -34,10 +34,10 @@ ex:Issue_2 a ex:Issue ;
     ex:assignedTo ex:JohnDoeWithEmail ;
     ex:submittedBy ex:Anon .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-001> a sht:Validate ;
+<node-001> a sht:Validate ;
     rdfs:label "Test of sh:node at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <node-001.test.ttl> ;
+            sht:shapesGraph <node-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -63,8 +63,8 @@ ex:JohnDoeWithEmail a ex:Person ;
     ex:firstName "John" ;
     ex:lastName "Doe" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-001> ) .
+<node-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <node-001> ) .
 
 ex:Issue-assignedTo sh:class ex:Person ;
     sh:node [ rdfs:comment "All assignees must have an email and a last name." ;

@@ -15,10 +15,10 @@ ex:SuperClass a rdfs:Class,
     rdfs:label "Super class" ;
     sh:in ( ex:ValidInstance ) .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClassImplicit-001> a sht:Validate ;
+<targetClassImplicit-001> a sht:Validate ;
     rdfs:label "Test of implicit sh:targetClass 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClassImplicit-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClassImplicit-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <targetClassImplicit-001.test.ttl> ;
+            sht:shapesGraph <targetClassImplicit-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -32,8 +32,8 @@ ex:SuperClass a rdfs:Class,
 ex:ValidInstance a ex:SubClass ;
     rdfs:label "Valid instance" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClassImplicit-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetClassImplicit-001> ) .
+<targetClassImplicit-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <targetClassImplicit-001> ) .
 
 ex:InvalidInstance a ex:SubClass ;
     rdfs:label "Invalid instance" .

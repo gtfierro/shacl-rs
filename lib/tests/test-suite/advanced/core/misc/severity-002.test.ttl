@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002> a sht:Validate ;
+<severity-002> a sht:Validate ;
     rdfs:label "Test of sh:severity 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <severity-002.test.ttl> ;
+            sht:shapesGraph <severity-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -32,8 +32,8 @@ ex:TestShape1 sh:nodeKind sh:BlankNode ;
     sh:severity ex:MySeverity ;
     sh:targetNode ex:InvalidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002> ) .
+<severity-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <severity-002> ) .
 
 ex:TestShape2 sh:datatype xsd:integer ;
     sh:path ex:property ;

@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/sparql-001> a sht:Validate ;
+<sparql-001> a sht:Validate ;
     rdfs:label "Test of sh:sparql at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/sparql-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/sparql-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <sparql-001.test.ttl> ;
+            sht:shapesGraph <sparql-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -40,8 +40,8 @@
 
 ex:ValidResource1 a rdfs:Resource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/sparql-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/sparql-001> ) .
+<sparql-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <sparql-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource ;
     rdfs:label "Invalid resource 1" .

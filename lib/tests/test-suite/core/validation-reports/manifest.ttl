@@ -3,5 +3,5 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests for validation reports" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/validation-reports/shared.ttl> .
+    mf:include <shared.ttl> .
 

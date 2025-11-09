@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/complex/personexample> a sht:Validate ;
+<personexample> a sht:Validate ;
     rdfs:label "Test of personexample" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/complex/personexample.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/complex/personexample.test.ttl> ] ;
+    mf:action [ sht:dataGraph <personexample.test.ttl> ;
+            sht:shapesGraph <personexample.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -57,8 +57,8 @@ ex:PersonShape a sh:NodeShape ;
         _:n5289ed6dae574208a33741e1a2e758f3b7 ;
     sh:targetClass ex:Person .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/complex/personexample.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/complex/personexample> ) .
+<personexample.test.ttl> a mf:Manifest ;
+    mf:entries ( <personexample> ) .
 
 ex:Calvin a ex:Person ;
     ex:birthDate "1999-09-09"^^xsd:date ;

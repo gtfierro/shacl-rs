@@ -3,5 +3,5 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/sparql/property" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/property/sparql-001.ttl> .
+    mf:include <sparql-001.ttl> .
 

@@ -10,7 +10,7 @@
 ex:Rectangle a rdfs:Class ;
     rdfs:subClassOf rdfs:Resource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/sparql/rectangle.test.ttl> a mf:Manifest ;
+<rectangle.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 ex:RectangleShape a sh:NodeShape ;

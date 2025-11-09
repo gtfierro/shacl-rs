@@ -11,10 +11,10 @@ ex:NewZealandLanguagesShape a sh:NodeShape ;
     sh:targetNode ex:Berg,
         ex:Mountain .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/languageIn-001> a sht:Validate ;
+<languageIn-001> a sht:Validate ;
     rdfs:label "Test of sh:languageIn at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/languageIn-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/languageIn-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <languageIn-001.test.ttl> ;
+            sht:shapesGraph <languageIn-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -44,8 +44,8 @@ ex:Mountain ex:prefLabel "Mountain"@en,
         "Hill"@en-NZ,
         "Maunga"@mi .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/languageIn-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/languageIn-001> ) .
+<languageIn-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <languageIn-001> ) .
 
 ex:Berg ex:prefLabel ex:BergLabel,
         "Berg",

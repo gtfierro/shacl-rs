@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minInclusive-001> a sht:Validate ;
+<minInclusive-001> a sht:Validate ;
     rdfs:label "Test of sh:minInclusive at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minInclusive-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minInclusive-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <minInclusive-001.test.ttl> ;
+            sht:shapesGraph <minInclusive-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -26,6 +26,6 @@ ex:TestShape a sh:NodeShape ;
         8,
         9 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minInclusive-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minInclusive-001> ) .
+<minInclusive-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <minInclusive-001> ) .
 

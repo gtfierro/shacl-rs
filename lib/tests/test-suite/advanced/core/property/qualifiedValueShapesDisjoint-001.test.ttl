@@ -34,10 +34,10 @@ ex:ValidHand a ex:Hand ;
         ex:Finger4,
         ex:Thumb1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShapesDisjoint-001> a sht:Validate ;
+<qualifiedValueShapesDisjoint-001> a sht:Validate ;
     rdfs:label "Test of sh:qualifiedValueShapesDisjoint at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShapesDisjoint-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShapesDisjoint-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <qualifiedValueShapesDisjoint-001.test.ttl> ;
+            sht:shapesGraph <qualifiedValueShapesDisjoint-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -64,8 +64,8 @@ ex:FingerAndThumb a ex:Finger,
 ex:Thumb1 a ex:Thumb ;
     rdfs:label "Thumb1" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShapesDisjoint-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedValueShapesDisjoint-001> ) .
+<qualifiedValueShapesDisjoint-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <qualifiedValueShapesDisjoint-001> ) .
 
 ex:Finger1 a ex:Finger ;
     rdfs:label "Finger1" .

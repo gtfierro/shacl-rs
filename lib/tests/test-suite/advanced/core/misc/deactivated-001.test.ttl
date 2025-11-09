@@ -12,10 +12,10 @@ ex:TestShape a sh:NodeShape ;
     sh:property ex:TestShape2 ;
     sh:targetNode ex:InvalidResource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001> a sht:Validate ;
+<deactivated-001> a sht:Validate ;
     rdfs:label "Test of sh:deactivated 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <deactivated-001.test.ttl> ;
+            sht:shapesGraph <deactivated-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms true ] ;
     mf:status sht:approved .
@@ -26,6 +26,6 @@ ex:TestShape2 a sh:PropertyShape ;
     sh:minCount 1 ;
     sh:path ex:property .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001> ) .
+<deactivated-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <deactivated-001> ) .
 

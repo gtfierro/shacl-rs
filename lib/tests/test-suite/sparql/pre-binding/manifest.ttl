@@ -3,18 +3,18 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests for pre-binding" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-003.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-004.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-005.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-006.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/pre-binding-007.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/shapesGraph-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-003.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-004.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-005.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/pre-binding/unsupported-sparql-006.ttl> .
+    mf:include <pre-binding-001.ttl>,
+        <pre-binding-002.ttl>,
+        <pre-binding-003.ttl>,
+        <pre-binding-004.ttl>,
+        <pre-binding-005.ttl>,
+        <pre-binding-006.ttl>,
+        <pre-binding-007.ttl>,
+        <shapesGraph-001.ttl>,
+        <unsupported-sparql-001.ttl>,
+        <unsupported-sparql-002.ttl>,
+        <unsupported-sparql-003.ttl>,
+        <unsupported-sparql-004.ttl>,
+        <unsupported-sparql-005.ttl>,
+        <unsupported-sparql-006.ttl> .
 

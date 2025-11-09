@@ -250,8 +250,8 @@ shsh:ShapeShape a sh:NodeShape ;
 
 <urn:shacl-shacl> a sht:Validate ;
     rdfs:label "frozen eat your own ( eat your own frozen dogfood )" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/shacl-shacl-data-shapes.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/shacl-shacl-data-shapes.ttl> ] ;
+    mf:action [ sht:dataGraph <shacl-shacl-data-shapes.ttl> ;
+            sht:shapesGraph <shacl-shacl-data-shapes.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms true ] ;
     mf:status sht:approved .

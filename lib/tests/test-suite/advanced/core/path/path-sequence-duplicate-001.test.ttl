@@ -10,10 +10,10 @@ ex:S a sh:NodeShape ;
     sh:property ex:SP ;
     sh:targetNode ex:A .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-sequence-duplicate-001> a sht:Validate ;
+<path-sequence-duplicate-001> a sht:Validate ;
     rdfs:label "Test of path sequence with duplicate 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-sequence-duplicate-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-sequence-duplicate-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <path-sequence-duplicate-001.test.ttl> ;
+            sht:shapesGraph <path-sequence-duplicate-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -25,8 +25,8 @@ ex:S a sh:NodeShape ;
                     sh:value "value" ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-sequence-duplicate-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-sequence-duplicate-001> ) .
+<path-sequence-duplicate-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <path-sequence-duplicate-001> ) .
 
 ex:A ex:p1 [ ex:p2 "value" ],
         [ ex:p2 "value" ] .

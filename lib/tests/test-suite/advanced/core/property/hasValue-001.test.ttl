@@ -22,10 +22,10 @@ ex:ValidMalePerson2 a ex:MalePerson ;
     ex:gender "female",
         "male" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/hasValue-001> a sht:Validate ;
+<hasValue-001> a sht:Validate ;
     rdfs:label "Test of sh:hasValue at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/hasValue-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/hasValue-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <hasValue-001.test.ttl> ;
+            sht:shapesGraph <hasValue-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -40,8 +40,8 @@ ex:InvalidMalePerson a ex:MalePerson ;
     rdfs:label "Invalid male person" ;
     ex:gender "female" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/hasValue-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/hasValue-001> ) .
+<hasValue-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <hasValue-001> ) .
 
 ex:PersonShape-gender rdfs:label "gender" ;
     sh:datatype xsd:string ;

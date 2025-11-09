@@ -12,16 +12,16 @@ ex:TestShape a sh:NodeShape ;
             sh:path ex:property ] ;
     sh:targetNode ex:ValidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minCount-002> a sht:Validate ;
+<minCount-002> a sht:Validate ;
     rdfs:label "Test of sh:minCount at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minCount-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minCount-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <minCount-002.test.ttl> ;
+            sht:shapesGraph <minCount-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms true ] ;
     mf:status sht:approved .
 
 ex:ValidResource1 a rdfs:Resource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minCount-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minCount-002> ) .
+<minCount-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <minCount-002> ) .
 

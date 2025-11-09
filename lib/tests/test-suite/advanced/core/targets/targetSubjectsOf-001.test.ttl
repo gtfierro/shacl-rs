@@ -14,10 +14,10 @@ ex:TestShape a sh:NodeShape ;
 
 ex:ValidInstance1 ex:myProperty "A" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetSubjectsOf-001> a sht:Validate ;
+<targetSubjectsOf-001> a sht:Validate ;
     rdfs:label "Test of sh:targetSubjectsOf 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetSubjectsOf-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetSubjectsOf-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <targetSubjectsOf-001.test.ttl> ;
+            sht:shapesGraph <targetSubjectsOf-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -31,8 +31,8 @@ ex:ValidInstance1 ex:myProperty "A" .
 ex:InvalidInstance1 ex:myProperty "A",
         "B" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetSubjectsOf-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetSubjectsOf-001> ) .
+<targetSubjectsOf-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <targetSubjectsOf-001> ) .
 
 ex:TestShape-myProperty a sh:PropertyShape ;
     sh:maxCount 1 ;

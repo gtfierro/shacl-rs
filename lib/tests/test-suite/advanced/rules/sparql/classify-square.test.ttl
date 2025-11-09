@@ -34,7 +34,7 @@ WHERE {
 ex:Square a rdfs:Class ;
     rdfs:label "Square" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/sparql/classify-square.test.ttl> a mf:Manifest ;
+<classify-square.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 ex:InvalidRectangle a ex:Rectangle ;

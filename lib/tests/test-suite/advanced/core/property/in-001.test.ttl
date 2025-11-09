@@ -20,10 +20,10 @@ ex:ValidInstance2 a ex:ShapeClass ;
         "B",
         "C" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/in-001> a sht:Validate ;
+<in-001> a sht:Validate ;
     rdfs:label "Test of sh:in at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/in-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/in-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <in-001.test.ttl> ;
+            sht:shapesGraph <in-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -39,8 +39,8 @@ ex:InvalidInstance1 a ex:ShapeClass ;
     rdfs:label "Invalid instance1" ;
     ex:property "D" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/in-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/in-001> ) .
+<in-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <in-001> ) .
 
 ex:ShapeClass-property sh:datatype xsd:string ;
     sh:in ( "A" "B" "C" ) ;

@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minExclusive-001> a sht:Validate ;
+<minExclusive-001> a sht:Validate ;
     rdfs:label "Test of sh:minExclusive at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minExclusive-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minExclusive-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <minExclusive-001.test.ttl> ;
+            sht:shapesGraph <minExclusive-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -50,8 +50,8 @@
                     sh:value _:n088863ccf14b4486b09484dd2779e399b9 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minExclusive-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minExclusive-001> ) .
+<minExclusive-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <minExclusive-001> ) .
 
 ex:TestShape a sh:NodeShape ;
     sh:minExclusive 4 ;

@@ -32,7 +32,7 @@ ex:Rectangle a rdfs:Class,
 ex:Square a rdfs:Class ;
     rdfs:label "Square" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/triple/square.test.ttl> a mf:Manifest ;
+<square.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 <http://datashapes.org/shasf/tests/rules/triple/square.test> a owl:Ontology ;

@@ -1,7 +1,7 @@
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/manifest.ttl> a mf:Manifest ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/node/manifest.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/manifest.ttl> .
+<manifest.ttl> a mf:Manifest ;
+    mf:include <component/manifest.ttl>,
+        <node/manifest.ttl>,
+        <property/manifest.ttl> .
 

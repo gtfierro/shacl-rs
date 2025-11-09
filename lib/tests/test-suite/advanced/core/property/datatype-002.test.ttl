@@ -13,10 +13,10 @@ ex:TestShape a sh:NodeShape ;
         ex:ValidInstance1,
         ex:ValidInstance2 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-002> a sht:Validate ;
+<datatype-002> a sht:Validate ;
     rdfs:label "Test of sh:datatype at property shape 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <datatype-002.test.ttl> ;
+            sht:shapesGraph <datatype-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -39,8 +39,8 @@ ex:ValidInstance1 ex:value "A" .
 
 ex:ValidInstance2 ex:value "A" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-002> ) .
+<datatype-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <datatype-002> ) .
 
 ex:InvalidInstance1 ex:value "A"@en .
 

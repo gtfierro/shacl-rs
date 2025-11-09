@@ -11,10 +11,10 @@ ex:Country a rdfs:Class .
 ex:ValidCountry a ex:Country ;
     ex:germanLabel "Spanien"@de .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/sparql-001> a sht:Validate ;
+<sparql-001> a sht:Validate ;
     rdfs:label "Test of sh:sparql at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/sparql-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/sparql-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <sparql-001.test.ttl> ;
+            sht:shapesGraph <sparql-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -35,8 +35,8 @@ ex:LanguageExamplePropertyShape a sh:PropertyShape ;
     sh:sparql ex:LanguageExamplePropertyShape-sparql ;
     sh:targetClass ex:Country .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/sparql-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/property/sparql-001> ) .
+<sparql-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <sparql-001> ) .
 
 ex:LanguageExamplePropertyShape-sparql a sh:SPARQLConstraint ;
     sh:message "Values are literals with German language tag." ;

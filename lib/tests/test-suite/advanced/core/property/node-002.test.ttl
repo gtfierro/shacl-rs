@@ -16,10 +16,10 @@ ex:PersonShape a sh:NodeShape ;
     sh:property ex:PersonShape-address ;
     sh:targetClass ex:Person .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-002> a sht:Validate ;
+<node-002> a sht:Validate ;
     rdfs:label "Test of sh:node at property shape 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <node-002.test.ttl> ;
+            sht:shapesGraph <node-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -43,8 +43,8 @@ ex:BobsAddress ex:postalCode "1234" .
 ex:Reto a ex:Person ;
     ex:address ex:RetosAddress .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/node-002> ) .
+<node-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <node-002> ) .
 
 ex:PersonShape-address sh:minCount 1 ;
     sh:node ex:AddressShape ;

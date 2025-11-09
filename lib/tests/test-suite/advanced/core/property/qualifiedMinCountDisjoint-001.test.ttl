@@ -31,10 +31,10 @@ ex:ValidHand1 a ex:Hand ;
     ex:digit ex:Finger_1,
         ex:Thumb_1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedMinCountDisjoint-001> a sht:Validate ;
+<qualifiedMinCountDisjoint-001> a sht:Validate ;
     rdfs:label "Test of sh:qualifiedMinCount with disjoint shapes at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedMinCountDisjoint-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedMinCountDisjoint-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <qualifiedMinCountDisjoint-001.test.ttl> ;
+            sht:shapesGraph <qualifiedMinCountDisjoint-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -73,8 +73,8 @@ ex:ThumbShape a sh:NodeShape ;
 ex:Thumb_1 a ex:Thumb ;
     rdfs:label "Thumb 1" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedMinCountDisjoint-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/qualifiedMinCountDisjoint-001> ) .
+<qualifiedMinCountDisjoint-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <qualifiedMinCountDisjoint-001> ) .
 
 ex:HandShape-digit-minCount1 a sh:PropertyShape ;
     sh:path ex:digit ;

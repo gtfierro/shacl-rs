@@ -13,10 +13,10 @@ ex:TestShape a sh:NodeShape ;
     sh:targetNode ex:InvalidResource1,
         ex:ValidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/or-datatypes-001> a sht:Validate ;
+<or-datatypes-001> a sht:Validate ;
     rdfs:label "Test of sh:or of sh:datatypes at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/or-datatypes-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/or-datatypes-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <or-datatypes-001.test.ttl> ;
+            sht:shapesGraph <or-datatypes-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -48,8 +48,8 @@ ex:ValidResource1 a rdfs:Resource ;
         "A string",
         "A language string"@en .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/or-datatypes-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/or-datatypes-001> ) .
+<or-datatypes-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <or-datatypes-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource ;
     rdfs:label "Invalid resource1" ;

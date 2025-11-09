@@ -13,10 +13,10 @@ ex:InvalidResource2 ex:testProperty rdfs:Resource .
 ex:ValidResource1 ex:testProperty 42,
         100 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetObjectsOf-001> a sht:Validate ;
+<targetObjectsOf-001> a sht:Validate ;
     rdfs:label "Test of sh:targetObjectsOf 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetObjectsOf-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetObjectsOf-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <targetObjectsOf-001.test.ttl> ;
+            sht:shapesGraph <targetObjectsOf-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -36,8 +36,8 @@ ex:ValidResource1 ex:testProperty 42,
 ex:testProperty a rdf:Property ;
     rdfs:label "test property" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetObjectsOf-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/targets/targetObjectsOf-001> ) .
+<targetObjectsOf-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <targetObjectsOf-001> ) .
 
 ex:TestShape a sh:NodeShape ;
     rdfs:label "Test shape" ;

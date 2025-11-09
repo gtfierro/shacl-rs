@@ -19,10 +19,10 @@ ex:ValidInstance1 a ex:TestShape ;
 ex:ValidInstance2 a ex:TestShape ;
     ex:property "john" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/pattern-002> a sht:Validate ;
+<pattern-002> a sht:Validate ;
     rdfs:label "Test of sh:pattern at property shape 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/pattern-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/pattern-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <pattern-002.test.ttl> ;
+            sht:shapesGraph <pattern-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -38,8 +38,8 @@ ex:InvalidInstance1 a ex:TestShape ;
     rdfs:label "Invalid instance1" ;
     ex:property "Maria" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/pattern-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/pattern-002> ) .
+<pattern-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <pattern-002> ) .
 
 ex:TestShape-property rdfs:label "property" ;
     sh:datatype xsd:string ;

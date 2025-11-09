@@ -16,10 +16,10 @@ ex:TestShape a rdfs:Class,
     sh:targetNode ex:InvalidResource1,
         ex:ValidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/not-001> a sht:Validate ;
+<not-001> a sht:Validate ;
     rdfs:label "Test of sh:not at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/not-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/not-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <not-001.test.ttl> ;
+            sht:shapesGraph <not-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -32,8 +32,8 @@ ex:TestShape a rdfs:Class,
 
 ex:ValidResource1 a rdfs:Resource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/not-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/not-001> ) .
+<not-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <not-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource ;
     ex:property "some value" .

@@ -14,10 +14,10 @@ ex:AddressShape a sh:NodeShape ;
         ex:InvalidResource3,
         ex:ValidResource1 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/and-001> a sht:Validate ;
+<and-001> a sht:Validate ;
     rdfs:label "Test of sh:and at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/and-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/and-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <and-001.test.ttl> ;
+            sht:shapesGraph <and-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -47,8 +47,8 @@ ex:ValidResource1 a rdfs:Resource ;
     ex:address [ ex:postalCode 4879 ;
             ex:suburb ex:KewarraBeach ] .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/and-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/and-001> ) .
+<and-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <and-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource ;
     ex:address _:n91506ce1f2514b769377aa495183bfc7b4 .

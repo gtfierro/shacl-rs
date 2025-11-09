@@ -17,10 +17,10 @@ ex:ValidInstance1 a ex:TestShape ;
         "Me"@en,
         "Moi"@fr .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/uniqueLang-001> a sht:Validate ;
+<uniqueLang-001> a sht:Validate ;
     rdfs:label "Test of sh:uniqueLang at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/uniqueLang-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/uniqueLang-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <uniqueLang-001.test.ttl> ;
+            sht:shapesGraph <uniqueLang-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -49,8 +49,8 @@ ex:InvalidInstance1 a ex:TestShape ;
         "Myself"@en,
         "Moi"@fr .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/uniqueLang-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/uniqueLang-001> ) .
+<uniqueLang-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <uniqueLang-001> ) .
 
 ex:InvalidInstance2 a ex:TestShape ;
     ex:testProperty "Ich"@de,

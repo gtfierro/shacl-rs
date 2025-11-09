@@ -11,8 +11,8 @@
 
 <urn:shared> a sht:Validate ;
     rdfs:label "Test of validation report for shape shared by property constraints" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/validation-reports/shared-data.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/validation-reports/shared-shapes.ttl> ] ;
+    mf:action [ sht:dataGraph <shared-data.ttl> ;
+            sht:shapesGraph <shared-shapes.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;

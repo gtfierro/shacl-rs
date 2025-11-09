@@ -19,10 +19,10 @@ ex:ValidCountry1 a ex:Country ;
     ex:englishLabel "Beijing"@en ;
     ex:germanLabel "Peking"@de .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/propertyValidator-select-001> a sht:Validate ;
+<propertyValidator-select-001> a sht:Validate ;
     rdfs:label "Test of sh:propertyValidator with SELECT 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/propertyValidator-select-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/propertyValidator-select-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <propertyValidator-select-001.test.ttl> ;
+            sht:shapesGraph <propertyValidator-select-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -41,8 +41,8 @@ ex:ValidCountry1 a ex:Country ;
                     sh:value "Muenchen" ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/propertyValidator-select-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/propertyValidator-select-001> ) .
+<propertyValidator-select-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <propertyValidator-select-001> ) .
 
 ex:InvalidCountry1 a ex:Country ;
     rdfs:label "Invalid country1" ;

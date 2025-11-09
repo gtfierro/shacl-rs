@@ -33,10 +33,10 @@ ex:ShapeWithLiteral a sh:NodeShape ;
     sh:property _:nc3102c4c056844acb9314a47ec40df4db6 ;
     sh:targetClass ex:MyClass .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/nodeKind-001> a sht:Validate ;
+<nodeKind-001> a sht:Validate ;
     rdfs:label "Test of sh:nodeKind at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/nodeKind-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/nodeKind-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <nodeKind-001.test.ttl> ;
+            sht:shapesGraph <nodeKind-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -230,8 +230,8 @@ ex:ShapeWithLiteral a sh:NodeShape ;
                     sh:value _:nc3102c4c056844acb9314a47ec40df4db10 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/nodeKind-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/nodeKind-001> ) .
+<nodeKind-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <nodeKind-001> ) .
 
 ex:InstanceWithBlankNode a ex:MyClass ;
     ex:myProperty _:nc3102c4c056844acb9314a47ec40df4db10 .

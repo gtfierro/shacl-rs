@@ -31,10 +31,10 @@ ex:TestShape a sh:NodeShape ;
 
 ex:ValidInstance1 a owl:Thing .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/sparqlTarget-001> a sht:Validate ;
+<sparqlTarget-001> a sht:Validate ;
     rdfs:label "Test of sh:SPARQLTarget 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/sparqlTarget-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/sparqlTarget-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <sparqlTarget-001.test.ttl> ;
+            sht:shapesGraph <sparqlTarget-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -49,8 +49,8 @@ ex:ValidInstance1 a owl:Thing .
     rdfs:label "Test of sh:SPARQLTarget 001" ;
     owl:imports <http://datashapes.org/dash> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/sparqlTarget-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/target/sparqlTarget-001> ) .
+<sparqlTarget-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <sparqlTarget-001> ) .
 
 ex:InvalidInstance1 a owl:Thing ;
     rdfs:label "Invalid instance1" .

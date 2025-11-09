@@ -14,10 +14,10 @@ ex:Person a rdfs:Class .
 ex:InvalidResource a ex:Animal ;
     rdfs:label "Invalid" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-complex-001> a sht:Validate ;
+<path-complex-001> a sht:Validate ;
     rdfs:label "Test of path complex (rdf:type/rdfs:subClassOf*) 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-complex-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-complex-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <path-complex-001.test.ttl> ;
+            sht:shapesGraph <path-complex-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -41,8 +41,8 @@ ex:ValidResource2 a ex:MalePerson .
 ex:ValidResource3 a ex:Animal,
         ex:MalePerson .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-complex-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-complex-001> ) .
+<path-complex-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <path-complex-001> ) .
 
 ex:TestShape a sh:PropertyShape ;
     sh:hasValue ex:Person ;

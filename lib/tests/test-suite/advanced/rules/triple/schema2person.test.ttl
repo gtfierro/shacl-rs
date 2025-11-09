@@ -9,7 +9,7 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/triple/schema2person.test.ttl> a mf:Manifest ;
+<schema2person.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 <http://datashapes.org/shasf/tests/rules/triple/schema2person.test> a owl:Ontology ;

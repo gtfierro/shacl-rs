@@ -3,17 +3,17 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/path" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-alternative-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-complex-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-complex-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-inverse-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-oneOrMore-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-sequence-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-sequence-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-sequence-duplicate-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-strange-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-strange-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-unused-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-zeroOrMore-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/path/path-zeroOrOne-001.ttl> .
+    mf:include <path-alternative-001.ttl>,
+        <path-complex-001.ttl>,
+        <path-complex-002.ttl>,
+        <path-inverse-001.ttl>,
+        <path-oneOrMore-001.ttl>,
+        <path-sequence-001.ttl>,
+        <path-sequence-002.ttl>,
+        <path-sequence-duplicate-001.ttl>,
+        <path-strange-001.ttl>,
+        <path-strange-002.ttl>,
+        <path-unused-001.ttl>,
+        <path-zeroOrMore-001.ttl>,
+        <path-zeroOrOne-001.ttl> .
 

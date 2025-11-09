@@ -3,7 +3,7 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/sparql/component" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/component/optional-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/component/propertyValidator-select-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/sparql/component/validator-001.ttl> .
+    mf:include <optional-001.ttl>,
+        <propertyValidator-select-001.ttl>,
+        <validator-001.ttl> .
 

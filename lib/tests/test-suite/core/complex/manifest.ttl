@@ -3,6 +3,6 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/complex" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/personexample.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/complex/shacl-shacl.ttl> .
+    mf:include <personexample.ttl>,
+        <shacl-shacl.ttl> .
 

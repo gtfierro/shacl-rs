@@ -13,10 +13,10 @@ ex:ConstraintComponent a rdfs:Class ;
 
 <http://datashapes.org/sh/tests/sparql/component/validator-001.test> owl:imports <http://datashapes.org/dash> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/validator-001> a sht:Validate ;
+<validator-001> a sht:Validate ;
     rdfs:label "Test of sh:validator 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/validator-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/validator-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <validator-001.test.ttl> ;
+            sht:shapesGraph <validator-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -56,6 +56,6 @@ ex:TestShape a sh:NodeShape ;
     sh:targetNode "Hallo Welt",
         "Hello World" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/validator-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/sparql/component/validator-001> ) .
+<validator-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <validator-001> ) .
 

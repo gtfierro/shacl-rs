@@ -1,8 +1,8 @@
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/manifest.ttl> a mf:Manifest ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-001.test.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/deactivated-002.test.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-001.test.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/misc/severity-002.test.ttl> .
+<manifest.ttl> a mf:Manifest ;
+    mf:include <deactivated-001.test.ttl>,
+        <deactivated-002.test.ttl>,
+        <severity-001.test.ttl>,
+        <severity-002.test.ttl> .
 

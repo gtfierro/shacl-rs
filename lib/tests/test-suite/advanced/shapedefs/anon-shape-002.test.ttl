@@ -23,10 +23,10 @@ ex:GraphValidationTestCase a dash:GraphValidationTestCase ;
                     sh:sourceShape [ ] ] ] ;
     dash:validateShapes true .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/anon-shape-002> a sht:Validate ;
+<anon-shape-002> a sht:Validate ;
     rdfs:label "Test of anonymous shape definition 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/anon-shape-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/anon-shape-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <anon-shape-002.test.ttl> ;
+            sht:shapesGraph <anon-shape-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -39,8 +39,8 @@ ex:GraphValidationTestCase a dash:GraphValidationTestCase ;
 
 ex:ValidNode1 ex:property 42 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/anon-shape-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/shapedefs/anon-shape-002> ) .
+<anon-shape-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <anon-shape-002> ) .
 
 ex:InvalidNode1 rdfs:label "Invalid node 1" .
 

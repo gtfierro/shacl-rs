@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-zeroOrOne-001> a sht:Validate ;
+<path-zeroOrOne-001> a sht:Validate ;
     rdfs:label "Test of path sh:zeroOrOnePath 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-zeroOrOne-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-zeroOrOne-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <path-zeroOrOne-001.test.ttl> ;
+            sht:shapesGraph <path-zeroOrOne-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -33,8 +33,8 @@ ex:ValidResource1 ex:child ex:Person1 .
 
 ex:ValidResource2 ex:child ex:Person2 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-zeroOrOne-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/path/path-zeroOrOne-001> ) .
+<path-zeroOrOne-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <path-zeroOrOne-001> ) .
 
 ex:InvalidResource1 a rdfs:Resource .
 

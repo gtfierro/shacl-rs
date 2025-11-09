@@ -14,10 +14,10 @@ ex:TestShape a rdfs:Class,
 ex:ValidInstance1 a ex:TestShape ;
     ex:testProperty 42 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minExclusive-001> a sht:Validate ;
+<minExclusive-001> a sht:Validate ;
     rdfs:label "Test of sh:minExclusive at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minExclusive-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minExclusive-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <minExclusive-001.test.ttl> ;
+            sht:shapesGraph <minExclusive-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -42,8 +42,8 @@ ex:InvalidInstance1 a ex:TestShape ;
 ex:InvalidInstance2 a ex:TestShape ;
     ex:testProperty 39 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minExclusive-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/minExclusive-001> ) .
+<minExclusive-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <minExclusive-001> ) .
 
 ex:TestShape-testProperty sh:minExclusive 40 ;
     sh:path ex:testProperty .

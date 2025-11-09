@@ -3,9 +3,9 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/misc" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/misc/deactivated-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/misc/deactivated-002.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/misc/message-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/misc/severity-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/misc/severity-002.ttl> .
+    mf:include <deactivated-001.ttl>,
+        <deactivated-002.ttl>,
+        <message-001.ttl>,
+        <severity-001.ttl>,
+        <severity-002.ttl> .
 

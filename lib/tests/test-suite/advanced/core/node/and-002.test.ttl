@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/and-002> a sht:Validate ;
+<and-002> a sht:Validate ;
     rdfs:label "Test of sh:and at node shape 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/and-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/and-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <and-002.test.ttl> ;
+            sht:shapesGraph <and-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -32,8 +32,8 @@ ex:SuperShape a sh:NodeShape ;
 
 ex:ValidInstance1 ex:property "One" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/and-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/and-002> ) .
+<and-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <and-002> ) .
 
 ex:AndShape a sh:NodeShape ;
     sh:and ( ex:SuperShape [ sh:property [ sh:maxCount 1 ;

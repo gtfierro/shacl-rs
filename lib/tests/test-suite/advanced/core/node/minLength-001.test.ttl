@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minLength-001> a sht:Validate ;
+<minLength-001> a sht:Validate ;
     rdfs:label "Test of sh:minLength at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minLength-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minLength-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <minLength-001.test.ttl> ;
+            sht:shapesGraph <minLength-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -38,8 +38,8 @@
                     sh:value _:n8405c31fb7c34ef38ccc7fd42516b75fb7 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minLength-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/minLength-001> ) .
+<minLength-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <minLength-001> ) .
 
 ex:TestShape a sh:NodeShape ;
     sh:minLength 4 ;

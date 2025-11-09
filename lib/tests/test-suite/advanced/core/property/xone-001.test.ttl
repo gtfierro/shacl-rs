@@ -30,10 +30,10 @@ ex:XoneConstraintExampleShape a sh:NodeShape ;
     sh:property ex:TestPropertyShape ;
     sh:targetClass ex:Person .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/xone-001> a sht:Validate ;
+<xone-001> a sht:Validate ;
     rdfs:label "Test of sh:xone at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/xone-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/xone-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <xone-001.test.ttl> ;
+            sht:shapesGraph <xone-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -45,8 +45,8 @@ ex:XoneConstraintExampleShape a sh:NodeShape ;
                     sh:value "165"^^xsd:int ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/xone-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/xone-001> ) .
+<xone-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <xone-001> ) .
 
 ex:Dory a ex:Person ;
     ex:value "165"^^xsd:int .

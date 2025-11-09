@@ -18,10 +18,10 @@ ex:ValidResource a ex:TestShape ;
     ex:integerProperty 0,
         1234 .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-001> a sht:Validate ;
+<datatype-001> a sht:Validate ;
     rdfs:label "Test of sh:datatype at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <datatype-001.test.ttl> ;
+            sht:shapesGraph <datatype-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -40,8 +40,8 @@ ex:ValidResource a ex:TestShape ;
                     sh:value 11.1 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/datatype-001> ) .
+<datatype-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <datatype-001> ) .
 
 ex:InvalidResource1 a ex:TestShape ;
     ex:dateProperty "2011-01-01T00:00:00"^^xsd:dateTime ;

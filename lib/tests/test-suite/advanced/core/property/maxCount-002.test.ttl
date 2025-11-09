@@ -13,10 +13,10 @@ ex:TestShape a sh:NodeShape ;
     sh:targetNode ex:InvalidResource,
         ex:ValidResource .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/maxCount-002> a sht:Validate ;
+<maxCount-002> a sht:Validate ;
     rdfs:label "Test of sh:maxCount at property shape 002" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/maxCount-002.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/maxCount-002.test.ttl> ] ;
+    mf:action [ sht:dataGraph <maxCount-002.test.ttl> ;
+            sht:shapesGraph <maxCount-002.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -30,8 +30,8 @@ ex:TestShape a sh:NodeShape ;
 ex:ValidResource a rdfs:Resource ;
     rdfs:label "Valid resource" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/maxCount-002.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/maxCount-002> ) .
+<maxCount-002.test.ttl> a mf:Manifest ;
+    mf:entries ( <maxCount-002> ) .
 
 ex:InvalidResource a rdfs:Resource ;
     rdfs:label "Invalid resource" ;

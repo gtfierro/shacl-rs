@@ -3,11 +3,11 @@
 
 <urn:manifest.ttl> a mf:Manifest ;
     rdfs:label "Tests converted from http://datashapes.org/sh/tests/tests/core/targets" ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/multipleTargets-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetClass-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetClassImplicit-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetNode-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetObjectsOf-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetSubjectsOf-001.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/core/targets/targetSubjectsOf-002.ttl> .
+    mf:include <multipleTargets-001.ttl>,
+        <targetClass-001.ttl>,
+        <targetClassImplicit-001.ttl>,
+        <targetNode-001.ttl>,
+        <targetObjectsOf-001.ttl>,
+        <targetSubjectsOf-001.ttl>,
+        <targetSubjectsOf-002.ttl> .
 

@@ -7,7 +7,7 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/triple/person2schema.test.ttl> a mf:Manifest ;
+<person2schema.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 ex:Person2SchemaMappingShape a sh:NodeShape ;

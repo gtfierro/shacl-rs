@@ -34,10 +34,10 @@ ex:PersonShape a sh:NodeShape ;
 ex:ValidPerson1 a ex:Person ;
     ex:address ex:ValidAddress .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/property-001> a sht:Validate ;
+<property-001> a sht:Validate ;
     rdfs:label "Test of sh:property at property shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/property-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/property-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <property-001.test.ttl> ;
+            sht:shapesGraph <property-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -59,8 +59,8 @@ ex:ValidPerson1 a ex:Person ;
 ex:ProperCity a ex:City ;
     rdfs:label "Proper city" .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/property-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/property/property-001> ) .
+<property-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <property-001> ) .
 
 ex:ValidAddress a ex:Address ;
     ex:city ex:ProperCity .

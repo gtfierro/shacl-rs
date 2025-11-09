@@ -1,6 +1,6 @@
 @prefix mf: <http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/sparql/manifest.ttl> a mf:Manifest ;
-    mf:include <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/sparql/classify-square.test.ttl>,
-        <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/sparql/rectangle.test.ttl> .
+<manifest.ttl> a mf:Manifest ;
+    mf:include <classify-square.test.ttl>,
+        <rectangle.test.ttl> .
 

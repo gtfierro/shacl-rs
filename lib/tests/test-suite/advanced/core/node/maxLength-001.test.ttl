@@ -6,10 +6,10 @@
 @prefix sht: <http://www.w3.org/ns/shacl-test#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/maxLength-001> a sht:Validate ;
+<maxLength-001> a sht:Validate ;
     rdfs:label "Test of sh:maxLength at node shape 001" ;
-    mf:action [ sht:dataGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/maxLength-001.test.ttl> ;
-            sht:shapesGraph <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/maxLength-001.test.ttl> ] ;
+    mf:action [ sht:dataGraph <maxLength-001.test.ttl> ;
+            sht:shapesGraph <maxLength-001.test.ttl> ] ;
     mf:result [ a sh:ValidationReport ;
             sh:conforms false ;
             sh:result [ a sh:ValidationResult ;
@@ -44,8 +44,8 @@
                     sh:value _:ne9db4193e41047889b29c205d84bc010b8 ] ] ;
     mf:status sht:approved .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/maxLength-001.test.ttl> a mf:Manifest ;
-    mf:entries ( <file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/core/node/maxLength-001> ) .
+<maxLength-001.test.ttl> a mf:Manifest ;
+    mf:entries ( <maxLength-001> ) .
 
 ex:TestShape a sh:NodeShape ;
     sh:maxLength 4 ;

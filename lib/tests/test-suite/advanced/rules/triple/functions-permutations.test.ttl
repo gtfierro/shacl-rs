@@ -16,7 +16,7 @@ ex:TestShapeClass a rdfs:Class,
             sh:predicate ex:target ;
             sh:subject sh:this ] .
 
-<file:///Users/gabe/src/shacl-rs/lib/tests/test-suite/advanced/rules/triple/functions-permutations.test.ttl> a mf:Manifest ;
+<functions-permutations.test.ttl> a mf:Manifest ;
     mf:entries ( ex:InferencingTestCase ) .
 
 <http://datashapes.org/shasf/tests/rules/triple/functions-permutations.test> a owl:Ontology ;
