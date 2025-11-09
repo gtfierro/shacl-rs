@@ -28,8 +28,8 @@ trait ToSubjectRef {
 impl ToSubjectRef for TermRef<'_> {
     fn to_subject_ref(&self) -> SubjectRef<'_> {
         match self {
-            TermRef::NamedNode(n) => n.clone().into(),
-            TermRef::BlankNode(b) => b.clone().into(),
+            TermRef::NamedNode(n) => (*n).into(),
+            TermRef::BlankNode(b) => (*b).into(),
             _ => panic!("Invalid subject term {:?}", self),
         }
     }
@@ -37,8 +37,8 @@ impl ToSubjectRef for TermRef<'_> {
     #[allow(dead_code)]
     fn try_to_subject_ref(&self) -> Result<SubjectRef<'_>, String> {
         match self {
-            TermRef::NamedNode(n) => Ok(n.clone().into()),
-            TermRef::BlankNode(b) => Ok(b.clone().into()),
+            TermRef::NamedNode(n) => Ok((*n).into()),
+            TermRef::BlankNode(b) => Ok((*b).into()),
             _ => Err(format!("Invalid subject term {:?}", self)),
         }
     }
@@ -84,12 +84,10 @@ fn load_unique_lang_lexicals(context: &ParsingContext) -> HashMap<Term, String> 
         if let Ok(file) = File::open(&canonical_path) {
             let reader = BufReader::new(file);
             let parser = RdfParser::from_format(RdfFormat::Turtle).without_named_graphs();
-            for quad in parser.for_reader(reader) {
-                if let Ok(quad) = quad {
-                    if quad.predicate == shacl.unique_lang {
-                        if let Term::Literal(lit) = quad.object.clone() {
-                            map.insert(quad.subject.clone().into(), lit.value().to_string());
-                        }
+            for quad in parser.for_reader(reader).flatten() {
+                if quad.predicate == shacl.unique_lang {
+                    if let Term::Literal(lit) = quad.object.clone() {
+                        map.insert(quad.subject.clone().into(), lit.value().to_string());
                     }
                 }
             }
@@ -175,26 +173,26 @@ fn get_property_shapes(context: &ParsingContext) -> Vec<Term> {
     let shape_graph_name_ref = GraphNameRef::NamedNode(context.shape_graph_iri.as_ref());
 
     // - <pshape> a sh:PropertyShape
-    for quad_res in context.store.quads_for_pattern(
-        None,
-        Some(rdf.type_),
-        Some(sh.property_shape.into()),
-        Some(shape_graph_name_ref),
-    ) {
-        if let Ok(quad) = quad_res {
-            prop_shapes.insert(quad.subject.into()); // quad.subject is Subject, .into() converts to Term
-        }
+    for quad in context
+        .store
+        .quads_for_pattern(
+            None,
+            Some(rdf.type_),
+            Some(sh.property_shape.into()),
+            Some(shape_graph_name_ref),
+        )
+        .flatten()
+    {
+        prop_shapes.insert(quad.subject.into()); // quad.subject is Subject, .into() converts to Term
     }
 
     // - ? sh:property <pshape>
-    for quad_res in
-        context
-            .store
-            .quads_for_pattern(None, Some(sh.property), None, Some(shape_graph_name_ref))
+    for quad in context
+        .store
+        .quads_for_pattern(None, Some(sh.property), None, Some(shape_graph_name_ref))
+        .flatten()
     {
-        if let Ok(quad) = quad_res {
-            prop_shapes.insert(quad.object); // quad.object is Term
-        }
+        prop_shapes.insert(quad.object); // quad.object is Term
     }
 
     prop_shapes.into_iter().collect()
@@ -231,49 +229,49 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
         .collect();
 
     // <shape> rdf:type sh:NodeShape
-    for quad_res in context.store.quads_for_pattern(
-        None,
-        Some(rdf.type_),
-        Some(shacl.node_shape.into()),
-        Some(shape_graph_name_ref),
-    ) {
-        if let Ok(quad) = quad_res {
-            node_shapes.insert(quad.subject.into());
-        }
+    for quad in context
+        .store
+        .quads_for_pattern(
+            None,
+            Some(rdf.type_),
+            Some(shacl.node_shape.into()),
+            Some(shape_graph_name_ref),
+        )
+        .flatten()
+    {
+        node_shapes.insert(quad.subject.into());
     }
 
     // ? sh:node <shape>
-    for quad_res in
-        context
-            .store
-            .quads_for_pattern(None, Some(shacl.node), None, Some(shape_graph_name_ref))
+    for quad in context
+        .store
+        .quads_for_pattern(None, Some(shacl.node), None, Some(shape_graph_name_ref))
+        .flatten()
     {
-        if let Ok(quad) = quad_res {
-            node_shapes.insert(quad.object);
-        }
+        node_shapes.insert(quad.object);
     }
 
     // ? sh:qualifiedValueShape <shape>
-    for quad_res in context.store.quads_for_pattern(
-        None,
-        Some(shacl.qualified_value_shape),
-        None,
-        Some(shape_graph_name_ref),
-    ) {
-        if let Ok(quad) = quad_res {
-            node_shapes.insert(quad.object);
-        }
+    for quad in context
+        .store
+        .quads_for_pattern(
+            None,
+            Some(shacl.qualified_value_shape),
+            None,
+            Some(shape_graph_name_ref),
+        )
+        .flatten()
+    {
+        node_shapes.insert(quad.object);
     }
 
     // ? sh:not <shape>
-    for quad_res in
-        context
-            .store
-            .quads_for_pattern(None, Some(shacl.not), None, Some(shape_graph_name_ref))
+    for quad in context
+        .store
+        .quads_for_pattern(None, Some(shacl.not), None, Some(shape_graph_name_ref))
+        .flatten()
     {
-        if let Ok(quad) = quad_res {
-            node_shapes.insert(quad.object);
-        }
+        node_shapes.insert(quad.object);
     }
 
     // Shapes with explicit targets (sh:targetNode, sh:targetClass, sh:targetSubjectsOf, sh:targetObjectsOf)
@@ -284,38 +282,37 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
         shacl.target_subjects_of,
         shacl.target_objects_of,
     ] {
-        for quad_res in context.store.quads_for_pattern(
-            None,
-            Some(target_predicate),
-            None,
-            Some(shape_graph_name_ref),
-        ) {
-            if let Ok(quad) = quad_res {
-                let subject_term: Term = quad.subject.into();
-                if property_shape_terms.contains(&subject_term)
-                    || shapes_with_path.contains(&subject_term)
-                {
-                    continue;
-                }
-                node_shapes.insert(subject_term);
+        for quad in context
+            .store
+            .quads_for_pattern(
+                None,
+                Some(target_predicate),
+                None,
+                Some(shape_graph_name_ref),
+            )
+            .flatten()
+        {
+            let subject_term: Term = quad.subject.into();
+            if property_shape_terms.contains(&subject_term)
+                || shapes_with_path.contains(&subject_term)
+            {
+                continue;
             }
+            node_shapes.insert(subject_term);
         }
     }
 
     // Helper to process lists for logical constraints
     let mut process_list_constraint = |predicate_ref| {
-        for quad_res in context.store.quads_for_pattern(
-            None,
-            Some(predicate_ref),
-            None,
-            Some(shape_graph_name_ref),
-        ) {
-            if let Ok(quad) = quad_res {
-                let list_head_term = quad.object; // This is Term
-                                                  // parse_rdf_list will also use shape_graph_name_ref internally
-                for item_term in parse_rdf_list(context, list_head_term) {
-                    node_shapes.insert(item_term);
-                }
+        for quad in context
+            .store
+            .quads_for_pattern(None, Some(predicate_ref), None, Some(shape_graph_name_ref))
+            .flatten()
+        {
+            let list_head_term = quad.object; // This is Term
+                                              // parse_rdf_list will also use shape_graph_name_ref internally
+            for item_term in parse_rdf_list(context, list_head_term) {
+                node_shapes.insert(item_term);
             }
         }
     };
@@ -330,14 +327,12 @@ fn get_node_shapes(context: &ParsingContext) -> Vec<Term> {
     process_list_constraint(shacl.xone);
 
     // Shapes that declare sh:rule but are otherwise implicit.
-    for quad_res in
-        context
-            .store
-            .quads_for_pattern(None, Some(shacl.rule), None, Some(shape_graph_name_ref))
+    for quad in context
+        .store
+        .quads_for_pattern(None, Some(shacl.rule), None, Some(shape_graph_name_ref))
+        .flatten()
     {
-        if let Ok(quad) = quad_res {
-            node_shapes.insert(quad.subject.into());
-        }
+        node_shapes.insert(quad.subject.into());
     }
 
     node_shapes.into_iter().collect()

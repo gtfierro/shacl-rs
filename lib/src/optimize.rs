@@ -86,7 +86,7 @@ impl Optimizer {
         for shape in self.ctx.node_shapes.values_mut() {
             let targets_before = shape.targets.len();
             shape.targets.retain(|target| match target {
-                Target::Class(class_term) => types.contains(&class_term),
+                Target::Class(class_term) => types.contains(class_term),
                 _ => true, // Keep other target types
             });
             let targets_after = shape.targets.len();

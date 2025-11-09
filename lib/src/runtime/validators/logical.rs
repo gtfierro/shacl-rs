@@ -32,7 +32,7 @@ impl GraphvizOutput for NotConstraintComponent {
             .get_term(self.shape)
             .map_or_else(
                 || format!("MissingNodeShape:{}", self.shape),
-                |term| format_term_for_label(term),
+                format_term_for_label,
             );
         let label = format!("Not\\n({})", shape_term_str);
         format!(

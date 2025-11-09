@@ -425,7 +425,7 @@ impl ValidationReportBuilder {
                     for item in trace {
                         let (label, item_type) =
                             validation_context.get_trace_item_label_and_type(item);
-                        println!("      - {} ({}) - {}", item.to_string(), item_type, label);
+                        println!("      - {} ({}) - {}", item, item_type, label);
                     }
                 }
             }
@@ -465,7 +465,7 @@ impl ValidationReportBuilder {
             }
             for item in trace {
                 let (label, item_type) = validation_context.get_trace_item_label_and_type(item);
-                println!("  - {} ({}) - {}", item.to_string(), item_type, label);
+                println!("  - {} ({}) - {}", item, item_type, label);
             }
         }
     }
@@ -575,10 +575,10 @@ fn build_rdf_list(items: impl IntoIterator<Item = Term>, graph: &mut Graph) -> T
     let bnodes: Vec<NamedOrBlankNode> = (0..items.len())
         .map(|_| BlankNode::default().into())
         .collect();
-    let head: Subject = bnodes[0].clone().into();
+    let head: Subject = bnodes[0].clone();
 
     for (i, item) in items.iter().enumerate() {
-        let subject: Subject = bnodes[i].clone().into();
+        let subject: Subject = bnodes[i].clone();
         graph.insert(&Triple::new(subject.clone(), rdf::FIRST, item.clone()));
         let rest: Term = if i == items.len() - 1 {
             rdf::NIL.into()
@@ -655,35 +655,36 @@ fn clone_path_term_from_shapes_graph_inner(
         _ => unreachable!(),
     };
 
-    for quad_res in store.quads_for_pattern(Some(subject_ref), None, None, None) {
-        if let Ok(q) = quad_res {
-            let pred = q.predicate;
+    for q in store
+        .quads_for_pattern(Some(subject_ref), None, None, None)
+        .flatten()
+    {
+        let pred = q.predicate;
 
-            // Copy only the path-defining predicates.
-            if pred == rdf::FIRST
-                || pred == rdf::REST
-                || pred == sh.alternative_path
-                || pred == sh.inverse_path
-                || pred == sh.zero_or_more_path
-                || pred == sh.one_or_more_path
-                || pred == sh.zero_or_one_path
-            {
-                let obj_owned: Term = q.object.to_owned();
-                let cloned_obj = clone_path_term_from_shapes_graph_inner(
-                    &obj_owned,
-                    validation_context,
-                    out_graph,
-                    memo,
-                );
+        // Copy only the path-defining predicates.
+        if pred == rdf::FIRST
+            || pred == rdf::REST
+            || pred == sh.alternative_path
+            || pred == sh.inverse_path
+            || pred == sh.zero_or_more_path
+            || pred == sh.one_or_more_path
+            || pred == sh.zero_or_one_path
+        {
+            let obj_owned: Term = q.object.to_owned();
+            let cloned_obj = clone_path_term_from_shapes_graph_inner(
+                &obj_owned,
+                validation_context,
+                out_graph,
+                memo,
+            );
 
-                let new_subject: Subject = match &new_bn_term {
-                    Term::BlankNode(b) => b.clone().into(),
-                    Term::NamedNode(n) => n.clone().into(),
-                    _ => unreachable!(),
-                };
+            let new_subject: Subject = match &new_bn_term {
+                Term::BlankNode(b) => b.clone().into(),
+                Term::NamedNode(n) => n.clone().into(),
+                _ => unreachable!(),
+            };
 
-                out_graph.insert(&Triple::new(new_subject, pred, cloned_obj));
-            }
+            out_graph.insert(&Triple::new(new_subject, pred, cloned_obj));
         }
     }
 

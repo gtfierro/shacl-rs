@@ -1,3 +1,5 @@
+#![allow(clippy::manual_flatten)]
+
 use crate::context::ParsingContext;
 use crate::model::components::sparql::{
     CustomConstraintComponentDefinition, Parameter, SPARQLValidator,
@@ -15,6 +17,11 @@ use spargebra::term::GroundTerm;
 use spargebra::{Query as AlgebraQuery, SparqlParser};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
+
+type CustomComponentMaps = (
+    HashMap<NamedNode, CustomConstraintComponentDefinition>,
+    HashMap<NamedNode, Vec<NamedNode>>,
+);
 
 fn is_builtin_component(iri: &NamedNode) -> bool {
     let iri_str = iri.as_str();
@@ -790,13 +797,7 @@ fn check_expression(
 pub fn parse_custom_constraint_components<E: SparqlExecutor>(
     context: &ParsingContext,
     services: &E,
-) -> Result<
-    (
-        HashMap<NamedNode, CustomConstraintComponentDefinition>,
-        HashMap<NamedNode, Vec<NamedNode>>,
-    ),
-    String,
-> {
+) -> Result<CustomComponentMaps, String> {
     let mut definitions = HashMap::new();
     let mut param_to_component: HashMap<NamedNode, Vec<NamedNode>> = HashMap::new();
     let shacl = SHACL::new();
@@ -821,7 +822,7 @@ pub fn parse_custom_constraint_components<E: SparqlExecutor>(
         for solution_res in solutions {
             if let Ok(solution) = solution_res {
                 if let Some(Term::NamedNode(cc_iri)) = solution.get("cc") {
-                    if is_builtin_component(&cc_iri) {
+                    if is_builtin_component(cc_iri) {
                         continue;
                     }
                     // Quick structural validation before running heavier SPARQL queries.
@@ -1205,7 +1206,7 @@ pub fn parse_custom_constraint_components<E: SparqlExecutor>(
                             property_validator,
                             messages: component_messages,
                             severity: component_severity,
-                            template: context.component_templates.get(&cc_iri).cloned(),
+                            template: context.component_templates.get(cc_iri).cloned(),
                         },
                     );
                 }

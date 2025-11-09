@@ -29,7 +29,7 @@ impl ClassConstraintComponent {
         ASK {{
             ?value_node rdf:type/rdfs:subClassOf* {} .
         }}",
-            class_term.to_string()
+            class_term
         );
         ClassConstraintComponent {
             class,

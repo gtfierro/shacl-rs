@@ -23,7 +23,7 @@ impl ValidateComponent for InConstraintComponent {
             // According to SHACL spec, if sh:in has an empty list, no value nodes can conform.
             // "The constraint sh:in specifies the condition that each value node is a member of a provided SHACL list."
             // "If the SHACL list is empty, then no value nodes can satisfy the constraint."
-            return if c.value_nodes().map_or(true, |vns| vns.is_empty()) {
+            return if c.value_nodes().is_none_or(|vns| vns.is_empty()) {
                 // If there are no value nodes, or the list of value nodes is empty, it passes.
                 Ok(vec![])
             } else {
@@ -151,14 +151,14 @@ impl ValidateComponent for ClosedConstraintComponent {
 
         if let Some(node_shape) = validation_context.model.node_shapes.get(source_shape_id) {
             for constraint_com_id in node_shape.constraints() {
-                if let Some(component) = validation_context.get_component(constraint_com_id) {
-                    if let Component::PropertyConstraint(pc) = component {
-                        if let Some(prop_shape) =
-                            validation_context.model.get_prop_shape_by_id(pc.shape())
-                        {
-                            if let Path::Simple(Term::NamedNode(p)) = prop_shape.path() {
-                                allowed_properties.insert(p.clone());
-                            }
+                if let Some(Component::PropertyConstraint(pc)) =
+                    validation_context.get_component(constraint_com_id)
+                {
+                    if let Some(prop_shape) =
+                        validation_context.model.get_prop_shape_by_id(pc.shape())
+                    {
+                        if let Path::Simple(Term::NamedNode(p)) = prop_shape.path() {
+                            allowed_properties.insert(p.clone());
                         }
                     }
                 }

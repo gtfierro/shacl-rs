@@ -68,7 +68,7 @@ fn canonicalize_value_nodes(
             let key = literal_signature(lit);
             literals_by_signature
                 .entry(key)
-                .or_insert_with(VecDeque::new)
+                .or_default()
                 .push_back(term.clone());
         }
     }
@@ -80,7 +80,7 @@ fn canonicalize_value_nodes(
 
         if let Term::Literal(ref lit) = current {
             if let Some(index) = original_index {
-                if let Some(original) = index.resolve_literal(focus_node, &predicate, lit) {
+                if let Some(original) = index.resolve_literal(focus_node, predicate, lit) {
                     if original != current {
                         exact_matches.remove(&original);
                         *node = original;
@@ -286,8 +286,7 @@ impl PropertyShape {
             let sparql_path = self.sparql_path();
             let query_str = format!(
                 "SELECT DISTINCT ?valueNode WHERE {{ {} {} ?valueNode . }}",
-                focus_node.to_string(),
-                sparql_path
+                focus_node, sparql_path
             );
 
             let prepared = context

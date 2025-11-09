@@ -105,7 +105,7 @@ pub enum ComponentDescriptor {
         constraint_node: Term,
     },
     Custom {
-        definition: CustomConstraintComponentDefinition,
+        definition: Box<CustomConstraintComponentDefinition>,
         parameter_values: HashMap<NamedNode, Vec<Term>>,
     },
 }

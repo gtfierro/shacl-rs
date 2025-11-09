@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use super::{
     components::ensure_node_shape, components::resolve_shape_reference, parse_rdf_list,
     ParsingContext,

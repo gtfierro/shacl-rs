@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::large_enum_variant)]
 use crate::context::{Context, ValidationContext};
 use crate::runtime::validators::{
     AndConstraintComponent, ClassConstraintComponent, ClosedConstraintComponent,
@@ -335,7 +335,7 @@ impl Component {
         trace: &mut Vec<TraceItem>,
     ) -> Result<Vec<ComponentValidationResult>, String> {
         trace.push(TraceItem::Component(component_id));
-        let result = match self {
+        match self {
             Component::ClassConstraint(comp) => comp.validate(component_id, c, context, trace),
             Component::NodeConstraint(comp) => comp.validate(component_id, c, context, trace),
             Component::PropertyConstraint(comp) => comp.validate(component_id, c, context, trace),
@@ -376,8 +376,7 @@ impl Component {
             }
             Component::ClosedConstraint(comp) => comp.validate(component_id, c, context, trace),
             Component::CustomConstraint(comp) => comp.validate(component_id, c, context, trace),
-        };
-        result
+        }
     }
 }
 

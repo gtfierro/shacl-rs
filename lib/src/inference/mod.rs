@@ -42,15 +42,29 @@ pub struct InferenceOutcome {
     pub inferred_quads: Vec<Quad>,
 }
 
+#[derive(Debug)]
+pub struct BlankNodeProducedError {
+    rule_id: RuleID,
+    subject: Term,
+    predicate: NamedNode,
+    object: Term,
+}
+
+impl BlankNodeProducedError {
+    fn new(rule_id: RuleID, subject: Term, predicate: NamedNode, object: Term) -> Self {
+        Self {
+            rule_id,
+            subject,
+            predicate,
+            object,
+        }
+    }
+}
+
 /// Errors that can arise during inference.
 #[derive(Debug)]
 pub enum InferenceError {
-    BlankNodeProduced {
-        rule_id: RuleID,
-        subject: Term,
-        predicate: NamedNode,
-        object: Term,
-    },
+    BlankNodeProduced(Box<BlankNodeProducedError>),
     RuleExecution {
         rule_id: RuleID,
         message: String,
@@ -66,18 +80,26 @@ pub enum InferenceError {
     Configuration(String),
 }
 
+impl InferenceError {
+    fn blank_node_produced(
+        rule_id: RuleID,
+        subject: Term,
+        predicate: NamedNode,
+        object: Term,
+    ) -> Self {
+        Self::BlankNodeProduced(Box::new(BlankNodeProducedError::new(
+            rule_id, subject, predicate, object,
+        )))
+    }
+}
+
 impl fmt::Display for InferenceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InferenceError::BlankNodeProduced {
-                rule_id,
-                subject,
-                predicate,
-                object,
-            } => write!(
+            InferenceError::BlankNodeProduced(error) => write!(
                 f,
                 "Rule {} produced a blank node triple ({}, {}, {}) which is disallowed by configuration",
-                rule_id, subject, predicate, object
+                error.rule_id, error.subject, error.predicate, error.object
             ),
             InferenceError::RuleExecution { rule_id, message } => {
                 write!(f, "Rule {} failed to execute: {}", rule_id, message)
@@ -445,7 +467,7 @@ impl<'a> InferenceEngine<'a> {
                 })?;
 
             if let QueryResults::Graph(mut triples) = results {
-                while let Some(triple_res) = triples.next() {
+                for triple_res in &mut triples {
                     let triple = triple_res.map_err(|e| InferenceError::RuleExecution {
                         rule_id: rule.id,
                         message: e.to_string(),
@@ -544,8 +566,7 @@ impl<'a> InferenceEngine<'a> {
 
         let query = format!(
             "SELECT DISTINCT ?valueNode WHERE {{ {} {} ?valueNode . }}",
-            focus_node.to_string(),
-            sparql_path
+            focus_node, sparql_path
         );
 
         let prepared = self
@@ -630,17 +651,16 @@ impl<'a> InferenceEngine<'a> {
         seen_new: &mut HashSet<(Term, NamedNode, Term)>,
         collected: &mut Vec<Quad>,
     ) -> Result<bool, InferenceError> {
-        if self.config.error_on_blank_nodes {
-            if matches!(subject_term, Term::BlankNode(_))
-                || matches!(object_term, Term::BlankNode(_))
-            {
-                return Err(InferenceError::BlankNodeProduced {
-                    rule_id,
-                    subject: subject_term,
-                    predicate,
-                    object: object_term,
-                });
-            }
+        if self.config.error_on_blank_nodes
+            && (matches!(subject_term, Term::BlankNode(_))
+                || matches!(object_term, Term::BlankNode(_)))
+        {
+            return Err(InferenceError::blank_node_produced(
+                rule_id,
+                subject_term,
+                predicate,
+                object_term,
+            ));
         }
 
         let subject = term_to_named_or_blank(subject_term.clone())
@@ -883,11 +903,13 @@ ex:item a ex:Thing .
 
         let validator = build_validator(shapes, data);
         let context = validator.context();
-        let mut config = InferenceConfig::default();
-        config.error_on_blank_nodes = true;
+        let config = InferenceConfig {
+            error_on_blank_nodes: true,
+            ..InferenceConfig::default()
+        };
         let err = run_inference(context, config).expect_err("should error on blank nodes");
         match err {
-            InferenceError::BlankNodeProduced { .. } => {}
+            InferenceError::BlankNodeProduced(_) => {}
             other => panic!("unexpected error: {:?}", other),
         }
     }

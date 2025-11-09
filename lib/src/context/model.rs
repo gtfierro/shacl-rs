@@ -112,11 +112,11 @@ impl OriginalValueIndex {
             let entry = self
                 .literals
                 .entry(subject_term)
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(predicate)
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(LiteralKey::from_literal(&lit))
-                .or_insert_with(VecDeque::new);
+                .or_default();
             entry.push_back(object_term);
         }
     }
@@ -224,10 +224,10 @@ impl ShapesModel {
 
         info!("Optimizing store with shape graph <{}>", shape_graph_iri);
         store.optimize().map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error optimizing store: {}", e),
-            ))
+            Box::new(std::io::Error::other(format!(
+                "Error optimizing store: {}",
+                e
+            )))
         })?;
 
         let mut ctx = ParsingContext::new(
@@ -243,10 +243,10 @@ impl ShapesModel {
             ctx.shape_graph_iri_ref()
         );
         parser::run_parser(&mut ctx).map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error parsing shapes: {}", e),
-            ))
+            Box::new(std::io::Error::other(format!(
+                "Error parsing shapes: {}",
+                e
+            )))
         })?;
         info!("Optimizing shape graph");
         let mut optimizer = Optimizer::new(ctx);

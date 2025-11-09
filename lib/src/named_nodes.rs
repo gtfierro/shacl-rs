@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use oxigraph::model::NamedNodeRef;
 
 /// A struct holding static `NamedNodeRef`s for all SHACL vocabulary terms.

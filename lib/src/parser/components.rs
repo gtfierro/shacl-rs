@@ -17,6 +17,11 @@ use crate::model::templates::{
 use crate::named_nodes::{RDF, RDFS, SHACL};
 use crate::types::{ComponentID, ID};
 
+type CustomComponentMaps = (
+    HashMap<NamedNode, CustomConstraintComponentDefinition>,
+    HashMap<NamedNode, Vec<NamedNode>>,
+);
+
 /// Parses all constraint components attached to a given shape subject (`start`) from the shapes graph.
 ///
 /// Returns data-only `ComponentDescriptor`s keyed by `ComponentID` for later runtime instantiation.
@@ -33,7 +38,7 @@ pub(crate) fn parse_components(
     let pred_obj_pairs: HashMap<NamedNode, Vec<Term>> = context
         .store
         .quads_for_pattern(
-            Some(to_subject_ref(shape_ref.clone()).expect("invalid subject term")),
+            Some(shape_ref.to_subject_ref()),
             None,
             None,
             Some(context.shape_graph_iri_ref()),
@@ -133,7 +138,7 @@ pub(crate) fn parse_components(
                     descriptors.insert(
                         component_id,
                         ComponentDescriptor::Custom {
-                            definition: cc_def.clone(),
+                            definition: Box::new(cc_def.clone()),
                             parameter_values,
                         },
                     );
@@ -168,7 +173,7 @@ fn validate_sparql_constraint_node(
     for quad in context
         .store
         .quads_for_pattern(
-            Some(subject_node.as_ref().into()),
+            Some(subject_node.as_ref()),
             Some(shacl.select),
             None,
             Some(shape_graph),
@@ -198,7 +203,7 @@ fn validate_sparql_constraint_node(
     for quad in context
         .store
         .quads_for_pattern(
-            Some(subject_node.as_ref().into()),
+            Some(subject_node.as_ref()),
             Some(ask_pred),
             None,
             Some(shape_graph),
@@ -244,13 +249,7 @@ fn to_subject_ref(term: TermRef<'_>) -> Result<SubjectRef<'_>, String> {
 
 fn parse_custom_constraint_components(
     context: &ParsingContext,
-) -> Result<
-    (
-        HashMap<NamedNode, CustomConstraintComponentDefinition>,
-        HashMap<NamedNode, Vec<NamedNode>>,
-    ),
-    String,
-> {
+) -> Result<CustomComponentMaps, String> {
     crate::sparql::parse_custom_constraint_components(context, context.sparql.as_ref())
         .map_err(|e| format!("Error parsing custom constraint components: {}", e))
 }

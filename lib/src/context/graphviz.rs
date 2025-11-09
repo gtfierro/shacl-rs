@@ -61,14 +61,14 @@ pub(crate) fn render_shapes_graphviz(model: &ShapesModel) -> Result<String, Stri
             ));
         }
         for comp_id in shape.constraints() {
-            if let Some(descriptor) = model.component_descriptors.get(comp_id) {
-                if let ComponentDescriptor::Property { shape: prop_id } = descriptor {
-                    dot_string.push_str(&format!(
-                        "    {} -> {};\n",
-                        shape.identifier().to_graphviz_id(),
-                        prop_id.to_graphviz_id()
-                    ));
-                }
+            if let Some(ComponentDescriptor::Property { shape: prop_id }) =
+                model.component_descriptors.get(comp_id)
+            {
+                dot_string.push_str(&format!(
+                    "    {} -> {};\n",
+                    shape.identifier().to_graphviz_id(),
+                    prop_id.to_graphviz_id()
+                ));
             }
         }
     }

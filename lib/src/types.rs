@@ -7,8 +7,8 @@ use oxigraph::model::{
 };
 use oxigraph::sparql::QueryResults;
 use std::collections::HashSet;
-use std::fmt; // Added for Display trait
-use std::hash::Hash; // Added Hash for derived traits
+use std::fmt;
+use std::hash::Hash;
 
 /// A unique identifier for a `NodeShape`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -132,7 +132,7 @@ impl Path {
         match self {
             Path::Simple(term) => match term {
                 Term::NamedNode(nn) => Ok(Self::format_named_node_for_sparql(nn)),
-                _ => Err(format!("Simple path must be an IRI {:?}", self).to_string()),
+                _ => Err(format!("Simple path must be an IRI {:?}", self)),
             },
             Path::Inverse(inner_path) => {
                 let inner_sparql = inner_path.to_sparql_path()?;
@@ -214,22 +214,17 @@ pub enum Target {
 }
 
 /// Represents the severity level of a validation result, corresponding to `sh:severity`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Severity {
     /// Corresponds to `sh:Info`.
     Info,
     /// Corresponds to `sh:Warning`.
     Warning,
     /// Corresponds to `sh:Violation`.
+    #[default]
     Violation,
     /// Custom severity IRI provided in the shapes graph.
     Custom(NamedNode),
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Severity::Violation
-    }
 }
 
 impl Severity {
@@ -845,13 +840,12 @@ pub enum TraceItem {
     Component(ComponentID),
 }
 
-impl TraceItem {
-    /// Returns a string representation of the trace item.
-    pub fn to_string(&self) -> String {
+impl fmt::Display for TraceItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TraceItem::NodeShape(id) => format!("NodeShape({})", id.to_graphviz_id()),
-            TraceItem::PropertyShape(id) => format!("PropertyShape({})", id.to_graphviz_id()),
-            TraceItem::Component(id) => format!("Component({})", id.to_graphviz_id()),
+            TraceItem::NodeShape(id) => write!(f, "NodeShape({})", id.to_graphviz_id()),
+            TraceItem::PropertyShape(id) => write!(f, "PropertyShape({})", id.to_graphviz_id()),
+            TraceItem::Component(id) => write!(f, "Component({})", id.to_graphviz_id()),
         }
     }
 }

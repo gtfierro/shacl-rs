@@ -347,15 +347,12 @@ fn parse_order(
     graph: GraphNameRef<'_>,
 ) -> Result<Option<RuleOrder>, String> {
     let shacl = SHACL::new();
-    let mut order_term = None;
-    for quad in context
+    let order_term = context
         .store
         .quads_for_pattern(Some(rule_subject), Some(shacl.order), None, Some(graph))
         .filter_map(Result::ok)
-    {
-        order_term = Some(quad.object);
-        break;
-    }
+        .map(|quad| quad.object)
+        .next();
 
     if let Some(term) = order_term {
         match term {

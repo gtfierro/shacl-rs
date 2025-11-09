@@ -154,10 +154,10 @@ impl ValidatorBuilder {
             shapes_graph_iri, data_graph_iri
         );
         store.optimize().map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error optimizing store: {}", e),
-            ))
+            Box::new(std::io::Error::other(format!(
+                "Error optimizing store: {}",
+                e
+            )))
         })?;
 
         let data_skolem_base = if skolemize_data {
@@ -198,10 +198,10 @@ impl ValidatorBuilder {
             .temporary(true)
             .build()
             .map_err(|e| {
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to build OntoEnv config: {}", e),
-                )) as Box<dyn Error>
+                Box::new(std::io::Error::other(format!(
+                    "Failed to build OntoEnv config: {}",
+                    e
+                ))) as Box<dyn Error>
             })
     }
 
@@ -226,10 +226,10 @@ impl ValidatorBuilder {
         let ontology = env
             .get_ontology(&graph_id)
             .map_err(|e| {
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to resolve {} graph: {}", label, e),
-                )) as Box<dyn Error>
+                Box::new(std::io::Error::other(format!(
+                    "Failed to resolve {} graph: {}",
+                    label, e
+                ))) as Box<dyn Error>
             })?
             .clone();
         let graph_iri = ontology.name().clone();
@@ -312,6 +312,12 @@ impl ValidatorBuilder {
             features: final_ctx.features.clone(),
             original_values,
         })
+    }
+}
+
+impl Default for ValidatorBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

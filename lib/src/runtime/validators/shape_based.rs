@@ -34,7 +34,7 @@ impl GraphvizOutput for NodeConstraintComponent {
             .get_term(self.shape)
             .map_or_else(
                 || format!("MissingNodeShape:{}", self.shape),
-                |term| format_term_for_label(term),
+                format_term_for_label,
             );
         let label = format!("NodeConstraint\\n({})", shape_term_str);
         format!(
@@ -224,7 +224,7 @@ impl GraphvizOutput for QualifiedValueShapeComponent {
             .get_term(self.shape)
             .map_or_else(
                 || format!("MissingNodeShape:{}", self.shape),
-                |term| format_term_for_label(term),
+                format_term_for_label,
             );
         let mut label_parts = vec![format!("QualifiedValueShape\\nShape: {}", shape_term_str)];
         if let Some(min) = self.min_count {
