@@ -1,3 +1,8 @@
+*Note*:  This is a nearly 100% GenAI generated codebase. The initial work was done with Gemini 2.5 Pro, and the later work was done with ChatGPT 5 with the Codex tool.
+This is an experiment to see how well I could create a SHACL/SHACL-AF implementation in Rust using AI tools.
+
+---
+
 # shacl-rs
 
 `shacl-rs` is a Rust implementation of the Shapes Constraint Language (SHACL) with two crates:
