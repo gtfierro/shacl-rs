@@ -291,6 +291,12 @@ pub struct Reason {
     pub constraint_id: u32,
     /// Statement id shared with repair witnesses.
     pub statement_id: usize,
+    /// For a cardinality constraint, how many values along the path satisfied
+    /// the qualifier. The bound it had to meet is in `constraint` itself, so
+    /// this is the one number a report needs that the algebra does not carry —
+    /// state the shortfall from these two rather than parsing `message`.
+    /// `None` for every other constraint kind.
+    pub observed_count: Option<u64>,
     /// Present only for a failed `sh:sparql`/custom SPARQL-based constraint
     /// component. `None` for every other failed constraint.
     pub sparql_diagnostic: Option<Py<SparqlDiagnostic>>,
@@ -807,6 +813,10 @@ pub(crate) fn violation_to_py(
     violation_to_py_with_arena(py, v, schema, &schema.arena)
 }
 
+/// Constraint *text* is compacted against the schema's vocabulary. Node identity
+/// — `focus_node`, `value` — stays absolute: callers match those against IRIs
+/// they hold (`failure_for(focus)`), and a compacted form is not resolvable
+/// without the prefix table alongside it.
 pub(crate) fn violation_to_py_with_arena(
     py: Python<'_>,
     v: &shifty_engine::Violation,
@@ -835,6 +845,7 @@ pub(crate) fn violation_to_py_with_arena(
                     constraint_kind: constraint_kind_to_py(r.constraint_kind),
                     constraint_id: r.constraint_id.0,
                     statement_id: r.statement_id,
+                    observed_count: r.observed_count,
                     sparql_diagnostic,
                 },
             )
@@ -955,6 +966,7 @@ struct RawReason {
     constraint_kind: ConstraintKind,
     constraint_id: u32,
     statement_id: usize,
+    observed_count: Option<u64>,
     sparql_diagnostic: Option<RawSparqlDiagnostic>,
 }
 
@@ -998,6 +1010,7 @@ impl RawAlgebraResult {
                                 constraint_kind: reason.constraint_kind,
                                 constraint_id: reason.constraint_id,
                                 statement_id: reason.statement_id,
+                                observed_count: reason.observed_count,
                                 sparql_diagnostic,
                             },
                         )
@@ -1057,6 +1070,7 @@ fn raw_algebra_result(
                         reason.constraint_id,
                     ),
                     constraint_kind: constraint_kind_to_py(reason.constraint_kind),
+                    observed_count: reason.observed_count,
                     constraint_id: reason.constraint_id.0,
                     statement_id: reason.statement_id,
                     sparql_diagnostic: reason

@@ -127,11 +127,11 @@ fn validation_executes_over_data_and_shapes_union() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("conforms: false"), "stdout: {stdout}");
-    assert!(stdout.contains("<http://ex/item>"), "stdout: {stdout}");
-    assert!(
-        !stdout.contains("<http://ex/shapeItem>"),
-        "stdout: {stdout}"
-    );
+    // The report spells data-graph nodes in the document's own vocabulary, so
+    // the negative assertion has to use the compacted form too or it passes
+    // whatever the output says.
+    assert!(stdout.contains("ex:item"), "stdout: {stdout}");
+    assert!(!stdout.contains("shapeItem"), "stdout: {stdout}");
 
     let data_only = Command::new(env!("CARGO_BIN_EXE_shifty"))
         .args([
@@ -165,11 +165,11 @@ fn validation_executes_over_data_and_shapes_union() {
         .unwrap();
     let union_all_stdout = String::from_utf8(union_all.stdout).unwrap();
     assert!(
-        union_all_stdout.contains("<http://ex/item>"),
+        union_all_stdout.contains("ex:item"),
         "stdout: {union_all_stdout}"
     );
     assert!(
-        union_all_stdout.contains("<http://ex/shapeItem>"),
+        union_all_stdout.contains("ex:shapeItem"),
         "stdout: {union_all_stdout}"
     );
 

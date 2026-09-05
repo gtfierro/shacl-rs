@@ -979,6 +979,12 @@ fn node_kinds_to_string(k: &NodeKindSet) -> String {
     parts.join("|")
 }
 
+/// Render a term for display, compacting an IRI against `px`. Literals and
+/// blank nodes keep their canonical spelling — only an IRI has a vocabulary.
+pub fn term_to_string_in(t: &Term, px: &Prefixes) -> String {
+    term_to_string(t, px)
+}
+
 fn term_to_string(t: &Term, px: &Prefixes) -> String {
     match t {
         Term::NamedNode(nn) => px.compact(nn.as_str()),

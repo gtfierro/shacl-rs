@@ -1041,3 +1041,44 @@ def test_a_nested_constraint_offers_an_indented_definition():
     # Indented by nesting depth, with the connective leading its own line.
     assert "\n  " in pretty
     assert any(line.strip().startswith("and ") for line in pretty.splitlines())
+
+
+def test_a_cardinality_reason_carries_the_observed_count():
+    """The bound a count had to meet is in the constraint (`∃[min..max]`); the
+    number actually found is not, so `Reason` carries it. Together they let a
+    renderer state the shortfall without parsing `message`."""
+    shapes = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix ex: <http://ex/> .
+        ex:S a sh:NodeShape ;
+            sh:targetClass ex:T ;
+            sh:property [ sh:path ex:p ; sh:minCount 3 ] .
+    """
+    data = "@prefix ex: <http://ex/> . ex:a a ex:T ; ex:p ex:one, ex:two ."
+
+    result = shifty.validate_algebra(data, shapes)
+    counts = [
+        r for v in result.violations for r in v.reasons if r.observed_count is not None
+    ]
+    assert len(counts) == 1, [r.message for v in result.violations for r in v.reasons]
+    assert counts[0].observed_count == 2
+    assert "found 2" in counts[0].message
+
+    # Node identity stays absolute: callers match these against IRIs they hold.
+    assert result.violations[0].focus_node == "<http://ex/a>"
+
+
+def test_a_non_cardinality_reason_has_no_observed_count():
+    shapes = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix ex: <http://ex/> .
+        ex:S a sh:NodeShape ;
+            sh:targetClass ex:T ;
+            sh:property [ sh:path ex:p ; sh:nodeKind sh:IRI ] .
+    """
+    data = '@prefix ex: <http://ex/> . ex:a a ex:T ; ex:p "literal" .'
+
+    result = shifty.validate_algebra(data, shapes)
+    reasons = [r for v in result.violations for r in v.reasons]
+    assert reasons
+    assert all(r.observed_count is None for r in reasons)

@@ -171,6 +171,14 @@ pub struct Reason {
     /// over [`message`](Self::message) when set; `message` remains the fallback.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author_message: Option<String>,
+    /// For a cardinality constraint, how many values along the path satisfied
+    /// the qualifier. The bound this had to meet is already in
+    /// [`constraint`](Self::constraint) (`∃[min..max]`); the observed count is
+    /// the one number a report needs that the algebra does not carry, so a
+    /// renderer can state the shortfall without parsing
+    /// [`message`](Self::message). `None` for every other constraint kind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_count: Option<u64>,
     /// Non-empty when this reason is an `sh:or` group: one entry per OR branch
     /// that failed, so the caller can tell "fix any one of these."
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -1446,16 +1454,21 @@ fn explain_count(
                 }
             }
             // Plain `sh:maxCount` (⊤ qualifier): concise count message.
-            Shape::Top => reasons.push(reason(
-                evaluator.arena,
-                id,
-                node.clone(),
-                Some(path_str.clone()),
-                severity,
-                format!("at most {mx} value(s){qual_clause} allowed along {path_str}, found {n}"),
-                None,
-                Vec::new(),
-                None,
+            Shape::Top => reasons.push(with_observed(
+                reason(
+                    evaluator.arena,
+                    id,
+                    node.clone(),
+                    Some(path_str.clone()),
+                    severity,
+                    format!(
+                        "at most {mx} value(s){qual_clause} allowed along {path_str}, found {n}"
+                    ),
+                    None,
+                    Vec::new(),
+                    None,
+                ),
+                n,
             )),
             // Any other `∃≤0` qualifier (`sh:nodeKind`, several value constraints
             // De-Morgan'd to an `Or`, …): describe the positive requirement.
@@ -1477,16 +1490,21 @@ fn explain_count(
                 }
             }
             // Genuine `sh:qualifiedMaxCount` ≥ 1: concise count message.
-            _ => reasons.push(reason(
-                evaluator.arena,
-                id,
-                node.clone(),
-                Some(path_str.clone()),
-                severity,
-                format!("at most {mx} value(s){qual_clause} allowed along {path_str}, found {n}"),
-                None,
-                Vec::new(),
-                None,
+            _ => reasons.push(with_observed(
+                reason(
+                    evaluator.arena,
+                    id,
+                    node.clone(),
+                    Some(path_str.clone()),
+                    severity,
+                    format!(
+                        "at most {mx} value(s){qual_clause} allowed along {path_str}, found {n}"
+                    ),
+                    None,
+                    Vec::new(),
+                    None,
+                ),
+                n,
             )),
         }
     }
@@ -1494,16 +1512,19 @@ fn explain_count(
     if let Some(mn) = min
         && n < mn
     {
-        reasons.push(reason(
-            evaluator.arena,
-            id,
-            node.clone(),
-            Some(path_str.clone()),
-            severity,
-            format!("at least {mn} value(s){qual_clause} required along {path_str}, found {n}"),
-            None,
-            Vec::new(),
-            None,
+        reasons.push(with_observed(
+            reason(
+                evaluator.arena,
+                id,
+                node.clone(),
+                Some(path_str.clone()),
+                severity,
+                format!("at least {mn} value(s){qual_clause} required along {path_str}, found {n}"),
+                None,
+                Vec::new(),
+                None,
+            ),
+            n,
         ));
     }
 
@@ -1612,9 +1633,18 @@ fn reason(
         severity: severity.clone(),
         message,
         author_message,
+        observed_count: None,
         sub_reasons,
         sparql_diagnostic,
     }
+}
+
+/// Stamp the observed value count onto a cardinality reason. Kept off
+/// [`reason`]'s argument list, which is already at the lint's limit, and set
+/// only where a count was actually taken.
+fn with_observed(mut r: Reason, observed: u64) -> Reason {
+    r.observed_count = Some(observed);
+    r
 }
 
 fn leaf(

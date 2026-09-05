@@ -13,6 +13,11 @@
 
 ### Added
 
+- Added `Reason.observed_count`: for a cardinality constraint, how many values
+  along the path satisfied the qualifier. The bound is already in the constraint
+  algebra, so this is the one number a report needs that the algebra does not
+  carry — a renderer can now state the shortfall without parsing `message`.
+  Exposed in Python as `Reason.observed_count`.
 - Added an indented layout for constraint descriptions, for the nested ones that
   are unreadable on a single line. `render::describe_shape_pretty` breaks and
   indents by nesting depth, and returns the one-line form byte-identical when it
@@ -25,6 +30,19 @@
 
 ### Changed
 
+- `shifty validate` now spells data-graph nodes using the data document's own
+  `@prefix` declarations, layered over the shapes document's. A focus node in the
+  s223 sample goes from 89 characters to 37, and it appears twice per reason.
+  This is the text report only. Node identity in the Python API
+  (`Violation.focus_node`, `Reason.value`) stays absolute: callers match those
+  against IRIs they hold, and a compacted form is not resolvable without the
+  prefix table beside it.
+- `shifty validate` no longer repeats a cardinality reason's generated message
+  inline when it also prints the constraint block. The block says everything the
+  message did — the bound is in the constraint, the count is in its label — so
+  the two together restated a 300-character sentence three lines above its own
+  readable form. Reasons that are not cardinality failures keep their message,
+  where the prose is the finding rather than a restatement.
 - Validation messages now state a `∃[..0] π . φ` count as the universal it is,
   `∀ π . ¬φ`, inverting the qualifier. The lowered form of a universal carries a
   negated qualifier, so the old rendering presented a double negative: what read

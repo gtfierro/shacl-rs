@@ -337,18 +337,30 @@ fn render_reason(
     indent: usize,
 ) -> Vec<String> {
     let pad = " ".repeat(indent);
-    // Lead with the author's `sh:message` when present, but keep the generated
-    // one in parentheses so it is always available.
-    let message = match &r.author_message {
-        Some(author) => format!("{author} (generated message: {})", r.message),
-        None => r.message.clone(),
+    let block = render_constraint_block(r, arena, px, indent + 4);
+    // A cardinality reason's block already says everything its generated message
+    // says — the bound is in the constraint, the count is in the block's label —
+    // so printing both would restate a 300-character sentence three lines above
+    // its own readable form. Every other reason keeps the message: there the
+    // prose is the finding, and the block only adds a layout.
+    let restated = !block.is_empty() && r.observed_count.is_some();
+    let message = match (&r.author_message, restated) {
+        (Some(author), true) => author.clone(),
+        // Lead with the author's `sh:message`, but keep the generated one in
+        // parentheses so it is always available.
+        (Some(author), false) => format!("{author} (generated message: {})", r.message),
+        (None, true) => String::new(),
+        (None, false) => r.message.clone(),
     };
-    let header = match &r.path {
-        Some(p) => format!("{pad}- [{}] ({p}) {} → {}", r.severity, r.value, message),
-        None => format!("{pad}- [{}] {}", r.severity, message),
+    let value = shifty_algebra::render::term_to_string_in(&r.value, px);
+    let header = match (&r.path, message.is_empty()) {
+        (Some(p), false) => format!("{pad}- [{}] ({p}) {value} → {message}", r.severity),
+        (Some(p), true) => format!("{pad}- [{}] ({p}) {value}", r.severity),
+        (None, false) => format!("{pad}- [{}] {message}", r.severity),
+        (None, true) => format!("{pad}- [{}] {value}", r.severity),
     };
     let mut lines = vec![header];
-    lines.extend(render_constraint_block(r, arena, px, indent + 4));
+    lines.extend(block);
     if let Some(d) = &r.sparql_diagnostic {
         lines.extend(render_sparql_diagnostic(d, indent + 4));
     }
@@ -378,7 +390,10 @@ fn render_constraint_block(
     if !pretty.contains('\n') {
         return Vec::new();
     }
-    let mut lines = vec![format!("{pad}constraint:")];
+    let mut lines = vec![match r.observed_count {
+        Some(n) => format!("{pad}constraint — found {n}:"),
+        None => format!("{pad}constraint:"),
+    }];
     lines.extend(pretty.lines().map(|line| format!("{pad}  {line}")));
     lines
 }
@@ -449,6 +464,16 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
     } else {
         Some(load_sources(&args.data, base)?)
     };
+    // Report display draws on both documents: focus and value nodes are
+    // data-graph terms, constraints are shapes-graph terms, and each reads best
+    // spelled the way its own document spelled it.
+    let display_prefixes = shifty_algebra::Prefixes::merged([
+        data_loaded
+            .as_ref()
+            .map(|d| d.prefixes.clone())
+            .unwrap_or_default(),
+        shapes_loaded.prefixes.clone(),
+    ]);
     let inference = if args.no_infer {
         None
     } else {
@@ -575,7 +600,7 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                     let st = &parsed.schema.statements[v.statement];
                     println!(
                         "  {}  [severity: {}; target: {}]",
-                        v.focus,
+                        shifty_algebra::render::term_to_string_in(&v.focus, &display_prefixes),
                         v.severity,
                         shifty_algebra::render::selector_to_string_in_px(
                             &st.selector,
@@ -586,7 +611,7 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                     let mut groups: Vec<Vec<String>> = v
                         .reasons
                         .iter()
-                        .map(|r| render_reason(r, &physical.arena, &physical.prefixes, 6))
+                        .map(|r| render_reason(r, &physical.arena, &display_prefixes, 6))
                         .collect();
                     groups.sort_by(|a, b| a[0].cmp(&b[0]));
                     for group in groups {

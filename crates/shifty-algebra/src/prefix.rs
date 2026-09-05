@@ -53,6 +53,16 @@ impl Prefixes {
         &EMPTY
     }
 
+    /// One table from several documents' declarations, earlier ones winning a
+    /// tie. A report names terms from both the data and the shapes graph, and a
+    /// reader wants each spelled the way its own document spelled it.
+    pub fn merged<I>(documents: impl IntoIterator<Item = I>) -> Self
+    where
+        I: IntoIterator<Item = (String, String)>,
+    {
+        Self::new(documents.into_iter().flatten())
+    }
+
     pub fn is_empty(&self) -> bool {
         self.decls.is_empty()
     }
@@ -146,6 +156,17 @@ mod tests {
             "xsd:integer"
         );
         assert_eq!(p.compact("http://ex/Thing"), "<http://ex/Thing>");
+    }
+
+    #[test]
+    fn merging_documents_keeps_every_vocabulary() {
+        // A report names data-graph and shapes-graph terms side by side; both
+        // documents' prefixes have to apply.
+        let data = [("bdg1".to_string(), "https://ex/models#".to_string())];
+        let shapes = [("s223".to_string(), "http://ex/223#".to_string())];
+        let px = Prefixes::merged([data, shapes]);
+        assert_eq!(px.compact("https://ex/models#abc"), "bdg1:abc");
+        assert_eq!(px.compact("http://ex/223#Thing"), "s223:Thing");
     }
 
     #[test]
