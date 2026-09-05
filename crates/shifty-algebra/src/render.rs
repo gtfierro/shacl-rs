@@ -290,7 +290,23 @@ pub fn describe_shape(arena: &ShapeArena, id: ShapeId) -> String {
 
 /// [`describe_shape`], compacting IRIs against `px`.
 pub fn describe_shape_in(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
-    Describer::new(arena, px).describe(id).text
+    Describer::new(arena, px).describe(id).flat()
+}
+
+/// [`describe_shape_in`], laid out over several lines and indented by nesting
+/// depth, breaking only where a subtree does not fit in `width`.
+///
+/// A description that already fits comes back byte-identical to the one-line
+/// form, so this is safe to use unconditionally. Prefer the one-line form for
+/// anything a consumer embeds mid-line or serializes as an RDF literal; this is
+/// for display to a person.
+pub fn describe_shape_pretty(
+    arena: &ShapeArena,
+    id: ShapeId,
+    px: &Prefixes,
+    width: usize,
+) -> String {
+    Describer::new(arena, px).describe(id).pretty(width, 0)
 }
 
 /// Join the descriptions of several shapes a value must *all* satisfy with “and”
@@ -306,7 +322,7 @@ pub fn describe_shapes_in(arena: &ShapeArena, ids: &[ShapeId], px: &Prefixes) ->
         return "any node".to_string();
     }
     ids.iter()
-        .map(|id| Describer::new(arena, px).describe(*id).nested())
+        .map(|id| Describer::new(arena, px).describe(*id).flat_nested())
         .collect::<Vec<_>>()
         .join(" and ")
 }
@@ -327,43 +343,136 @@ pub fn describe_negation(arena: &ShapeArena, id: ShapeId) -> String {
 
 /// [`describe_negation`], compacting IRIs against `px`.
 pub fn describe_negation_in(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
-    Describer::new(arena, px).negate(id).text
+    Describer::new(arena, px).negate(id).flat()
 }
 
-/// A rendered fragment, plus whether it is an `and`/`or` join at its top level
-/// so that a caller nesting it can parenthesize exactly when the result would
-/// otherwise be ambiguous. Carrying this out of the renderer beats re-deriving
-/// it from the shape: the negation side rewrites structure on the way (De Morgan
-/// swaps the connective, `¬∃[m..n]` becomes two alternatives), so only the code
-/// that produced the text knows whether it came out as a join.
-struct Rendered {
-    text: String,
-    is_join: bool,
+/// [`describe_negation_in`], laid out over several lines — see
+/// [`describe_shape_pretty`].
+pub fn describe_negation_pretty(
+    arena: &ShapeArena,
+    id: ShapeId,
+    px: &Prefixes,
+    width: usize,
+) -> String {
+    Describer::new(arena, px).negate(id).pretty(width, 0)
 }
 
-impl Rendered {
-    /// A fragment that binds tighter than any join: safe to drop in unbracketed.
-    fn atom(text: String) -> Self {
-        Self {
-            text,
-            is_join: false,
+/// Columns one nesting level adds in the pretty layout.
+const PRETTY_INDENT: usize = 2;
+
+/// A sensible line width for the pretty layout when a caller has no better
+/// number — wide enough that only genuinely nested constraints break.
+pub const PRETTY_WIDTH: usize = 100;
+
+/// The rendered *structure* of a description, before it is committed to a
+/// layout. One traversal of the shape builds it and [`Doc::flat`] /
+/// [`Doc::pretty`] are two ways of printing it, so the semantic rules that
+/// shape a description — naming the `sh:class` encoding, stating `∃[..0]` as a
+/// universal, De Morgan on the negation side, the cycle and size guards — are
+/// written once and cannot drift between the one-line and indented forms.
+enum Doc {
+    /// A leaf. Printed verbatim; there is nothing inside it to break at.
+    Atom(String),
+    /// `head` immediately followed by `body` — `∀ π . `, `∃[m..n] π . `. The
+    /// body is parenthesized only when it is itself a join.
+    Prefixed { head: String, body: Box<Doc> },
+    /// `head` followed by an always-parenthesized body — `not (`…`)`.
+    Bracketed { head: &'static str, body: Box<Doc> },
+    /// Two or more children joined by `sep`. A child that is itself a join is
+    /// parenthesized, so the result parses without knowing any precedence.
+    Join { sep: &'static str, parts: Vec<Doc> },
+}
+
+impl Doc {
+    /// Does this need parentheses to sit unambiguously inside a larger form?
+    fn is_join(&self) -> bool {
+        matches!(self, Doc::Join { .. })
+    }
+
+    /// The whole description on one line. This is the canonical form: it is what
+    /// goes into a report message, which downstream consumers embed mid-line and
+    /// serialize as an RDF literal.
+    fn flat(&self) -> String {
+        match self {
+            Doc::Atom(text) => text.clone(),
+            Doc::Prefixed { head, body } => format!("{head}{}", body.flat_nested()),
+            Doc::Bracketed { head, body } => format!("{head}({})", body.flat()),
+            Doc::Join { sep, parts } => parts
+                .iter()
+                .map(Doc::flat_nested)
+                .collect::<Vec<_>>()
+                .join(sep),
         }
     }
 
-    /// A fragment that is itself an `and`/`or` join.
-    fn join(text: String) -> Self {
-        Self {
-            text,
-            is_join: true,
-        }
-    }
-
-    /// The fragment as it must appear inside a larger expression.
-    fn nested(self) -> String {
-        if self.is_join {
-            format!("({})", self.text)
+    fn flat_nested(&self) -> String {
+        if self.is_join() {
+            format!("({})", self.flat())
         } else {
-            self.text
+            self.flat()
+        }
+    }
+
+    /// The description laid out over several lines, indented by nesting depth,
+    /// breaking only where a subtree does not fit in `width`. Short descriptions
+    /// — the overwhelming majority — come back byte-identical to [`Doc::flat`],
+    /// so this never costs legibility to buy it.
+    ///
+    /// `indent` is the column this term's continuation and closing lines sit at.
+    fn pretty(&self, width: usize, indent: usize) -> String {
+        let flat = self.flat();
+        if indent + flat.chars().count() <= width {
+            return flat;
+        }
+        self.pretty_broken(width, indent)
+    }
+
+    /// Lay this term out with its own top level broken, whether or not it would
+    /// have fit. Sibling conjuncts of a broken join are laid out this way so they
+    /// read alike, rather than one folding back onto a single line because it
+    /// happened to land a few columns under the limit.
+    fn pretty_broken(&self, width: usize, indent: usize) -> String {
+        let pad = " ".repeat(indent);
+        let inner_pad = " ".repeat(indent + PRETTY_INDENT);
+        // A subtree that breaks gets its own indented block, closing back at this
+        // term's column.
+        let block = |body: &Doc, force: bool| {
+            let inner = indent + PRETTY_INDENT;
+            let laid_out = if force {
+                body.pretty_broken(width, inner)
+            } else {
+                body.pretty(width, inner)
+            };
+            format!("(\n{inner_pad}{laid_out}\n{pad})")
+        };
+        match self {
+            // Nothing to break at: an over-long leaf stays over-long rather than
+            // being cut somewhere that would change what it says.
+            Doc::Atom(text) => text.clone(),
+            Doc::Prefixed { head, body } if body.is_join() => {
+                format!("{head}{}", block(body, false))
+            }
+            Doc::Prefixed { head, body } => format!("{head}{}", body.pretty(width, indent)),
+            Doc::Bracketed { head, body } => format!("{head}{}", block(body, false)),
+            // One child per line, the separator leading each continuation so the
+            // connective is the first thing read on the line it applies to.
+            Doc::Join { sep, parts } => parts
+                .iter()
+                .enumerate()
+                .map(|(i, part)| {
+                    let text = if part.is_join() {
+                        block(part, true)
+                    } else {
+                        part.pretty(width, indent)
+                    };
+                    if i == 0 {
+                        text
+                    } else {
+                        format!("\n{pad}{}{text}", sep.trim_start())
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(""),
         }
     }
 }
@@ -414,20 +523,20 @@ impl<'a> Describer<'a> {
 
     /// Expand `body` with `id` marked open, so a reference back to `id` from
     /// inside it is recognized as a cycle instead of recursing forever.
-    fn within(&mut self, id: ShapeId, body: impl FnOnce(&mut Self) -> Rendered) -> Rendered {
+    fn within(&mut self, id: ShapeId, body: impl FnOnce(&mut Self) -> Doc) -> Doc {
         self.open.push(id);
         let out = body(self);
         self.open.pop();
         out
     }
 
-    fn describe(&mut self, id: ShapeId) -> Rendered {
+    fn describe(&mut self, id: ShapeId) -> Doc {
         if let Some(stop) = self.stop(id, RECURSIVE) {
-            return Rendered::atom(self.emit(stop.to_string()));
+            return Doc::Atom(self.emit(stop.to_string()));
         }
         // ∃≥1 (rdf:type/rdfs:subClassOf*).test(C) — the encoding of sh:class C.
         if let Some(class) = class_target_shape(id, self.arena) {
-            return Rendered::atom(self.emit(format!(
+            return Doc::Atom(self.emit(format!(
                 "instance of {}",
                 term_to_string(&class, self.prefixes)
             )));
@@ -436,19 +545,19 @@ impl<'a> Describer<'a> {
         // here too keeps the count rule below from unfolding it into a universal
         // over a bare `test(C)`, which says the same thing far less directly.
         if let Some(class) = negated_class_target_shape(id, self.arena) {
-            return Rendered::atom(self.emit(format!(
+            return Doc::Atom(self.emit(format!(
                 "not an instance of {}",
                 term_to_string(&class, self.prefixes)
             )));
         }
         let arena = self.arena;
         match arena.get(id) {
-            Shape::Top | Shape::Pending => Rendered::atom(self.emit("any node".to_string())),
+            Shape::Top | Shape::Pending => Doc::Atom(self.emit("any node".to_string())),
             // sh:severity is transparent — describe the wrapped shape.
             Shape::Annotated { shape, .. } => self.within(id, |me| me.describe(*shape)),
-            Shape::Not(c) => self.within(id, |me| {
-                let d = me.describe(*c).text;
-                Rendered::atom(format!("not ({d})"))
+            Shape::Not(c) => self.within(id, |me| Doc::Bracketed {
+                head: "not ",
+                body: Box::new(me.describe(*c)),
             }),
             Shape::And(cs) => self.within(id, |me| me.join(cs, " and ", Self::describe)),
             Shape::Or(cs) => self.within(id, |me| me.join(cs, " or ", Self::describe)),
@@ -463,13 +572,13 @@ impl<'a> Describer<'a> {
         }
     }
 
-    fn negate(&mut self, id: ShapeId) -> Rendered {
+    fn negate(&mut self, id: ShapeId) -> Doc {
         if let Some(stop) = self.stop(id, NOT_RECURSIVE) {
-            return Rendered::atom(self.emit(stop.to_string()));
+            return Doc::Atom(self.emit(stop.to_string()));
         }
         // ψ = ∃≤0 (rdf:type/…).test(C)  ⇒  ¬ψ = "instance of C".
         if let Some(class) = negated_class_target_shape(id, self.arena) {
-            return Rendered::atom(self.emit(format!(
+            return Doc::Atom(self.emit(format!(
                 "instance of {}",
                 term_to_string(&class, self.prefixes)
             )));
@@ -477,7 +586,7 @@ impl<'a> Describer<'a> {
         // ψ = ∃≥1 (rdf:type/…).test(C)  ⇒  ¬ψ = "not an instance of C" (e.g. the
         // qualifier of an `sh:qualifiedMaxCount 0` over `sh:class C`).
         if let Some(class) = class_target_shape(id, self.arena) {
-            return Rendered::atom(self.emit(format!(
+            return Doc::Atom(self.emit(format!(
                 "not an instance of {}",
                 term_to_string(&class, self.prefixes)
             )));
@@ -485,7 +594,7 @@ impl<'a> Describer<'a> {
         let arena = self.arena;
         match arena.get(id) {
             // ¬⊤ = ⊥: unsatisfiable. Shouldn't reach reporting, but render honestly.
-            Shape::Top | Shape::Pending => Rendered::atom(self.emit("no value".to_string())),
+            Shape::Top | Shape::Pending => Doc::Atom(self.emit("no value".to_string())),
             Shape::Annotated { shape, .. } => self.within(id, |me| me.negate(*shape)),
             // ¬¬φ = φ
             Shape::Not(c) => self.within(id, |me| me.describe(*c)),
@@ -503,15 +612,18 @@ impl<'a> Describer<'a> {
                 if let Some(lo) = min
                     && *lo > 0
                 {
-                    alts.push(me.count(path, None, Some(lo - 1), *qualifier).nested());
+                    alts.push(me.count(path, None, Some(lo - 1), *qualifier));
                 }
                 if let Some(hi) = max {
-                    alts.push(me.count(path, Some(hi + 1), None, *qualifier).nested());
+                    alts.push(me.count(path, Some(hi + 1), None, *qualifier));
                 }
                 match alts.len() {
-                    0 => Rendered::atom("no value".to_string()), // ¬∃[0..] = ⊥
-                    1 => Rendered::atom(alts.remove(0)),
-                    _ => Rendered::join(alts.join(" or ")),
+                    0 => Doc::Atom("no value".to_string()), // ¬∃[0..] = ⊥
+                    1 => alts.remove(0),
+                    _ => Doc::Join {
+                        sep: " or ",
+                        parts: alts,
+                    },
                 }
             }),
             // ¬nodeKind(K) = nodeKind(K̄).
@@ -522,13 +634,13 @@ impl<'a> Describer<'a> {
                 } else {
                     format!("nodeKind({})", node_kinds_to_string(&comp))
                 };
-                Rendered::atom(self.emit(text))
+                Doc::Atom(self.emit(text))
             }
             // Any other leaf: its plain negation reads fine.
-            _ => {
-                let d = self.leaf(id).text;
-                Rendered::atom(format!("not ({d})"))
-            }
+            _ => Doc::Bracketed {
+                head: "not ",
+                body: Box::new(self.leaf(id)),
+            },
         }
     }
 
@@ -548,36 +660,40 @@ impl<'a> Describer<'a> {
         min: Option<u64>,
         max: Option<u64>,
         qualifier: ShapeId,
-    ) -> Rendered {
+    ) -> Doc {
         let path = path_to_string_in(path, self.prefixes);
         if max == Some(0) && matches!(min, None | Some(0)) {
             // ∀ π . ¬⊤ = ∀ π . ⊥: no values along π at all.
             if matches!(self.arena.get(qualifier), Shape::Top | Shape::Pending) {
-                return Rendered::atom(self.emit(format!("∄ {path}")));
+                return Doc::Atom(self.emit(format!("∄ {path}")));
             }
             let head = self.emit(format!("∀ {path} . "));
-            let q = self.negate(qualifier).nested();
-            return Rendered::atom(format!("{head}{q}"));
+            return Doc::Prefixed {
+                head,
+                body: Box::new(self.negate(qualifier)),
+            };
         }
         let lo = min.map(|n| n.to_string()).unwrap_or_default();
         let hi = max.map(|n| n.to_string()).unwrap_or_default();
         let head = self.emit(format!("∃[{lo}..{hi}] {path} . "));
-        let q = self.describe(qualifier).nested();
-        Rendered::atom(format!("{head}{q}"))
+        Doc::Prefixed {
+            head,
+            body: Box::new(self.describe(qualifier)),
+        }
     }
 
     /// A shape with no children in the shape grammar: its one-level formal
     /// rendering is already fully expanded — except `Shape::Expression`, whose
     /// node expression can carry a `sh:filterShape` reference that must be
     /// inlined too rather than printed as a slot.
-    fn leaf(&mut self, id: ShapeId) -> Rendered {
+    fn leaf(&mut self, id: ShapeId) -> Doc {
         let arena = self.arena;
         match arena.get(id) {
             Shape::Expression(e) => self.within(id, |me| {
                 let rendered = me.node_expr(e);
-                Rendered::atom(format!("expr({rendered}) = true"))
+                Doc::Atom(format!("expr({rendered}) = true"))
             }),
-            _ => Rendered::atom(self.emit(shape_def(arena, id, self.prefixes))),
+            _ => Doc::Atom(self.emit(shape_def(arena, id, self.prefixes))),
         }
     }
 
@@ -588,7 +704,7 @@ impl<'a> Describer<'a> {
         match e {
             NodeExpr::Filter { input, shape } => {
                 let input = self.node_expr(input);
-                let shape = self.describe(*shape).nested();
+                let shape = self.describe(*shape).flat_nested();
                 format!("filter({input}, {shape})")
             }
             NodeExpr::Intersection(es) => self.join_node_exprs(es, " ∩ "),
@@ -621,20 +737,18 @@ impl<'a> Describer<'a> {
     fn join(
         &mut self,
         cs: &[ShapeId],
-        sep: &str,
-        render: fn(&mut Self, ShapeId) -> Rendered,
-    ) -> Rendered {
+        sep: &'static str,
+        render: fn(&mut Self, ShapeId) -> Doc,
+    ) -> Doc {
         match cs {
             // For a conjunction this is ⊤ and for a disjunction ⊥; neither is
             // informative, and the negation side inherits the same shrug.
-            [] => Rendered::atom(self.emit("()".to_string())),
+            [] => Doc::Atom(self.emit("()".to_string())),
             [only] => render(self, *only),
-            _ => Rendered::join(
-                cs.iter()
-                    .map(|c| render(self, *c).nested())
-                    .collect::<Vec<_>>()
-                    .join(sep),
-            ),
+            _ => Doc::Join {
+                sep,
+                parts: cs.iter().map(|c| render(self, *c)).collect(),
+            },
         }
     }
 }
@@ -1270,6 +1384,83 @@ mod tests {
             describe_shape(&arena, expr),
             "expr(filter(this, instance of <http://ex/A>)) = true"
         );
+    }
+
+    #[test]
+    fn a_description_that_fits_is_not_broken() {
+        // The overwhelming majority of report messages are one short clause;
+        // the pretty layout must leave those exactly as they are.
+        let mut arena = ShapeArena::new();
+        let a = class_shape(&mut arena, "http://ex/A");
+        let px = Prefixes::default();
+
+        let flat = describe_shape_in(&arena, a, &px);
+        assert_eq!(flat, "instance of <http://ex/A>");
+        assert_eq!(describe_shape_pretty(&arena, a, &px, PRETTY_WIDTH), flat);
+    }
+
+    #[test]
+    fn a_long_description_breaks_at_its_nesting() {
+        // The s223 shape that motivated this: a conjunction whose second member
+        // negates another conjunction. Both layouts come from one traversal, so
+        // the broken form says exactly what the one-line form says.
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::new([("ex".to_string(), "http://ex/".to_string())]);
+        // `∀ hasMedium . instance of M` as the optimizer stores it: `∃[..0]`
+        // over the NNF negation of the class test.
+        let inlet = |arena: &mut ShapeArena, medium: &str| {
+            let point = class_shape(arena, "http://ex/InletConnectionPoint");
+            let not_medium = negated_class_shape(arena, medium);
+            let all = arena.insert(Shape::Count {
+                path: Path::Pred(nn("http://ex/hasMedium")),
+                min: None,
+                max: Some(0),
+                qualifier: not_medium,
+            });
+            arena.insert(Shape::And(vec![point, all]))
+        };
+        let signal = inlet(&mut arena, "http://ex/Electricity-Signal");
+        let power = inlet(&mut arena, "http://ex/Constituent-Electricity");
+        let negated = arena.insert(Shape::Not(power));
+        let both = arena.insert(Shape::And(vec![signal, negated]));
+
+        assert_eq!(
+            describe_shape_pretty(&arena, both, &px, 60),
+            "\
+(
+  instance of ex:InletConnectionPoint
+  and ∀ ex:hasMedium . instance of ex:Electricity-Signal
+)
+and not (
+  instance of ex:InletConnectionPoint
+  and ∀ ex:hasMedium . instance of ex:Constituent-Electricity
+)"
+        );
+    }
+
+    #[test]
+    fn sibling_groups_of_a_broken_join_break_alike() {
+        // One conjunct fitting under the limit by a few columns while its sibling
+        // does not would lay the two out differently for no reason the reader can
+        // see. A group nested in a broken join always breaks.
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::default();
+        let group = |arena: &mut ShapeArena, a: &str, b: &str| {
+            let x = class_shape(arena, a);
+            let y = class_shape(arena, b);
+            arena.insert(Shape::And(vec![x, y]))
+        };
+        let short = group(&mut arena, "http://ex/A", "http://ex/B");
+        let long = group(
+            &mut arena,
+            "http://ex/LongerClassName",
+            "http://ex/AnotherLongName",
+        );
+        let both = arena.insert(Shape::And(vec![short, long]));
+
+        let pretty = describe_shape_pretty(&arena, both, &px, 60);
+        let opens = pretty.matches("(\n").count();
+        assert_eq!(opens, 2, "both groups should be broken:\n{pretty}");
     }
 
     /// The NNF of `¬(sh:class C)`: `∃≤0 (rdf:type/rdfs:subClassOf*).test(C)`.

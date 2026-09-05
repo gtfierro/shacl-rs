@@ -1027,6 +1027,20 @@ impl RepairSession {
         )
     }
 
+    /// `describe_shape`, laid out over several lines and indented by nesting
+    /// depth, breaking only where a subtree does not fit in `width`. A
+    /// description that already fits comes back unchanged, so this is safe to
+    /// call unconditionally.
+    #[pyo3(signature = (shape_id, width = shifty_algebra::render::PRETTY_WIDTH))]
+    fn describe_shape_pretty(&self, shape_id: u32, width: usize) -> String {
+        shifty_algebra::render::describe_shape_pretty(
+            &self.schema.arena,
+            ShapeId(shape_id),
+            &self.schema.prefixes,
+            width,
+        )
+    }
+
     /// A new session over `G ⊕ ΔG` (same schema, no re-inference) so a driver can
     /// accept a repair and re-witness from the patched graph. The delta patches
     /// both the data graph and the evaluation context (which contains it), so the

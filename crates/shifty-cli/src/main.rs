@@ -330,7 +330,12 @@ fn infer(args: InferArgs) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn render_reason(r: &shifty_engine::Reason, indent: usize) -> Vec<String> {
+fn render_reason(
+    r: &shifty_engine::Reason,
+    arena: &shifty_algebra::ShapeArena,
+    px: &shifty_algebra::Prefixes,
+    indent: usize,
+) -> Vec<String> {
     let pad = " ".repeat(indent);
     // Lead with the author's `sh:message` when present, but keep the generated
     // one in parentheses so it is always available.
@@ -343,12 +348,38 @@ fn render_reason(r: &shifty_engine::Reason, indent: usize) -> Vec<String> {
         None => format!("{pad}- [{}] {}", r.severity, message),
     };
     let mut lines = vec![header];
+    lines.extend(render_constraint_block(r, arena, px, indent + 4));
     if let Some(d) = &r.sparql_diagnostic {
         lines.extend(render_sparql_diagnostic(d, indent + 4));
     }
     for sub in &r.sub_reasons {
-        lines.extend(render_reason(sub, indent + 4));
+        lines.extend(render_reason(sub, arena, px, indent + 4));
     }
+    lines
+}
+
+/// The failing constraint, laid out over several lines — but only when it is
+/// nested enough that the one-line form in the header stops being readable.
+///
+/// Most reasons are a single short clause, where the header already says
+/// everything and a block underneath would be noise. The pretty layout is
+/// byte-identical to the one-line form whenever it fits, so "did it break?" is
+/// exactly the right test for whether the block is worth printing.
+fn render_constraint_block(
+    r: &shifty_engine::Reason,
+    arena: &shifty_algebra::ShapeArena,
+    px: &shifty_algebra::Prefixes,
+    indent: usize,
+) -> Vec<String> {
+    use shifty_algebra::render::{PRETTY_WIDTH, describe_shape_pretty};
+    let pad = " ".repeat(indent);
+    let width = PRETTY_WIDTH.saturating_sub(indent + 2);
+    let pretty = describe_shape_pretty(arena, r.constraint_id, px, width);
+    if !pretty.contains('\n') {
+        return Vec::new();
+    }
+    let mut lines = vec![format!("{pad}constraint:")];
+    lines.extend(pretty.lines().map(|line| format!("{pad}  {line}")));
     lines
 }
 
@@ -552,8 +583,11 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                             &parsed.schema.prefixes
                         )
                     );
-                    let mut groups: Vec<Vec<String>> =
-                        v.reasons.iter().map(|r| render_reason(r, 6)).collect();
+                    let mut groups: Vec<Vec<String>> = v
+                        .reasons
+                        .iter()
+                        .map(|r| render_reason(r, &physical.arena, &physical.prefixes, 6))
+                        .collect();
                     groups.sort_by(|a, b| a[0].cmp(&b[0]));
                     for group in groups {
                         for line in group {

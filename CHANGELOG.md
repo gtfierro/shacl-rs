@@ -11,6 +11,18 @@
   in full, stopping only at a genuinely self-referential shape (named as such)
   or a size cap (elided with an ellipsis).
 
+### Added
+
+- Added an indented layout for constraint descriptions, for the nested ones that
+  are unreadable on a single line. `render::describe_shape_pretty` breaks and
+  indents by nesting depth, and returns the one-line form byte-identical when it
+  already fits, so callers can use it unconditionally. Surfaced as
+  `Constraint.definition_pretty` and `RepairSession.describe_shape_pretty` in
+  Python, and printed by `shifty validate` as a `constraint:` block under a
+  reason whose description does not fit. `Reason.message` and the
+  `sh:resultMessage` literal stay single-line: consumers embed them mid-line and
+  serialize them as RDF.
+
 ### Changed
 
 - Validation messages now state a `∃[..0] π . φ` count as the universal it is,
