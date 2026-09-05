@@ -546,9 +546,10 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                         "  {}  [severity: {}; target: {}]",
                         v.focus,
                         v.severity,
-                        shifty_algebra::render::selector_to_string_in(
+                        shifty_algebra::render::selector_to_string_in_px(
                             &st.selector,
-                            &parsed.schema.arena
+                            &parsed.schema.arena,
+                            &parsed.schema.prefixes
                         )
                     );
                     let mut groups: Vec<Vec<String>> =
@@ -658,9 +659,10 @@ fn repair(args: RepairArgs) -> Result<(), Box<dyn Error>> {
     }
 
     let target = |statement: usize| {
-        shifty_algebra::render::selector_to_string_in(
+        shifty_algebra::render::selector_to_string_in_px(
             &schema.statements[statement].selector,
             &schema.arena,
+            &schema.prefixes,
         )
     };
 
@@ -673,7 +675,7 @@ fn repair(args: RepairArgs) -> Result<(), Box<dyn Error>> {
                 }
                 for fw in &witnesses {
                     println!("{}  [target: {}]", fw.focus, target(fw.statement));
-                    for line in render_witness(&fw.failure, 2) {
+                    for line in render_witness(&fw.failure, &schema.prefixes, 2) {
                         println!("{line}");
                     }
                 }
@@ -705,7 +707,7 @@ fn repair(args: RepairArgs) -> Result<(), Box<dyn Error>> {
                     }
                     for (fw, t) in &trees {
                         println!("{}  [target: {}]", fw.focus, target(fw.statement));
-                        for line in render_tree(t, &schema.arena, 2) {
+                        for line in render_tree(t, &schema.arena, &schema.prefixes, 2) {
                             println!("{line}");
                         }
                     }
@@ -775,11 +777,15 @@ fn repair(args: RepairArgs) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn path_str(p: &shifty_algebra::Path) -> String {
-    shifty_algebra::render::path_to_string(p)
+fn path_str(p: &shifty_algebra::Path, px: &shifty_algebra::Prefixes) -> String {
+    shifty_algebra::render::path_to_string_in(p, px)
 }
 
-fn render_witness(w: &shifty_engine::Witness, indent: usize) -> Vec<String> {
+fn render_witness(
+    w: &shifty_engine::Witness,
+    px: &shifty_algebra::Prefixes,
+    indent: usize,
+) -> Vec<String> {
     use shifty_engine::Witness as W;
     let pad = " ".repeat(indent);
     let mut out = Vec::new();
@@ -791,7 +797,7 @@ fn render_witness(w: &shifty_engine::Witness, indent: usize) -> Vec<String> {
             ..
         } => out.push(format!(
             "{pad}Atom at {node} via {}{}",
-            path_str(reached_by),
+            path_str(reached_by, px),
             if produced_by.is_some() {
                 " [cuttable]"
             } else {
@@ -815,25 +821,25 @@ fn render_witness(w: &shifty_engine::Witness, indent: usize) -> Vec<String> {
         }
         W::Not { inner, .. } => {
             out.push(format!("{pad}Not — falsify the inner shape:"));
-            out.extend(render_sat(inner, indent + 2));
+            out.extend(render_sat(inner, px, indent + 2));
         }
         W::All { failed, .. } => {
             out.push(format!("{pad}All — fix every:"));
             for f in failed {
-                out.extend(render_witness(f, indent + 2));
+                out.extend(render_witness(f, px, indent + 2));
             }
         }
         W::Any { branches, .. } => {
             out.push(format!("{pad}Any — fix any one of:"));
             for b in branches {
-                out.extend(render_witness(b, indent + 2));
+                out.extend(render_witness(b, px, indent + 2));
             }
         }
         W::CountLow {
             path, have, min, ..
         } => out.push(format!(
             "{pad}CountLow along {}: have {have}, need {min}",
-            path_str(path)
+            path_str(path, px)
         )),
         W::CountHigh {
             path,
@@ -844,12 +850,12 @@ fn render_witness(w: &shifty_engine::Witness, indent: usize) -> Vec<String> {
         } => {
             out.push(format!(
                 "{pad}CountHigh along {}: {} match(es), max {max}",
-                path_str(path),
+                path_str(path, px),
                 matched.len()
             ));
             for (v, sub) in per_value {
                 out.push(format!("{pad}  value {v}:"));
-                out.extend(render_witness(sub, indent + 4));
+                out.extend(render_witness(sub, px, indent + 4));
             }
         }
         W::Opaque { .. } => out.push(format!("{pad}Opaque (SPARQL) — no algebraic witness")),
@@ -857,7 +863,11 @@ fn render_witness(w: &shifty_engine::Witness, indent: usize) -> Vec<String> {
     out
 }
 
-fn render_sat(s: &shifty_engine::SatTrace, indent: usize) -> Vec<String> {
+fn render_sat(
+    s: &shifty_engine::SatTrace,
+    px: &shifty_algebra::Prefixes,
+    indent: usize,
+) -> Vec<String> {
     use shifty_engine::SatTrace as S;
     let pad = " ".repeat(indent);
     let mut out = Vec::new();
@@ -867,13 +877,13 @@ fn render_sat(s: &shifty_engine::SatTrace, indent: usize) -> Vec<String> {
         S::AllHeld { children, .. } => {
             out.push(format!("{pad}AllHeld — break any one:"));
             for c in children {
-                out.extend(render_sat(c, indent + 2));
+                out.extend(render_sat(c, px, indent + 2));
             }
         }
         S::AnyHeld { satisfied, .. } => {
             out.push(format!("{pad}AnyHeld — break every:"));
             for c in satisfied {
-                out.extend(render_sat(c, indent + 2));
+                out.extend(render_sat(c, px, indent + 2));
             }
         }
         S::CountHeld { matches, .. } => {
@@ -885,12 +895,12 @@ fn render_sat(s: &shifty_engine::SatTrace, indent: usize) -> Vec<String> {
                 values.len()
             ));
             for (_, _, trace) in values {
-                out.extend(render_sat(trace, indent + 2));
+                out.extend(render_sat(trace, px, indent + 2));
             }
         }
         S::NotHeld { inner_fails, .. } => {
             out.push(format!("{pad}NotHeld — make the inner shape hold:"));
-            out.extend(render_witness(inner_fails, indent + 2));
+            out.extend(render_witness(inner_fails, px, indent + 2));
         }
         S::Blocked { reason, .. } => out.push(format!("{pad}Blocked: {reason:?}")),
         S::Coinductive { .. } => out.push(format!("{pad}Coinductive (gfp back-edge)")),
@@ -901,6 +911,7 @@ fn render_sat(s: &shifty_engine::SatTrace, indent: usize) -> Vec<String> {
 fn render_tree(
     t: &shifty_repair::RepairTree,
     arena: &shifty_algebra::ShapeArena,
+    px: &shifty_algebra::Prefixes,
     indent: usize,
 ) -> Vec<String> {
     use shifty_repair::RepairTree as T;
@@ -915,25 +926,29 @@ fn render_tree(
                 out.push(format!("{pad}  {}", edit_str(e)));
             }
             for (h, c) in holes {
-                out.push(format!("{pad}  ?{} : {}", h.0, constraint_str(c, arena)));
+                out.push(format!(
+                    "{pad}  ?{} : {}",
+                    h.0,
+                    constraint_str(c, arena, px)
+                ));
             }
         }
         T::All { children, .. } => {
             out.push(format!("{pad}All — do all:"));
             for c in children {
-                out.extend(render_tree(c, arena, indent + 2));
+                out.extend(render_tree(c, arena, px, indent + 2));
             }
         }
         T::Any { children, .. } => {
             out.push(format!("{pad}Any — choose one:"));
             for c in children {
-                out.extend(render_tree(c, arena, indent + 2));
+                out.extend(render_tree(c, arena, px, indent + 2));
             }
         }
         T::Repeat { body, min, max, .. } => {
             let hi = max.map_or_else(|| "∞".to_string(), |m| m.to_string());
             out.push(format!("{pad}Repeat [{min}..{hi}]:"));
-            out.extend(render_tree(body, arena, indent + 2));
+            out.extend(render_tree(body, arena, px, indent + 2));
         }
     }
     out
@@ -960,7 +975,11 @@ fn slot_str(s: &shifty_repair::Slot) -> String {
     }
 }
 
-fn constraint_str(c: &shifty_repair::HoleConstraint, arena: &shifty_algebra::ShapeArena) -> String {
+fn constraint_str(
+    c: &shifty_repair::HoleConstraint,
+    arena: &shifty_algebra::ShapeArena,
+    px: &shifty_algebra::Prefixes,
+) -> String {
     use shifty_repair::HoleConstraint as H;
     match c {
         H::AnyNode => "any node".to_string(),
@@ -969,8 +988,8 @@ fn constraint_str(c: &shifty_repair::HoleConstraint, arena: &shifty_algebra::Sha
         H::Typed(_) => "typed value".to_string(),
         H::Kind(_) => "nodeKind".to_string(),
         H::OneOf(v) => format!("one of {} value(s)", v.len()),
-        H::ConformsTo(s) => shifty_algebra::render::describe_shape(arena, *s),
-        H::ConformsToAll(ss) => shifty_algebra::render::describe_shapes(arena, ss),
+        H::ConformsTo(s) => shifty_algebra::render::describe_shape_in(arena, *s, px),
+        H::ConformsToAll(ss) => shifty_algebra::render::describe_shapes_in(arena, ss, px),
     }
 }
 

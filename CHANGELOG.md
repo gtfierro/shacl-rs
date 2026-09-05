@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed validation messages that leaked internal arena slot labels such as
+  `@257`. Constraint descriptions were cut at a fixed recursion depth and fell
+  back to the slot id, which is meaningless outside a debugging dump and could
+  elide the very term that distinguished two conjuncts. Descriptions now expand
+  in full, stopping only at a genuinely self-referential shape (named as such)
+  or a size cap (elided with an ellipsis).
+
+### Changed
+
+- Validation messages now state a `∃[..0] π . φ` count as the universal it is,
+  `∀ π . ¬φ`, inverting the qualifier. The lowered form of a universal carries a
+  negated qualifier, so the old rendering presented a double negative: what read
+  as two stacked "zero or fewer" quantifiers actually says "every value along
+  the path *is* an instance of C".
+- Descriptions now bracket nested `and`/`or` groups, so a message parses
+  unambiguously without knowing the connectives' precedence.
+- Report messages, paths, and rendered targets now compact IRIs using the
+  `@prefix` declarations of the document the shapes were loaded from, not just
+  the five well-known W3C namespaces. `Schema` and `PhysicalPlan` carry those
+  declarations as display metadata; new `*_in`/`*_px` rendering entry points
+  take them, and the existing prefix-less functions are unchanged.
+
 ## 0.4.4
 
 ### Added

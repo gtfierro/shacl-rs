@@ -533,12 +533,12 @@ def test_a_missing_obligation_describes_the_edge_that_would_close_it():
 
     obligation = on_focus[0]
     assert obligation.node == "<http://ex/ahu1>"
-    assert obligation.path == "<http://ex/hasPoint>"
+    assert obligation.path == "ex:hasPoint"
     assert (obligation.observed_count, obligation.required_count) == (1, 2)
     assert obligation.missing == 1
     # What an added value must satisfy, structured — no explain() parsing.
     assert obligation.qualifier.kind == shifty.ConstraintKind.ClassMembership
-    assert obligation.qualifier.definition == "instance of <http://ex/Temp>"
+    assert obligation.qualifier.definition == "instance of ex:Temp"
     assert isinstance(obligation.qualifier.id, int)
 
 
@@ -788,7 +788,7 @@ def test_explain_materializes_one_pair_as_a_usable_run():
     assert [f.focus for f in one.failures_for(pair.focus)] == [pair.focus] * 2
     failure = one.failure_for(pair.focus, statement=0)
     assert [(o.node, o.path, o.missing) for o in failure.missing_obligations()] == [
-        ("<http://ex/bad>", "<http://ex/p>", 1)
+        ("<http://ex/bad>", "ex:p", 1)
     ]
 
     # And the evidence is the same as the full run's for that pair.

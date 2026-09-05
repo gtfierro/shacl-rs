@@ -242,6 +242,7 @@ impl Constraint {
 pub(crate) fn constraint_to_py(
     py: Python<'_>,
     arena: &shifty_algebra::ShapeArena,
+    px: &shifty_algebra::Prefixes,
     id: shifty_algebra::ShapeId,
 ) -> PyResult<Py<Constraint>> {
     Py::new(
@@ -249,8 +250,8 @@ pub(crate) fn constraint_to_py(
         Constraint {
             id: id.0,
             kind: constraint_kind_to_py(shifty_algebra::ConstraintKind::of(arena, id)),
-            render: shifty_algebra::render::shape_to_string(arena, id),
-            definition: shifty_algebra::render::describe_shape(arena, id),
+            render: shifty_algebra::render::shape_to_string_in(arena, id, px),
+            definition: shifty_algebra::render::describe_shape_in(arena, id, px),
             json: serde_json::to_string(arena.get(id))
                 .unwrap_or_else(|error| format!("{{\"error\":\"{error}\"}}")),
         },
@@ -805,7 +806,7 @@ pub(crate) fn violation_to_py_with_arena(
         .reasons
         .iter()
         .map(|r| {
-            let constraint = constraint_to_py(py, arena, r.constraint_id)?;
+            let constraint = constraint_to_py(py, arena, &schema.prefixes, r.constraint_id)?;
             let sparql_diagnostic = r
                 .sparql_diagnostic
                 .as_ref()
@@ -896,12 +897,16 @@ struct RawConstraint {
 }
 
 impl RawConstraint {
-    fn from_arena(arena: &shifty_algebra::ShapeArena, id: shifty_algebra::ShapeId) -> Self {
+    fn from_arena(
+        arena: &shifty_algebra::ShapeArena,
+        px: &shifty_algebra::Prefixes,
+        id: shifty_algebra::ShapeId,
+    ) -> Self {
         Self {
             id: id.0,
             kind: constraint_kind_to_py(shifty_algebra::ConstraintKind::of(arena, id)),
-            render: shifty_algebra::render::shape_to_string(arena, id),
-            definition: shifty_algebra::render::describe_shape(arena, id),
+            render: shifty_algebra::render::shape_to_string_in(arena, id, px),
+            definition: shifty_algebra::render::describe_shape_in(arena, id, px),
             json: serde_json::to_string(arena.get(id))
                 .unwrap_or_else(|error| format!("{{\"error\":\"{error}\"}}")),
         }
@@ -1027,7 +1032,11 @@ fn raw_algebra_result(
                     message: reason.message.clone(),
                     author_message: reason.author_message.clone(),
                     severity: reason.severity.label().to_string(),
-                    constraint: RawConstraint::from_arena(arena, reason.constraint_id),
+                    constraint: RawConstraint::from_arena(
+                        arena,
+                        &schema.prefixes,
+                        reason.constraint_id,
+                    ),
                     constraint_kind: constraint_kind_to_py(reason.constraint_kind),
                     constraint_id: reason.constraint_id.0,
                     statement_id: reason.statement_id,

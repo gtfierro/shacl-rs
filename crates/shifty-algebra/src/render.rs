@@ -7,6 +7,7 @@
 //! inline in the formalism's notation.
 
 use crate::path::Path;
+use crate::prefix::Prefixes;
 use crate::schema::Schema;
 use crate::selector::Selector;
 use crate::shape::{Shape, ShapeArena, ShapeId};
@@ -18,6 +19,7 @@ use std::collections::BTreeSet;
 /// from the statements/rules are shown (intermediate arena slots are elided);
 /// the header reports `reachable/total`.
 pub fn schema_to_text(schema: &Schema) -> String {
+    let px = &schema.prefixes;
     let reachable = reachable_shapes(schema);
     let mut out = String::new();
     out.push_str(&format!(
@@ -35,12 +37,12 @@ pub fn schema_to_text(schema: &Schema) -> String {
         let name_suffix = schema
             .names
             .get(id)
-            .map(|iris| format!("  # {}", compact_all(iris)))
+            .map(|iris| format!("  # {}", compact_all(iris, px)))
             .unwrap_or_default();
         out.push_str(&format!(
             "  @{} = {}{}\n",
             id.0,
-            shape_def(&schema.arena, *id),
+            shape_def(&schema.arena, *id, px),
             name_suffix
         ));
     }
@@ -50,7 +52,7 @@ pub fn schema_to_text(schema: &Schema) -> String {
         for st in &schema.statements {
             out.push_str(&format!(
                 "  {}  ⇒  {}\n",
-                selector_to_string(&st.selector),
+                selector_to_string_px(&st.selector, px),
                 child(&schema.arena, st.shape)
             ));
         }
@@ -66,7 +68,7 @@ pub fn schema_to_text(schema: &Schema) -> String {
                 .collect();
             out.push_str(&format!(
                 "  on {} [if {}] order={} {} ⟹ {}\n",
-                selector_to_string(&r.selector),
+                selector_to_string_px(&r.selector, px),
                 if conds.is_empty() {
                     "·".into()
                 } else {
@@ -74,7 +76,7 @@ pub fn schema_to_text(schema: &Schema) -> String {
                 },
                 r.order.unwrap_or(0),
                 if r.deactivated { "(deactivated)" } else { "" },
-                rule_head_to_string(&r.head),
+                rule_head_to_string(&r.head, px),
             ));
         }
     }
@@ -82,7 +84,7 @@ pub fn schema_to_text(schema: &Schema) -> String {
     out
 }
 
-fn rule_head_to_string(head: &crate::rule::RuleHead) -> String {
+fn rule_head_to_string(head: &crate::rule::RuleHead, px: &Prefixes) -> String {
     use crate::rule::RuleHead;
     match head {
         RuleHead::Triple {
@@ -91,38 +93,38 @@ fn rule_head_to_string(head: &crate::rule::RuleHead) -> String {
             object,
         } => format!(
             "+({}, {}, {})",
-            node_expr_to_string(subject),
-            node_expr_to_string(predicate),
-            node_expr_to_string(object),
+            node_expr_to_string(subject, px),
+            node_expr_to_string(predicate, px),
+            node_expr_to_string(object, px),
         ),
         RuleHead::Sparql(_) => "construct{…}".to_string(),
     }
 }
 
-fn node_expr_to_string(e: &crate::expr::NodeExpr) -> String {
+fn node_expr_to_string(e: &crate::expr::NodeExpr, px: &Prefixes) -> String {
     use crate::expr::NodeExpr;
     match e {
         NodeExpr::This => "this".to_string(),
-        NodeExpr::Constant(t) => term_to_string(t),
-        NodeExpr::Path(p) => path_to_string(p),
+        NodeExpr::Constant(t) => term_to_string(t, px),
+        NodeExpr::Path(p) => path_to_string_in(p, px),
         NodeExpr::Filter { input, shape } => {
-            format!("filter({}, @{})", node_expr_to_string(input), shape.0)
+            format!("filter({}, @{})", node_expr_to_string(input, px), shape.0)
         }
         NodeExpr::Intersection(es) => es
             .iter()
-            .map(node_expr_to_string)
+            .map(|e| node_expr_to_string(e, px))
             .collect::<Vec<_>>()
             .join(" ∩ "),
         NodeExpr::Union(es) => es
             .iter()
-            .map(node_expr_to_string)
+            .map(|e| node_expr_to_string(e, px))
             .collect::<Vec<_>>()
             .join(" ∪ "),
         NodeExpr::Function { iri, args } => format!(
             "{}({})",
-            compact(iri.as_str()),
+            px.compact(iri.as_str()),
             args.iter()
-                .map(node_expr_to_string)
+                .map(|e| node_expr_to_string(e, px))
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -176,7 +178,7 @@ fn selector_shapes(sel: &Selector) -> Vec<ShapeId> {
     }
 }
 
-fn shape_def(arena: &ShapeArena, id: ShapeId) -> String {
+fn shape_def(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
     match arena.get(id) {
         Shape::Annotated {
             severity, shape, ..
@@ -185,18 +187,34 @@ fn shape_def(arena: &ShapeArena, id: ShapeId) -> String {
         }
         Shape::Top => "⊤".to_string(),
         Shape::Pending => "⟨pending⟩".to_string(),
-        Shape::TestConst(t) => format!("test({})", term_to_string(t)),
-        Shape::TestType(vt) => format!("test({})", value_type_to_string(vt)),
+        Shape::TestConst(t) => format!("test({})", term_to_string(t, px)),
+        Shape::TestType(vt) => format!("test({})", value_type_to_string_in(vt, px)),
         Shape::TestKind(k) => format!("nodeKind({})", node_kinds_to_string(k)),
         Shape::Closed(q) => {
-            let preds: Vec<String> = q.iter().map(|n| compact(n.as_str())).collect();
+            let preds: Vec<String> = q.iter().map(|n| px.compact(n.as_str())).collect();
             format!("closed{{{}}}", preds.join(", "))
         }
-        Shape::Eq(p, pred) => format!("eq({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Disj(p, pred) => format!("disj({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Lt(p, pred) => format!("lt({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Le(p, pred) => format!("le({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::UniqueLang(p) => format!("uniqueLang({})", path_to_string(p)),
+        Shape::Eq(p, pred) => format!(
+            "eq({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Disj(p, pred) => format!(
+            "disj({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Lt(p, pred) => format!(
+            "lt({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Le(p, pred) => format!(
+            "le({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::UniqueLang(p) => format!("uniqueLang({})", path_to_string_in(p, px)),
         Shape::Not(c) => format!("¬{}", child(arena, *c)),
         Shape::And(cs) => join_children(arena, cs, " ∧ "),
         Shape::Or(cs) => join_children(arena, cs, " ∨ "),
@@ -210,12 +228,12 @@ fn shape_def(arena: &ShapeArena, id: ShapeId) -> String {
             let hi = max.map(|n| n.to_string()).unwrap_or_default();
             format!(
                 "∃[{lo}..{hi}] {} . {}",
-                path_to_string(path),
+                path_to_string_in(path, px),
                 child(arena, *qualifier)
             )
         }
         Shape::Sparql(c) => format!("sparql({:?}){{…}}", c.kind),
-        Shape::Expression(e) => format!("expr({}) = true", node_expr_to_string(e)),
+        Shape::Expression(e) => format!("expr({}) = true", node_expr_to_string(e, px)),
     }
 }
 
@@ -229,82 +247,68 @@ fn join_children(arena: &ShapeArena, cs: &[ShapeId], sep: &str) -> String {
         .join(sep)
 }
 
-/// Render a single shape (its top-level form; children as `@id`). Useful for
-/// constraint messages in validation reports.
+/// Render a single shape (its top-level form; children as `@id`), with only the
+/// well-known prefixes compacted.
 pub fn shape_to_string(arena: &ShapeArena, id: ShapeId) -> String {
-    shape_def(arena, id)
+    shape_to_string_in(arena, id, &Prefixes::default())
 }
 
-/// A fully-expanded, human-readable description of a shape for repair-hole
-/// display: every child shape is inlined recursively (no bare `@id` slot
-/// references), the `sh:class` encoding is named `instance of C`, and leaves
-/// render in the formalism's notation. Recursive shapes are cut at a fixed depth,
-/// falling back to the slot label `@id`. Prefer this over [`shape_to_string`] when
-/// the reader wants the *whole* constraint, not a one-level form with pointers.
+/// Render a single shape (its top-level form; children as `@id`), compacting
+/// IRIs against `px`. Useful for constraint messages in validation reports.
+pub fn shape_to_string_in(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
+    shape_def(arena, id, px)
+}
+
+/// Cap on the terminal text one description may emit. Shapes form a DAG, so
+/// inlining every child can in principle blow up on a heavily shared schema;
+/// past the cap the remainder is elided with `…`. This is a size guard only —
+/// it never falls back to an arena slot label, which tells the reader of a
+/// validation report nothing.
+const DESCRIBE_BUDGET: usize = 4096;
+
+/// Stand-in for a shape that encloses itself. Recursive shapes have no finite
+/// inlining, so the one structural place a description must stop names the
+/// recursion rather than an arena slot. The negation side needs its own wording:
+/// the guard fires on the shape's identity, which says nothing about the polarity
+/// the reader is standing in.
+const RECURSIVE: &str = "this same shape (recursive)";
+const NOT_RECURSIVE: &str = "not this same shape (recursive)";
+
+/// A fully-expanded, human-readable description of a shape, for validation
+/// messages and repair-hole display: every child shape is inlined recursively,
+/// the `sh:class` encoding is named `instance of C`, a `∃[..0]` count is stated
+/// as the universal it is, and leaves render in the formalism's notation. The
+/// result never contains an `@id` slot reference — an arena index is an internal
+/// identifier and is meaningless outside a debugging dump. Expansion stops only
+/// where it must: a shape that encloses itself renders as [`RECURSIVE`], and
+/// text past [`DESCRIBE_BUDGET`] is elided with `…`. Prefer this over
+/// [`shape_to_string`] when the reader wants the *whole* constraint, not a
+/// one-level form with pointers.
 pub fn describe_shape(arena: &ShapeArena, id: ShapeId) -> String {
-    describe_shape_within(arena, id, 8)
+    describe_shape_in(arena, id, &Prefixes::default())
+}
+
+/// [`describe_shape`], compacting IRIs against `px`.
+pub fn describe_shape_in(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
+    Describer::new(arena, px).describe(id).text
 }
 
 /// Join the descriptions of several shapes a value must *all* satisfy with “and”
 /// — the rendering of a conjunction held as separate shapes (e.g. a `ConformsToAll`
 /// hole). Each member is itself fully expanded via [`describe_shape`].
 pub fn describe_shapes(arena: &ShapeArena, ids: &[ShapeId]) -> String {
+    describe_shapes_in(arena, ids, &Prefixes::default())
+}
+
+/// [`describe_shapes`], compacting IRIs against `px`.
+pub fn describe_shapes_in(arena: &ShapeArena, ids: &[ShapeId], px: &Prefixes) -> String {
     if ids.is_empty() {
         return "any node".to_string();
     }
     ids.iter()
-        .map(|id| describe_shape(arena, *id))
+        .map(|id| Describer::new(arena, px).describe(*id).nested())
         .collect::<Vec<_>>()
         .join(" and ")
-}
-
-fn describe_shape_within(arena: &ShapeArena, id: ShapeId, depth: u8) -> String {
-    // ∃≥1 (rdf:type/rdfs:subClassOf*).test(C) — the encoding of sh:class C.
-    if let Some(class) = class_target_shape(id, arena) {
-        return format!("instance of {}", term_to_string(&class));
-    }
-    match arena.get(id) {
-        Shape::Top | Shape::Pending => "any node".to_string(),
-        // Past the depth budget, name the slot rather than risk a recursive shape.
-        _ if depth == 0 => format!("@{}", id.0),
-        // sh:severity is transparent — describe the wrapped shape.
-        Shape::Annotated { shape, .. } => describe_shape_within(arena, *shape, depth - 1),
-        Shape::Not(c) => format!("not ({})", describe_shape_within(arena, *c, depth - 1)),
-        Shape::And(cs) => join_describe(arena, cs, " and ", depth),
-        Shape::Or(cs) => join_describe(arena, cs, " or ", depth),
-        Shape::Count {
-            path,
-            min,
-            max,
-            qualifier,
-        } => {
-            let lo = min.map(|n| n.to_string()).unwrap_or_default();
-            let hi = max.map(|n| n.to_string()).unwrap_or_default();
-            let q = describe_shape_within(arena, *qualifier, depth - 1);
-            format!("∃[{lo}..{hi}] {} . {q}", path_to_string(path))
-        }
-        // Every remaining variant is a leaf with no child shapes: its one-level
-        // formal rendering is already fully expanded.
-        _ => shape_def(arena, id),
-    }
-}
-
-/// Render each child for an `And`/`Or`, parenthesizing nested boolean
-/// combinations so the joined string reads unambiguously.
-fn join_describe(arena: &ShapeArena, cs: &[ShapeId], sep: &str, depth: u8) -> String {
-    if cs.is_empty() {
-        return "()".to_string();
-    }
-    cs.iter()
-        .map(|c| {
-            let d = describe_shape_within(arena, *c, depth - 1);
-            match arena.get(*c) {
-                Shape::And(_) | Shape::Or(_) => format!("({d})"),
-                _ => d,
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(sep)
 }
 
 /// Describe the *positive* requirement `¬ψ` for an NNF shape `ψ` — the
@@ -313,96 +317,340 @@ fn join_describe(arena: &ShapeArena, cs: &[ShapeId], sep: &str, depth: u8) -> St
 /// offending value satisfies `ψ = ¬φ`, so what it *should* satisfy is `φ = ¬ψ`.
 /// This renders that `φ` in [`describe_shape`]'s vocabulary rather than echoing
 /// the machine's double-negated `ψ` (e.g. `∃≤0 rdf:type/… . test(C)` ⇒
-/// `instance of C`, a complemented `nodeKind` ⇒ the original kinds).
+/// `instance of C`, a complemented `nodeKind` ⇒ the original kinds), under the
+/// same no-slot-references guarantee.
 ///
 /// [`normalize`]: fn@crate::normalize
 pub fn describe_negation(arena: &ShapeArena, id: ShapeId) -> String {
-    describe_negation_within(arena, id, 8)
+    describe_negation_in(arena, id, &Prefixes::default())
 }
 
-fn describe_negation_within(arena: &ShapeArena, id: ShapeId, depth: u8) -> String {
-    // ψ = ∃≤0 (rdf:type/…).test(C)  ⇒  ¬ψ = "instance of C".
-    if let Some(class) = negated_class_target_shape(id, arena) {
-        return format!("instance of {}", term_to_string(&class));
+/// [`describe_negation`], compacting IRIs against `px`.
+pub fn describe_negation_in(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
+    Describer::new(arena, px).negate(id).text
+}
+
+/// A rendered fragment, plus whether it is an `and`/`or` join at its top level
+/// so that a caller nesting it can parenthesize exactly when the result would
+/// otherwise be ambiguous. Carrying this out of the renderer beats re-deriving
+/// it from the shape: the negation side rewrites structure on the way (De Morgan
+/// swaps the connective, `¬∃[m..n]` becomes two alternatives), so only the code
+/// that produced the text knows whether it came out as a join.
+struct Rendered {
+    text: String,
+    is_join: bool,
+}
+
+impl Rendered {
+    /// A fragment that binds tighter than any join: safe to drop in unbracketed.
+    fn atom(text: String) -> Self {
+        Self {
+            text,
+            is_join: false,
+        }
     }
-    // ψ = ∃≥1 (rdf:type/…).test(C)  ⇒  ¬ψ = "not an instance of C" (e.g. the
-    // qualifier of an `sh:qualifiedMaxCount 0` over `sh:class C`).
-    if let Some(class) = class_target_shape(id, arena) {
-        return format!("not an instance of {}", term_to_string(&class));
+
+    /// A fragment that is itself an `and`/`or` join.
+    fn join(text: String) -> Self {
+        Self {
+            text,
+            is_join: true,
+        }
     }
-    match arena.get(id) {
-        // ¬⊤ = ⊥: unsatisfiable. Shouldn't reach reporting, but render honestly.
-        Shape::Top | Shape::Pending => "no value".to_string(),
-        _ if depth == 0 => format!("¬@{}", id.0),
-        Shape::Annotated { shape, .. } => describe_negation_within(arena, *shape, depth - 1),
-        // ¬¬φ = φ
-        Shape::Not(c) => describe_shape_within(arena, *c, depth - 1),
-        // De Morgan: ¬(a ∧ b) = ¬a ∨ ¬b, ¬(a ∨ b) = ¬a ∧ ¬b.
-        Shape::And(cs) => join_negate(arena, cs, " or ", depth),
-        Shape::Or(cs) => join_negate(arena, cs, " and ", depth),
-        // ¬(∃[min..max] π.q) = ∃[..min-1] π.q ∪ ∃[max+1..] π.q (qualifier stays).
-        Shape::Count {
-            path,
-            min,
-            max,
-            qualifier,
-        } => {
-            let q = describe_shape_within(arena, *qualifier, depth - 1);
-            let path = path_to_string(path);
-            let mut alts = Vec::new();
-            if let Some(lo) = min
-                && *lo > 0
-            {
-                alts.push(format!("∃[..{}] {path} . {q}", lo - 1));
+
+    /// The fragment as it must appear inside a larger expression.
+    fn nested(self) -> String {
+        if self.is_join {
+            format!("({})", self.text)
+        } else {
+            self.text
+        }
+    }
+}
+
+/// State shared by one description: the shapes currently being expanded (the
+/// cycle guard) and how much terminal text has been emitted (the size guard).
+/// Both exist so that expansion can be unbounded in *depth* — the reader of a
+/// report needs the whole constraint — without risking non-termination or an
+/// unbounded message.
+struct Describer<'a> {
+    arena: &'a ShapeArena,
+    prefixes: &'a Prefixes,
+    /// Shapes on the current expansion path; re-entering one is a cycle.
+    open: Vec<ShapeId>,
+    /// Characters of terminal text emitted so far. Joiners and brackets are not
+    /// charged: they are proportional to the terminals they connect, so bounding
+    /// the terminals bounds the whole rendering.
+    spent: usize,
+}
+
+impl<'a> Describer<'a> {
+    fn new(arena: &'a ShapeArena, prefixes: &'a Prefixes) -> Self {
+        Self {
+            arena,
+            prefixes,
+            open: Vec::new(),
+            spent: 0,
+        }
+    }
+
+    /// Account for terminal text against the size budget.
+    fn emit(&mut self, s: String) -> String {
+        self.spent += s.chars().count();
+        s
+    }
+
+    /// The two reasons a description stops early, checked before every descent.
+    /// `recursive` is the caller's wording for a cycle, which differs by polarity.
+    fn stop(&self, id: ShapeId, recursive: &'static str) -> Option<&'static str> {
+        if self.open.contains(&id) {
+            Some(recursive)
+        } else if self.spent >= DESCRIBE_BUDGET {
+            Some("…")
+        } else {
+            None
+        }
+    }
+
+    /// Expand `body` with `id` marked open, so a reference back to `id` from
+    /// inside it is recognized as a cycle instead of recursing forever.
+    fn within(&mut self, id: ShapeId, body: impl FnOnce(&mut Self) -> Rendered) -> Rendered {
+        self.open.push(id);
+        let out = body(self);
+        self.open.pop();
+        out
+    }
+
+    fn describe(&mut self, id: ShapeId) -> Rendered {
+        if let Some(stop) = self.stop(id, RECURSIVE) {
+            return Rendered::atom(self.emit(stop.to_string()));
+        }
+        // ∃≥1 (rdf:type/rdfs:subClassOf*).test(C) — the encoding of sh:class C.
+        if let Some(class) = class_target_shape(id, self.arena) {
+            return Rendered::atom(self.emit(format!(
+                "instance of {}",
+                term_to_string(&class, self.prefixes)
+            )));
+        }
+        // ∃≤0 (rdf:type/rdfs:subClassOf*).test(C) — its NNF negation. Naming it
+        // here too keeps the count rule below from unfolding it into a universal
+        // over a bare `test(C)`, which says the same thing far less directly.
+        if let Some(class) = negated_class_target_shape(id, self.arena) {
+            return Rendered::atom(self.emit(format!(
+                "not an instance of {}",
+                term_to_string(&class, self.prefixes)
+            )));
+        }
+        let arena = self.arena;
+        match arena.get(id) {
+            Shape::Top | Shape::Pending => Rendered::atom(self.emit("any node".to_string())),
+            // sh:severity is transparent — describe the wrapped shape.
+            Shape::Annotated { shape, .. } => self.within(id, |me| me.describe(*shape)),
+            Shape::Not(c) => self.within(id, |me| {
+                let d = me.describe(*c).text;
+                Rendered::atom(format!("not ({d})"))
+            }),
+            Shape::And(cs) => self.within(id, |me| me.join(cs, " and ", Self::describe)),
+            Shape::Or(cs) => self.within(id, |me| me.join(cs, " or ", Self::describe)),
+            Shape::Count {
+                path,
+                min,
+                max,
+                qualifier,
+            } => self.within(id, |me| me.count(path, *min, *max, *qualifier)),
+            // Everything else carries no child shape in the shape grammar.
+            _ => self.leaf(id),
+        }
+    }
+
+    fn negate(&mut self, id: ShapeId) -> Rendered {
+        if let Some(stop) = self.stop(id, NOT_RECURSIVE) {
+            return Rendered::atom(self.emit(stop.to_string()));
+        }
+        // ψ = ∃≤0 (rdf:type/…).test(C)  ⇒  ¬ψ = "instance of C".
+        if let Some(class) = negated_class_target_shape(id, self.arena) {
+            return Rendered::atom(self.emit(format!(
+                "instance of {}",
+                term_to_string(&class, self.prefixes)
+            )));
+        }
+        // ψ = ∃≥1 (rdf:type/…).test(C)  ⇒  ¬ψ = "not an instance of C" (e.g. the
+        // qualifier of an `sh:qualifiedMaxCount 0` over `sh:class C`).
+        if let Some(class) = class_target_shape(id, self.arena) {
+            return Rendered::atom(self.emit(format!(
+                "not an instance of {}",
+                term_to_string(&class, self.prefixes)
+            )));
+        }
+        let arena = self.arena;
+        match arena.get(id) {
+            // ¬⊤ = ⊥: unsatisfiable. Shouldn't reach reporting, but render honestly.
+            Shape::Top | Shape::Pending => Rendered::atom(self.emit("no value".to_string())),
+            Shape::Annotated { shape, .. } => self.within(id, |me| me.negate(*shape)),
+            // ¬¬φ = φ
+            Shape::Not(c) => self.within(id, |me| me.describe(*c)),
+            // De Morgan: ¬(a ∧ b) = ¬a ∨ ¬b, ¬(a ∨ b) = ¬a ∧ ¬b.
+            Shape::And(cs) => self.within(id, |me| me.join(cs, " or ", Self::negate)),
+            Shape::Or(cs) => self.within(id, |me| me.join(cs, " and ", Self::negate)),
+            // ¬(∃[min..max] π.q) = ∃[..min-1] π.q ∪ ∃[max+1..] π.q (qualifier stays).
+            Shape::Count {
+                path,
+                min,
+                max,
+                qualifier,
+            } => self.within(id, |me| {
+                let mut alts = Vec::new();
+                if let Some(lo) = min
+                    && *lo > 0
+                {
+                    alts.push(me.count(path, None, Some(lo - 1), *qualifier).nested());
+                }
+                if let Some(hi) = max {
+                    alts.push(me.count(path, Some(hi + 1), None, *qualifier).nested());
+                }
+                match alts.len() {
+                    0 => Rendered::atom("no value".to_string()), // ¬∃[0..] = ⊥
+                    1 => Rendered::atom(alts.remove(0)),
+                    _ => Rendered::join(alts.join(" or ")),
+                }
+            }),
+            // ¬nodeKind(K) = nodeKind(K̄).
+            Shape::TestKind(k) => {
+                let comp = k.complement();
+                let text = if comp.is_empty() {
+                    "no value".to_string()
+                } else {
+                    format!("nodeKind({})", node_kinds_to_string(&comp))
+                };
+                Rendered::atom(self.emit(text))
             }
-            if let Some(hi) = max {
-                alts.push(format!("∃[{}..] {path} . {q}", hi + 1));
-            }
-            if alts.is_empty() {
-                "no value".to_string() // ¬∃[0..] = ⊥
-            } else {
-                alts.join(" or ")
+            // Any other leaf: its plain negation reads fine.
+            _ => {
+                let d = self.leaf(id).text;
+                Rendered::atom(format!("not ({d})"))
             }
         }
-        // ¬nodeKind(K) = nodeKind(K̄).
-        Shape::TestKind(k) => {
-            let comp = k.complement();
-            if comp.is_empty() {
-                "no value".to_string()
-            } else {
-                format!("nodeKind({})", node_kinds_to_string(&comp))
+    }
+
+    /// Render a count `∃[lo..hi] π . q`.
+    ///
+    /// When `hi = 0` the count is a **universal** — `∃[..0] π . q` holds exactly
+    /// when *every* value along `π` satisfies `¬q` — and it is rendered that way,
+    /// with the qualifier inverted through [`Describer::negate`]. Echoing the
+    /// machine's form instead hands the reader a double negative, because the
+    /// qualifier of a lowered universal is itself almost always a negation:
+    /// `∃[..0] hasMedium . ∃[..0] rdf:type/rdfs:subClassOf* . test(C)` says
+    /// "every `hasMedium` is an instance of C", which no reader recovers from two
+    /// stacked `∃[..0]`s.
+    fn count(
+        &mut self,
+        path: &Path,
+        min: Option<u64>,
+        max: Option<u64>,
+        qualifier: ShapeId,
+    ) -> Rendered {
+        let path = path_to_string_in(path, self.prefixes);
+        if max == Some(0) && matches!(min, None | Some(0)) {
+            // ∀ π . ¬⊤ = ∀ π . ⊥: no values along π at all.
+            if matches!(self.arena.get(qualifier), Shape::Top | Shape::Pending) {
+                return Rendered::atom(self.emit(format!("∄ {path}")));
+            }
+            let head = self.emit(format!("∀ {path} . "));
+            let q = self.negate(qualifier).nested();
+            return Rendered::atom(format!("{head}{q}"));
+        }
+        let lo = min.map(|n| n.to_string()).unwrap_or_default();
+        let hi = max.map(|n| n.to_string()).unwrap_or_default();
+        let head = self.emit(format!("∃[{lo}..{hi}] {path} . "));
+        let q = self.describe(qualifier).nested();
+        Rendered::atom(format!("{head}{q}"))
+    }
+
+    /// A shape with no children in the shape grammar: its one-level formal
+    /// rendering is already fully expanded — except `Shape::Expression`, whose
+    /// node expression can carry a `sh:filterShape` reference that must be
+    /// inlined too rather than printed as a slot.
+    fn leaf(&mut self, id: ShapeId) -> Rendered {
+        let arena = self.arena;
+        match arena.get(id) {
+            Shape::Expression(e) => self.within(id, |me| {
+                let rendered = me.node_expr(e);
+                Rendered::atom(format!("expr({rendered}) = true"))
+            }),
+            _ => Rendered::atom(self.emit(shape_def(arena, id, self.prefixes))),
+        }
+    }
+
+    /// [`node_expr_to_string`], but with `sh:filterShape` references expanded in
+    /// place instead of rendered as `@id`.
+    fn node_expr(&mut self, e: &crate::expr::NodeExpr) -> String {
+        use crate::expr::NodeExpr;
+        match e {
+            NodeExpr::Filter { input, shape } => {
+                let input = self.node_expr(input);
+                let shape = self.describe(*shape).nested();
+                format!("filter({input}, {shape})")
+            }
+            NodeExpr::Intersection(es) => self.join_node_exprs(es, " ∩ "),
+            NodeExpr::Union(es) => self.join_node_exprs(es, " ∪ "),
+            NodeExpr::Function { iri, args } => {
+                let args = self.join_node_exprs(args, ", ");
+                {
+                    let name = self.prefixes.compact(iri.as_str());
+                    self.emit(format!("{name}({args})"))
+                }
+            }
+            // No shape references below here.
+            _ => {
+                let text = node_expr_to_string(e, self.prefixes);
+                self.emit(text)
             }
         }
-        // Any other leaf: its plain negation reads fine.
-        _ => format!("not ({})", describe_shape_within(arena, id, depth)),
+    }
+
+    fn join_node_exprs(&mut self, es: &[crate::expr::NodeExpr], sep: &str) -> String {
+        es.iter()
+            .map(|e| self.node_expr(e))
+            .collect::<Vec<_>>()
+            .join(sep)
+    }
+
+    /// Join several children with `sep`, rendering each through `render`
+    /// (describe, or negate for a De Morgan expansion) and bracketing any member
+    /// that came out as a join of its own.
+    fn join(
+        &mut self,
+        cs: &[ShapeId],
+        sep: &str,
+        render: fn(&mut Self, ShapeId) -> Rendered,
+    ) -> Rendered {
+        match cs {
+            // For a conjunction this is ⊤ and for a disjunction ⊥; neither is
+            // informative, and the negation side inherits the same shrug.
+            [] => Rendered::atom(self.emit("()".to_string())),
+            [only] => render(self, *only),
+            _ => Rendered::join(
+                cs.iter()
+                    .map(|c| render(self, *c).nested())
+                    .collect::<Vec<_>>()
+                    .join(sep),
+            ),
+        }
     }
 }
 
-/// Join the *negations* of several shapes (De Morgan expansion), parenthesizing
-/// nested boolean combinations so the result reads unambiguously.
-fn join_negate(arena: &ShapeArena, cs: &[ShapeId], sep: &str, depth: u8) -> String {
-    if cs.is_empty() {
-        // ¬(empty ∧) = ¬⊤ = ⊥ ; ¬(empty ∨) = ¬⊥ = ⊤ — neither is informative.
-        return "no value".to_string();
-    }
-    cs.iter()
-        .map(|c| {
-            let d = describe_negation_within(arena, *c, depth - 1);
-            match arena.get(*c) {
-                Shape::And(_) | Shape::Or(_) => format!("({d})"),
-                _ => d,
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(sep)
-}
-
+/// Render a selector with only the well-known prefixes compacted.
 pub fn selector_to_string(sel: &Selector) -> String {
+    selector_to_string_px(sel, &Prefixes::default())
+}
+
+/// Render a selector, compacting IRIs against `px`.
+pub fn selector_to_string_px(sel: &Selector, px: &Prefixes) -> String {
     match sel {
-        Selector::HasOut(q) => format!("∃ {} .⊤", compact(q.as_str())),
-        Selector::HasIn(q) => format!("∃ {}⁻ .⊤", compact(q.as_str())),
-        Selector::IsConst(t) => format!("node({})", term_to_string(t)),
-        Selector::HasPath(p, _) => format!("∃≥1 {} . φ", path_to_string(p)),
+        Selector::HasOut(q) => format!("∃ {} .⊤", px.compact(q.as_str())),
+        Selector::HasIn(q) => format!("∃ {}⁻ .⊤", px.compact(q.as_str())),
+        Selector::IsConst(t) => format!("node({})", term_to_string(t, px)),
+        Selector::HasPath(p, _) => format!("∃≥1 {} . φ", path_to_string_in(p, px)),
         Selector::Sparql(_) => "sparql{…}".to_string(),
     }
 }
@@ -412,14 +660,23 @@ pub fn selector_to_string(sel: &Selector) -> String {
 /// its actual qualifier shape instead of a bare `φ`. Prefer this whenever the
 /// arena is in hand — the resolved form is far more useful for debugging.
 pub fn selector_to_string_in(sel: &Selector, arena: &ShapeArena) -> String {
+    selector_to_string_in_px(sel, arena, &Prefixes::default())
+}
+
+/// [`selector_to_string_in`], compacting IRIs against `px`.
+pub fn selector_to_string_in_px(sel: &Selector, arena: &ShapeArena, px: &Prefixes) -> String {
     if let Some(class) = class_target(sel, arena) {
-        return format!("class({})", term_to_string(class));
+        return format!("class({})", term_to_string(class, px));
     }
     match sel {
         Selector::HasPath(p, q) => {
-            format!("∃≥1 {} . {}", path_to_string(p), shape_def(arena, *q))
+            format!(
+                "∃≥1 {} . {}",
+                path_to_string_in(p, px),
+                shape_def(arena, *q, px)
+            )
         }
-        other => selector_to_string(other),
+        other => selector_to_string_px(other, px),
     }
 }
 
@@ -501,53 +758,74 @@ fn is_class_path(p: &Path) -> bool {
 
 // ---- paths (precedence: atom > * > ^ > / > |) ----
 
+/// Render a path with only the well-known prefixes compacted. Prefer
+/// [`path_to_string_in`] wherever the document's declarations are in hand.
 pub fn path_to_string(p: &Path) -> String {
-    render_alt(p)
+    path_to_string_in(p, &Prefixes::default())
 }
 
-fn render_alt(p: &Path) -> String {
+/// Render a path, compacting IRIs against `px`.
+pub fn path_to_string_in(p: &Path, px: &Prefixes) -> String {
+    render_alt(p, px)
+}
+
+fn render_alt(p: &Path, px: &Prefixes) -> String {
     match p {
-        Path::Alt(parts) => parts.iter().map(render_seq).collect::<Vec<_>>().join(" | "),
-        _ => render_seq(p),
+        Path::Alt(parts) => parts
+            .iter()
+            .map(|p| render_seq(p, px))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        _ => render_seq(p, px),
     }
 }
 
-fn render_seq(p: &Path) -> String {
+fn render_seq(p: &Path, px: &Prefixes) -> String {
     match p {
-        Path::Seq(parts) => parts.iter().map(render_unary).collect::<Vec<_>>().join("/"),
-        _ => render_unary(p),
+        Path::Seq(parts) => parts
+            .iter()
+            .map(|p| render_unary(p, px))
+            .collect::<Vec<_>>()
+            .join("/"),
+        _ => render_unary(p, px),
     }
 }
 
-fn render_unary(p: &Path) -> String {
+fn render_unary(p: &Path, px: &Prefixes) -> String {
     match p {
-        Path::Inverse(inner) => format!("^{}", render_postfix(inner)),
-        _ => render_postfix(p),
+        Path::Inverse(inner) => format!("^{}", render_postfix(inner, px)),
+        _ => render_postfix(p, px),
     }
 }
 
-fn render_postfix(p: &Path) -> String {
+fn render_postfix(p: &Path, px: &Prefixes) -> String {
     match p {
-        Path::Star(inner) => format!("{}*", render_atom(inner)),
-        _ => render_atom(p),
+        Path::Star(inner) => format!("{}*", render_atom(inner, px)),
+        _ => render_atom(p, px),
     }
 }
 
-fn render_atom(p: &Path) -> String {
+fn render_atom(p: &Path, px: &Prefixes) -> String {
     match p {
         Path::Id => "id".to_string(),
-        Path::Pred(nn) => compact(nn.as_str()),
+        Path::Pred(nn) => px.compact(nn.as_str()),
         // compound paths in atom position need grouping
-        _ => format!("({})", render_alt(p)),
+        _ => format!("({})", render_alt(p, px)),
     }
 }
 
 // ---- value types ----
 
+/// Render a value type with only the well-known prefixes compacted.
 pub fn value_type_to_string(vt: &ValueType) -> String {
+    value_type_to_string_in(vt, &Prefixes::default())
+}
+
+/// Render a value type, compacting IRIs against `px`.
+pub fn value_type_to_string_in(vt: &ValueType, px: &Prefixes) -> String {
     match vt {
         ValueType::Any => "any".to_string(),
-        ValueType::Datatype(nn) => format!("datatype({})", compact(nn.as_str())),
+        ValueType::Datatype(nn) => format!("datatype({})", px.compact(nn.as_str())),
         ValueType::NumericRange { lo, hi } => {
             let mut parts = Vec::new();
             if let Some(Bound { value, inclusive }) = lo {
@@ -567,7 +845,7 @@ pub fn value_type_to_string(vt: &ValueType) -> String {
         ValueType::LangIn(langs) => format!("langIn({})", langs.join(", ")),
         ValueType::And(parts) => parts
             .iter()
-            .map(value_type_to_string)
+            .map(|vt| value_type_to_string_in(vt, px))
             .collect::<Vec<_>>()
             .join(" & "),
     }
@@ -587,39 +865,21 @@ fn node_kinds_to_string(k: &NodeKindSet) -> String {
     parts.join("|")
 }
 
-fn term_to_string(t: &Term) -> String {
+fn term_to_string(t: &Term, px: &Prefixes) -> String {
     match t {
-        Term::NamedNode(nn) => compact(nn.as_str()),
+        Term::NamedNode(nn) => px.compact(nn.as_str()),
         other => other.to_string(),
     }
 }
 
-// ---- IRI compaction against well-known namespaces ----
+// ---- IRI compaction ----
 
-const WELL_KNOWN: &[(&str, &str)] = &[
-    ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-    ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-    ("sh", "http://www.w3.org/ns/shacl#"),
-    ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-    ("owl", "http://www.w3.org/2002/07/owl#"),
-];
-
-/// Compact an IRI using well-known prefixes, else `<iri>`.
 /// Every name a shape answers to, compacted and comma-joined.
-fn compact_all(iris: &[String]) -> String {
+fn compact_all(iris: &[String], px: &Prefixes) -> String {
     iris.iter()
-        .map(|iri| compact(iri))
+        .map(|iri| px.compact(iri))
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-fn compact(iri: &str) -> String {
-    for (prefix, ns) in WELL_KNOWN {
-        if let Some(local) = iri.strip_prefix(ns) {
-            return format!("{prefix}:{local}");
-        }
-    }
-    format!("<{iri}>")
 }
 
 /// Render the algebra AST as a Graphviz DOT digraph.
@@ -629,6 +889,7 @@ fn compact(iri: &str) -> String {
 /// Statements appear as diamond entry nodes; rules as hexagon entry nodes with
 /// dashed condition edges.
 pub fn schema_to_dot(schema: &Schema) -> String {
+    let px = &schema.prefixes;
     let reachable = reachable_shapes(schema);
     let mut out = String::from("digraph shifty_algebra_ast {\n");
     out.push_str("  rankdir=TB;\n");
@@ -636,11 +897,11 @@ pub fn schema_to_dot(schema: &Schema) -> String {
 
     // Shape nodes
     for id in &reachable {
-        let def = shape_def_dot(&schema.arena, *id);
+        let def = shape_def_dot(&schema.arena, *id, px);
         let name_line = schema
             .names
             .get(id)
-            .map(|iris| format!("\n{}", compact_all(iris)))
+            .map(|iris| format!("\n{}", compact_all(iris, px)))
             .unwrap_or_default();
         let label = dot_escape(&format!("@{}{}\n{}", id.0, name_line, def));
         let node_attrs = match schema.arena.get(*id) {
@@ -703,7 +964,7 @@ pub fn schema_to_dot(schema: &Schema) -> String {
 
     // Statement entry nodes
     for (i, st) in schema.statements.iter().enumerate() {
-        let sel_label = dot_escape(&selector_to_string(&st.selector));
+        let sel_label = dot_escape(&selector_to_string_px(&st.selector, px));
         out.push_str(&format!(
             "  stmt_{i} [shape=diamond, style=filled, fillcolor=lightyellow, label=\"stmt:{i}\\n{sel_label}\"];\n"
         ));
@@ -719,7 +980,7 @@ pub fn schema_to_dot(schema: &Schema) -> String {
 
     // Rule entry nodes
     for (i, r) in schema.rules.iter().enumerate() {
-        let sel_label = dot_escape(&selector_to_string(&r.selector));
+        let sel_label = dot_escape(&selector_to_string_px(&r.selector, px));
         let order_label = r.order.map(|o| format!(" ord={o}")).unwrap_or_default();
         let deact = if r.deactivated { " (off)" } else { "" };
         out.push_str(&format!(
@@ -741,30 +1002,46 @@ pub fn schema_to_dot(schema: &Schema) -> String {
 
 /// Shape label for the DOT rendering: leaf shapes show their full definition,
 /// composite shapes show only their combinator (children are shown via edges).
-fn shape_def_dot(arena: &ShapeArena, id: ShapeId) -> String {
+fn shape_def_dot(arena: &ShapeArena, id: ShapeId, px: &Prefixes) -> String {
     match arena.get(id) {
         Shape::Annotated { severity, .. } => format!("severity({severity})"),
         Shape::Top => "⊤".to_string(),
         Shape::Pending => "⟨pending⟩".to_string(),
-        Shape::TestConst(t) => format!("test({})", term_to_string(t)),
-        Shape::TestType(vt) => format!("test({})", value_type_to_string(vt)),
+        Shape::TestConst(t) => format!("test({})", term_to_string(t, px)),
+        Shape::TestType(vt) => format!("test({})", value_type_to_string_in(vt, px)),
         Shape::TestKind(k) => format!("nodeKind({})", node_kinds_to_string(k)),
         Shape::Closed(q) => {
-            let preds: Vec<String> = q.iter().map(|n| compact(n.as_str())).collect();
+            let preds: Vec<String> = q.iter().map(|n| px.compact(n.as_str())).collect();
             format!("closed{{{}}}", preds.join(", "))
         }
-        Shape::Eq(p, pred) => format!("eq({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Disj(p, pred) => format!("disj({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Lt(p, pred) => format!("lt({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::Le(p, pred) => format!("le({}, {})", path_to_string(p), compact(pred.as_str())),
-        Shape::UniqueLang(p) => format!("uniqueLang({})", path_to_string(p)),
+        Shape::Eq(p, pred) => format!(
+            "eq({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Disj(p, pred) => format!(
+            "disj({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Lt(p, pred) => format!(
+            "lt({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::Le(p, pred) => format!(
+            "le({}, {})",
+            path_to_string_in(p, px),
+            px.compact(pred.as_str())
+        ),
+        Shape::UniqueLang(p) => format!("uniqueLang({})", path_to_string_in(p, px)),
         Shape::Not(_) => "¬".to_string(),
         Shape::And(cs) => format!("∧ ({})", cs.len()),
         Shape::Or(cs) => format!("∨ ({})", cs.len()),
         Shape::Count { path, min, max, .. } => {
             let lo = min.map(|n| n.to_string()).unwrap_or_default();
             let hi = max.map(|n| n.to_string()).unwrap_or_default();
-            format!("∃[{lo}..{hi}] {}", path_to_string(path))
+            format!("∃[{lo}..{hi}] {}", path_to_string_in(path, px))
         }
         Shape::Sparql(c) => format!("sparql({:?})", c.kind),
         Shape::Expression(_) => "expr = true".to_string(),
@@ -782,6 +1059,7 @@ mod tests {
     use super::*;
     use crate::schema::Statement;
     use crate::term::NamedNode;
+    use std::sync::Arc;
 
     fn nn(s: &str) -> NamedNode {
         NamedNode::new(s).unwrap()
@@ -909,7 +1187,8 @@ mod tests {
 
     #[test]
     fn describe_shape_guards_recursive_shapes() {
-        // S := ⊤ ∧ ∃≥1 ex:knows . S  — a cyclic shape must terminate at the budget.
+        // S := ⊤ ∧ ∃≥1 ex:knows . S  — a cyclic shape must terminate, and the one
+        // place it stops names the recursion rather than an arena slot.
         let mut arena = ShapeArena::new();
         let s = arena.reserve();
         let top = arena.insert(Shape::Top);
@@ -920,9 +1199,77 @@ mod tests {
             qualifier: s,
         });
         arena.set(s, Shape::And(vec![top, reaches]));
-        // It renders without diverging and bottoms out at an `@id` slot label.
-        let rendered = describe_shape(&arena, s);
-        assert!(rendered.contains(&format!("@{}", s.0)), "{rendered}");
+
+        assert_eq!(
+            describe_shape(&arena, s),
+            format!("any node and ∃[1..] <http://ex/knows> . {RECURSIVE}")
+        );
+        // ¬S = ¬⊤ ∨ ∃≤0 ex:knows . S — the cycle guard covers the negation side too.
+        assert_eq!(
+            describe_negation(&arena, s),
+            format!("no value or ∀ <http://ex/knows> . {NOT_RECURSIVE}")
+        );
+    }
+
+    #[test]
+    fn describe_shape_never_emits_an_arena_slot_label() {
+        // Deep nesting well past the old fixed depth budget: sh:severity wrappers
+        // are transparent, so a chain of them must not cost the reader the tail of
+        // the description. (This is the shape of the s223 report that surfaced the
+        // bug: the elided tail was the one part that distinguished the conjuncts.)
+        let mut arena = ShapeArena::new();
+        let mut id = class_shape(&mut arena, "http://ex/Leaf");
+        for _ in 0..32 {
+            id = arena.insert(Shape::Annotated {
+                severity: crate::severity::Severity::Violation,
+                messages: Arc::from(Vec::new()),
+                shape: id,
+            });
+            id = arena.insert(Shape::Count {
+                path: Path::Pred(nn("http://ex/p")),
+                min: Some(1),
+                max: None,
+                qualifier: id,
+            });
+        }
+        let rendered = describe_shape(&arena, id);
+        assert!(!rendered.contains('@'), "{rendered}");
+        assert!(
+            rendered.ends_with("instance of <http://ex/Leaf>"),
+            "{rendered}"
+        );
+        assert_eq!(rendered.matches("∃[1..]").count(), 32, "{rendered}");
+    }
+
+    #[test]
+    fn describe_shape_elides_past_the_size_budget() {
+        // A wide conjunction of long IRIs blows the budget; expansion stops with an
+        // ellipsis, never with a slot label.
+        let mut arena = ShapeArena::new();
+        let long = "http://ex/".to_string() + &"x".repeat(200);
+        let cs: Vec<ShapeId> = (0..64).map(|_| class_shape(&mut arena, &long)).collect();
+        let and = arena.insert(Shape::And(cs));
+
+        let rendered = describe_shape(&arena, and);
+        assert!(!rendered.contains('@'), "{rendered}");
+        assert!(rendered.contains('…'), "{rendered}");
+    }
+
+    #[test]
+    fn describe_shape_inlines_a_node_expression_filter_shape() {
+        // `sh:filterShape` is a shape reference inside a node expression — the one
+        // place outside the shape grammar that could still print a slot label.
+        let mut arena = ShapeArena::new();
+        let filter = class_shape(&mut arena, "http://ex/A");
+        let expr = arena.insert(Shape::Expression(crate::expr::NodeExpr::Filter {
+            input: Box::new(crate::expr::NodeExpr::This),
+            shape: filter,
+        }));
+
+        assert_eq!(
+            describe_shape(&arena, expr),
+            "expr(filter(this, instance of <http://ex/A>)) = true"
+        );
     }
 
     /// The NNF of `¬(sh:class C)`: `∃≤0 (rdf:type/rdfs:subClassOf*).test(C)`.

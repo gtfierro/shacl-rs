@@ -33,11 +33,12 @@ use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use shifty_algebra::render::{
-    describe_negation, describe_shape, negated_class_target_shape, path_to_string, shape_to_string,
+    describe_negation_in, describe_shape_in, negated_class_target_shape, path_to_string_in,
+    shape_to_string_in,
 };
 use shifty_algebra::{
-    ConstraintKind, NodeExpr, Path, Schema, Selector, Severity, Shape, ShapeArena, ShapeId,
-    SparqlConstraint,
+    ConstraintKind, NodeExpr, Path, Prefixes, Schema, Selector, Severity, Shape, ShapeArena,
+    ShapeId, SparqlConstraint,
 };
 use shifty_opt::{FocusSource, PhysicalPlan, analyze};
 use std::cmp::Ordering;
@@ -78,6 +79,9 @@ struct EvalState {
 pub(crate) struct ShapeEvaluator<'a> {
     g: &'a dyn PathBackend,
     arena: &'a ShapeArena,
+    /// The vocabulary report messages are rendered in. Paired with `arena`
+    /// because every message built here compacts IRIs from it.
+    prefixes: &'a Prefixes,
     sparql: &'a SparqlExecutor,
     state: EvalState,
 }
@@ -86,11 +90,13 @@ impl<'a> ShapeEvaluator<'a> {
     pub(crate) fn new(
         g: &'a dyn PathBackend,
         arena: &'a ShapeArena,
+        prefixes: &'a Prefixes,
         sparql: &'a SparqlExecutor,
     ) -> Self {
         Self {
             g,
             arena,
+            prefixes,
             sparql,
             state: EvalState {
                 telemetry: crate::profile::is_enabled().then(ShapeCacheSample::default),
@@ -492,7 +498,7 @@ fn validate_with_frozen(
     let backend = sparql
         .frozen()
         .expect("validation executor always has a frozen dataset");
-    let mut evaluator = ShapeEvaluator::new(backend, &schema.arena, &sparql);
+    let mut evaluator = ShapeEvaluator::new(backend, &schema.arena, &schema.prefixes, &sparql);
     let mut violations = Vec::new();
     for (i, st) in schema.statements.iter().enumerate() {
         if !entry_shape_any_name_selected(&options.entry_shape_names, schema.names_of(st.shape)) {
@@ -700,7 +706,7 @@ fn validate_plan_with_frozen(
     let backend = sparql
         .frozen()
         .expect("validation executor always has a frozen dataset");
-    let mut evaluator = ShapeEvaluator::new(backend, &plan.arena, &sparql);
+    let mut evaluator = ShapeEvaluator::new(backend, &plan.arena, &plan.prefixes, &sparql);
     let mut violations = Vec::new();
     for (i, sp) in plan.statements.iter().enumerate() {
         if !entry_shape_any_name_selected(&options.entry_shape_names, plan.names_of(sp.shape)) {
@@ -784,7 +790,7 @@ fn focus_for_source(
 pub fn focus_nodes(data: &Graph, sel: &Selector, arena: &ShapeArena) -> Vec<Term> {
     let sparql =
         SparqlExecutor::new(data).expect("building an in-memory Oxigraph store should succeed");
-    let mut evaluator = ShapeEvaluator::new(data, arena, &sparql);
+    let mut evaluator = ShapeEvaluator::new(data, arena, Prefixes::empty(), &sparql);
     focus_nodes_with_evaluator(data, sel, &mut evaluator)
 }
 
@@ -795,7 +801,7 @@ pub(crate) fn focus_nodes_with(
     arena: &ShapeArena,
     sparql: &SparqlExecutor,
 ) -> Vec<Term> {
-    let mut evaluator = ShapeEvaluator::new(backend, arena, sparql);
+    let mut evaluator = ShapeEvaluator::new(backend, arena, Prefixes::empty(), sparql);
     focus_nodes_with_evaluator(data, sel, &mut evaluator)
 }
 
@@ -1217,7 +1223,12 @@ fn explain(
                                     .path
                                     .map(|path| path.to_string())
                                     .or_else(|| path_ctx.map(str::to_string))
-                                    .or_else(|| constraint.path.as_ref().map(path_to_string)),
+                                    .or_else(|| {
+                                        constraint
+                                            .path
+                                            .as_ref()
+                                            .map(|p| path_to_string_in(p, evaluator.prefixes))
+                                    }),
                                 severity,
                                 message,
                                 None,
@@ -1257,7 +1268,10 @@ fn explain(
             id,
             path_ctx,
             severity,
-            format!("{} not satisfied", shape_to_string(evaluator.arena, id)),
+            format!(
+                "{} not satisfied",
+                shape_to_string_in(evaluator.arena, id, evaluator.prefixes)
+            ),
         ),
         Shape::Closed(q) => {
             let bad = closed_offenders(evaluator.g, node, &q);
@@ -1360,7 +1374,7 @@ fn explain_count(
     severity: &Severity,
     stack: &mut HashSet<(ShapeId, Term)>,
 ) -> Vec<Reason> {
-    let path_str = path_to_string(path);
+    let path_str = path_to_string_in(path, evaluator.prefixes);
     let matched: Vec<Term> = succ(evaluator.g, node, path)
         .into_iter()
         .filter(|u| evaluator.holds(u, qualifier))
@@ -1375,7 +1389,10 @@ fn explain_count(
     // `sh:minCount`/`sh:maxCount` lower with a `⊤` qualifier and need no clause.
     let qual_clause = match evaluator.arena.get(qualifier) {
         Shape::Top => String::new(),
-        _ => format!(" matching `{}`", describe_shape(evaluator.arena, qualifier)),
+        _ => format!(
+            " matching `{}`",
+            describe_shape_in(evaluator.arena, qualifier, evaluator.prefixes)
+        ),
     };
 
     if let Some(mx) = max
@@ -1418,7 +1435,10 @@ fn explain_count(
                         u.clone(),
                         Some(path_str.clone()),
                         severity,
-                        format!("must be an instance of {}", term_text(&class)),
+                        format!(
+                            "must be an instance of {}",
+                            term_display(&class, evaluator.prefixes)
+                        ),
                         None,
                         Vec::new(),
                         None,
@@ -1440,7 +1460,8 @@ fn explain_count(
             // Any other `∃≤0` qualifier (`sh:nodeKind`, several value constraints
             // De-Morgan'd to an `Or`, …): describe the positive requirement.
             _ if mx == 0 => {
-                let requirement = describe_negation(evaluator.arena, qualifier);
+                let requirement =
+                    describe_negation_in(evaluator.arena, qualifier, evaluator.prefixes);
                 for u in &matched {
                     reasons.push(reason(
                         evaluator.arena,
@@ -1555,6 +1576,16 @@ fn term_text(term: &Term) -> String {
     match term {
         Term::Literal(literal) => literal.value().to_string(),
         other => other.to_string(),
+    }
+}
+
+/// [`term_text`], but compacting an IRI against the document's vocabulary — for
+/// terms that appear inside a generated message rather than in a structured
+/// field, where the reader wants the spelling the shapes were authored in.
+fn term_display(term: &Term, px: &Prefixes) -> String {
+    match term {
+        Term::NamedNode(iri) => px.compact(iri.as_str()),
+        other => term_text(other),
     }
 }
 
@@ -1747,7 +1778,7 @@ mod tests {
         let sparql = SparqlExecutor::new(&graph).unwrap();
         crate::profile::enable();
         {
-            let mut evaluator = ShapeEvaluator::new(&graph, &arena, &sparql);
+            let mut evaluator = ShapeEvaluator::new(&graph, &arena, Prefixes::empty(), &sparql);
             assert!(evaluator.holds(&term("a"), root));
             assert!(evaluator.holds(&term("b"), root));
         }
@@ -1777,7 +1808,7 @@ mod tests {
 
         crate::profile::enable();
         {
-            let mut evaluator = ShapeEvaluator::new(&graph, &arena, &sparql);
+            let mut evaluator = ShapeEvaluator::new(&graph, &arena, Prefixes::empty(), &sparql);
             assert!(!evaluator.holds(&node, a));
             assert!(!evaluator.holds(&node, b));
         }
