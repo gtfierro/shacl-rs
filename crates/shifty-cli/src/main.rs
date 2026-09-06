@@ -330,72 +330,328 @@ fn infer(args: InferArgs) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// The validation outcome as JSON, enriched so a consumer never has to hold the
+/// schema to make sense of it.
+///
+/// The engine's own serialization is kept verbatim — new engine fields flow
+/// through without touching this — and three things are layered on:
+/// `definition`/`definition_pretty` per reason (the constraint in words, so a
+/// reader needs no arena at all), `target`/`shape_name` per violation (which the
+/// text report already showed), and a top-level `shapes` map.
+///
+/// `shapes` is the transitive closure of every reported constraint, keyed by the
+/// same ids that `constraint_id` and the algebra's own `qualifier`/child fields
+/// use, so those pointers resolve. It is deliberately *not* the whole arena: for
+/// the s223 shapes that is 2412 slots against the 19 a report actually reaches,
+/// and a reader who wants all of them has `inspect --stage plan --format json`.
+fn json_report(
+    outcome: &shifty_engine::ValidationOutcome,
+    schema: &shifty_algebra::Schema,
+    plan: &shifty_opt::PhysicalPlan,
+    px: &shifty_algebra::Prefixes,
+) -> Result<serde_json::Value, Box<dyn Error>> {
+    use serde_json::{Map, Value, json};
+    use shifty_algebra::render::{PRETTY_WIDTH, describe_shape_in, describe_shape_pretty};
+
+    let mut doc = serde_json::to_value(outcome)?;
+    let mut referenced: std::collections::BTreeSet<u32> = Default::default();
+
+    if let Some(violations) = doc.get_mut("violations").and_then(Value::as_array_mut) {
+        for (value, v) in violations.iter_mut().zip(&outcome.violations) {
+            let Some(object) = value.as_object_mut() else {
+                continue;
+            };
+            if let Some(statement) = schema.statements.get(v.statement) {
+                object.insert(
+                    "target".into(),
+                    json!(shifty_algebra::render::selector_to_string_in_px(
+                        &statement.selector,
+                        &schema.arena,
+                        &schema.prefixes
+                    )),
+                );
+                if let Some(name) = schema.name_of(statement.shape) {
+                    object.insert("shape_name".into(), json!(name));
+                }
+            }
+            let reasons = object
+                .get_mut("reasons")
+                .and_then(Value::as_array_mut)
+                .map(|r| r.iter_mut().zip(&v.reasons));
+            for (value, r) in reasons.into_iter().flatten() {
+                let Some(object) = value.as_object_mut() else {
+                    continue;
+                };
+                object.insert(
+                    "definition".into(),
+                    json!(describe_shape_in(&plan.arena, r.constraint_id, px)),
+                );
+                object.insert(
+                    "definition_pretty".into(),
+                    json!(describe_shape_pretty(
+                        &plan.arena,
+                        r.constraint_id,
+                        px,
+                        PRETTY_WIDTH
+                    )),
+                );
+                collect_shapes(&plan.arena, r.constraint_id, &mut referenced);
+            }
+        }
+    }
+
+    let shapes: Map<String, Value> = referenced
+        .iter()
+        .map(|id| {
+            Ok((
+                id.to_string(),
+                serde_json::to_value(plan.arena.get(shifty_algebra::ShapeId(*id)))?,
+            ))
+        })
+        .collect::<Result<_, serde_json::Error>>()?;
+    if let Some(object) = doc.as_object_mut() {
+        object.insert("shapes".into(), Value::Object(shapes));
+    }
+    Ok(doc)
+}
+
+/// Every arena slot reachable from `id`, itself included. Uses the arena's own
+/// child links, so a shape referenced only through a `sh:filterShape` inside a
+/// node expression is collected too.
+fn collect_shapes(
+    arena: &shifty_algebra::ShapeArena,
+    id: shifty_algebra::ShapeId,
+    out: &mut std::collections::BTreeSet<u32>,
+) {
+    if !out.insert(id.0) {
+        return;
+    }
+    for child in arena.get(id).child_shapes() {
+        collect_shapes(arena, child, out);
+    }
+}
+
+/// The symbols a report can use, and what each means. Printed at the end of a
+/// text report, but only for the ones that actually appear: a key for notation
+/// the reader never met is noise, and the common report uses none of it.
+const NOTATION: &[(&str, &str, &str)] = &[
+    (
+        "∀",
+        "∀ p . X",
+        "every value along p satisfies X (holds when there are none)",
+    ),
+    (
+        "∃[",
+        "∃[m..n] p . X",
+        "between m and n values along p satisfy X",
+    ),
+    ("∄", "∄ p", "no values along p at all"),
+    ("^", "^p", "p followed backwards, from object to subject"),
+    ("*", "p*", "p repeated zero or more times"),
+];
+
+fn notation_key(lines: &[String]) -> Vec<String> {
+    let used: Vec<(&str, &str)> = NOTATION
+        .iter()
+        .filter(|(symbol, ..)| lines.iter().any(|line| line.contains(symbol)))
+        .map(|(_, form, gloss)| (*form, *gloss))
+        .collect();
+    if used.is_empty() {
+        return Vec::new();
+    }
+    let width = used
+        .iter()
+        .map(|(form, _)| form.chars().count())
+        .max()
+        .unwrap_or(0);
+    let mut out = vec![String::new(), "notation".to_string()];
+    out.extend(used.into_iter().map(|(form, gloss)| {
+        let padding = " ".repeat(width - form.chars().count());
+        format!("  {form}{padding}   {gloss}")
+    }));
+    out
+}
+
+/// Column the labelled values start at. Wide enough for the longest label, so
+/// values line up into a column a reader can scan without reading the labels.
+const LABEL_WIDTH: usize = 13;
+
+/// One `label   value` line, or several when the value has to wrap. Wrapped
+/// lines hang to the value column so the label column stays clean.
+fn field(indent: usize, label: &str, value: &str) -> Vec<String> {
+    let pad = " ".repeat(indent);
+    let hang = " ".repeat(indent + LABEL_WIDTH);
+    let width = shifty_algebra::render::PRETTY_WIDTH;
+    let mut out = Vec::new();
+    for (i, line) in wrap(value, width.saturating_sub(indent + LABEL_WIDTH))
+        .into_iter()
+        .enumerate()
+    {
+        if i == 0 {
+            out.push(format!("{pad}{label:<LABEL_WIDTH$}{line}"));
+        } else {
+            out.push(format!("{hang}{line}"));
+        }
+    }
+    if out.is_empty() {
+        out.push(format!("{pad}{label}"));
+    }
+    out
+}
+
+/// Wrap on spaces. A token longer than `width` — an IRI, usually — is left
+/// over-long rather than split: a broken IRI is not copy-pastable, which is most
+/// of what a reader wants one for.
+fn wrap(text: &str, width: usize) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for word in text.split_whitespace() {
+        match out.last_mut() {
+            Some(line) if line.chars().count() + 1 + word.chars().count() <= width => {
+                line.push(' ');
+                line.push_str(word);
+            }
+            _ => out.push(word.to_string()),
+        }
+    }
+    out
+}
+
+/// A reason as labelled fields.
+///
+/// The labels exist because the two nodes in a reason are easy to confuse: the
+/// focus node is what was selected for checking, the value node is what was
+/// reached from it along the path and actually failed. Unlabelled, a reader
+/// meeting a report for the first time reads the value node as the subject.
 fn render_reason(
     r: &shifty_engine::Reason,
     arena: &shifty_algebra::ShapeArena,
     px: &shifty_algebra::Prefixes,
+    focus: &str,
+    violation_severity: &str,
     indent: usize,
 ) -> Vec<String> {
-    let pad = " ".repeat(indent);
-    let block = render_constraint_block(r, arena, px, indent + 4);
-    // A cardinality reason's block already says everything its generated message
-    // says — the bound is in the constraint, the count is in the block's label —
-    // so printing both would restate a 300-character sentence three lines above
-    // its own readable form. Every other reason keeps the message: there the
-    // prose is the finding, and the block only adds a layout.
-    let restated = !block.is_empty() && r.observed_count.is_some();
-    let message = match (&r.author_message, restated) {
-        (Some(author), true) => author.clone(),
-        // Lead with the author's `sh:message`, but keep the generated one in
-        // parentheses so it is always available.
-        (Some(author), false) => format!("{author} (generated message: {})", r.message),
-        (None, true) => String::new(),
-        (None, false) => r.message.clone(),
-    };
-    let value = shifty_algebra::render::term_to_string_in(&r.value, px);
-    let header = match (&r.path, message.is_empty()) {
-        (Some(p), false) => format!("{pad}- [{}] ({p}) {value} → {message}", r.severity),
-        (Some(p), true) => format!("{pad}- [{}] ({p}) {value}", r.severity),
-        (None, false) => format!("{pad}- [{}] {message}", r.severity),
-        (None, true) => format!("{pad}- [{}] {value}", r.severity),
-    };
-    let mut lines = vec![header];
-    lines.extend(block);
-    if let Some(d) = &r.sparql_diagnostic {
-        lines.extend(render_sparql_diagnostic(d, indent + 4));
+    let requirement = describe_requirement(r, arena, px, indent + LABEL_WIDTH);
+    // A cardinality reason's requirement already says everything its generated
+    // message says — the bound is in the constraint, the count is on the `found`
+    // line — so printing both restates the same sentence twice. Anything else
+    // keeps it: the generated message often names specifics the constraint does
+    // not, such as which predicates a `closed` shape did not expect.
+    let restated = r.observed_count.is_some() || Some(r.message.as_str()) == requirement.as_deref();
+    let mut lines = Vec::new();
+
+    // Severity only when it differs from the violation's, which is the max of
+    // its reasons; repeating the same word on every line is noise.
+    if r.severity.to_string() != violation_severity {
+        lines.extend(field(indent, "severity", &r.severity.to_string()));
     }
-    for sub in &r.sub_reasons {
-        lines.extend(render_reason(sub, arena, px, indent + 4));
+    if let Some(author) = &r.author_message {
+        lines.extend(field(indent, "message", author));
+    }
+    // The generated message is a prose paraphrase of the labelled fields below.
+    // Print it only when it still adds something: with no author message and no
+    // restatement it is the only prose the reason has, but for a cardinality
+    // failure `found` and `requirement` already say it — and say it better, since
+    // the paraphrase inlines the whole description onto one line.
+    if !restated {
+        let label = if r.author_message.is_some() {
+            "details"
+        } else {
+            "message"
+        };
+        lines.extend(field(indent, label, &r.message));
+    }
+    if let Some(path) = &r.path {
+        lines.extend(field(indent, "path", path));
+    }
+    let value = shifty_algebra::render::term_to_string_in(&r.value, px);
+    if value != focus {
+        lines.extend(field(indent, "value node", &value));
+    }
+    if let Some(found) = found_line(r, arena) {
+        lines.extend(field(indent, "found", &found));
+    }
+    if let Some(requirement) = requirement {
+        lines.extend(labelled_block(indent, "requirement", &requirement));
+    }
+    if let Some(d) = &r.sparql_diagnostic {
+        lines.extend(render_sparql_diagnostic(d, indent + 2));
+    }
+    for (i, sub) in r.sub_reasons.iter().enumerate() {
+        lines.push(String::new());
+        lines.push(format!(
+            "{}or-branch {} of {} (satisfying any one of these fixes it)",
+            " ".repeat(indent + 2),
+            i + 1,
+            r.sub_reasons.len()
+        ));
+        lines.extend(render_reason(
+            sub,
+            arena,
+            px,
+            focus,
+            violation_severity,
+            indent + 4,
+        ));
     }
     lines
 }
 
-/// The failing constraint, laid out over several lines — but only when it is
-/// nested enough that the one-line form in the header stops being readable.
-///
-/// Most reasons are a single short clause, where the header already says
-/// everything and a block underneath would be noise. The pretty layout is
-/// byte-identical to the one-line form whenever it fits, so "did it break?" is
-/// exactly the right test for whether the block is worth printing.
-fn render_constraint_block(
+/// A value that may be several lines: the label leads the first, the rest are
+/// indented under it.
+fn labelled_block(indent: usize, label: &str, value: &str) -> Vec<String> {
+    let mut lines = value.lines();
+    let pad = " ".repeat(indent);
+    let hang = " ".repeat(indent + LABEL_WIDTH);
+    let mut out = match lines.next() {
+        Some(first) => vec![format!("{pad}{label:<LABEL_WIDTH$}{first}")],
+        None => return Vec::new(),
+    };
+    out.extend(lines.map(|line| format!("{hang}{line}")));
+    out
+}
+
+/// What the constraint demands, laid out over several lines when it is nested.
+fn describe_requirement(
     r: &shifty_engine::Reason,
     arena: &shifty_algebra::ShapeArena,
     px: &shifty_algebra::Prefixes,
     indent: usize,
-) -> Vec<String> {
+) -> Option<String> {
     use shifty_algebra::render::{PRETTY_WIDTH, describe_shape_pretty};
-    let pad = " ".repeat(indent);
-    let width = PRETTY_WIDTH.saturating_sub(indent + 2);
-    let pretty = describe_shape_pretty(arena, r.constraint_id, px, width);
-    if !pretty.contains('\n') {
-        return Vec::new();
-    }
-    let mut lines = vec![match r.observed_count {
-        Some(n) => format!("{pad}constraint — found {n}:"),
-        None => format!("{pad}constraint:"),
-    }];
-    lines.extend(pretty.lines().map(|line| format!("{pad}  {line}")));
-    lines
+    let width = PRETTY_WIDTH.saturating_sub(indent);
+    let text = describe_shape_pretty(arena, r.constraint_id, px, width);
+    (!text.is_empty()).then_some(text)
+}
+
+/// The count the algebra does not carry, paired with the bound it missed.
+///
+/// A plain `sh:minCount`/`sh:maxCount` counts everything along the path; a
+/// qualified count only counts values satisfying the qualifier. Saying which is
+/// the difference between "found 0" meaning the path was empty and it meaning
+/// the path held values that did not match.
+fn found_line(r: &shifty_engine::Reason, arena: &shifty_algebra::ShapeArena) -> Option<String> {
+    let found = r.observed_count?;
+    let shifty_algebra::Shape::Count {
+        min,
+        max,
+        qualifier,
+        ..
+    } = &r.constraint
+    else {
+        return Some(format!("{found} value(s)"));
+    };
+    let counted = match arena.get(*qualifier) {
+        shifty_algebra::Shape::Top | shifty_algebra::Shape::Pending => {
+            format!("{found} value(s) along the path")
+        }
+        _ => format!("{found} value(s) matching the requirement"),
+    };
+    let bound = match (min, max) {
+        (Some(m), _) if found < *m => format!("; at least {m} required"),
+        (_, Some(x)) if found > *x => format!("; at most {x} allowed"),
+        _ => String::new(),
+    };
+    Some(format!("{counted}{bound}"))
 }
 
 /// Render a [`shifty_engine::SparqlDiagnostic`]: the query that ran, what it
@@ -591,44 +847,65 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
 
     match args.format {
         Format::Dot => return Err("--format dot is not supported for validate".into()),
-        Format::Json => println!("{}", serde_json::to_string_pretty(&outcome)?),
+        Format::Json => {
+            let doc = json_report(&outcome, &parsed.schema, &physical, &display_prefixes)?;
+            println!("{}", serde_json::to_string_pretty(&doc)?);
+        }
         Format::Text => {
-            println!("conforms: {}", outcome.conforms);
-            if !outcome.violations.is_empty() {
-                println!("violations: {}", outcome.violations.len());
-                for v in &outcome.violations {
-                    let st = &parsed.schema.statements[v.statement];
-                    println!(
-                        "  {}  [severity: {}; target: {}]",
-                        shifty_algebra::render::term_to_string_in(&v.focus, &display_prefixes),
-                        v.severity,
-                        shifty_algebra::render::selector_to_string_in_px(
-                            &st.selector,
-                            &parsed.schema.arena,
-                            &parsed.schema.prefixes
-                        )
-                    );
-                    let mut groups: Vec<Vec<String>> = v
-                        .reasons
-                        .iter()
-                        .map(|r| render_reason(r, &physical.arena, &display_prefixes, 6))
-                        .collect();
-                    groups.sort_by(|a, b| a[0].cmp(&b[0]));
-                    for group in groups {
-                        for line in group {
-                            println!("{line}");
-                        }
+            let total = outcome.violations.len();
+            if outcome.conforms {
+                println!("conforms: true");
+            } else {
+                println!("conforms: false — {total} violation(s)");
+            }
+            let mut out: Vec<String> = Vec::new();
+            for (i, v) in outcome.violations.iter().enumerate() {
+                let st = &parsed.schema.statements[v.statement];
+                let focus = shifty_algebra::render::term_to_string_in(&v.focus, &display_prefixes);
+                let severity = v.severity.to_string();
+                out.push(String::new());
+                out.push(format!("Violation {} of {total}", i + 1));
+                out.extend(field(2, "focus node", &focus));
+                let target = shifty_algebra::render::selector_to_string_in_px(
+                    &st.selector,
+                    &parsed.schema.arena,
+                    &parsed.schema.prefixes,
+                );
+                out.extend(field(2, "target", &target));
+                out.extend(field(2, "severity", &severity));
+                // The source shape's IRI, unless the target line already names it
+                // — an implicit class target renders as `class(<that same IRI>)`.
+                if let Some(name) = parsed.schema.name_of(st.shape) {
+                    let compacted = display_prefixes.compact(name);
+                    if !target.contains(&compacted) {
+                        out.extend(field(2, "shape", &compacted));
                     }
                 }
+                let mut groups: Vec<Vec<String>> = v
+                    .reasons
+                    .iter()
+                    .map(|r| {
+                        render_reason(r, &physical.arena, &display_prefixes, &focus, &severity, 2)
+                    })
+                    .collect();
+                groups.sort();
+                for (n, group) in groups.iter().enumerate() {
+                    out.push(String::new());
+                    if v.reasons.len() > 1 {
+                        out.push(format!("  reason {} of {}", n + 1, v.reasons.len()));
+                    }
+                    out.extend(group.iter().cloned());
+                }
+            }
+            for line in &out {
+                println!("{line}");
+            }
+            for line in notation_key(&out) {
+                println!("{line}");
             }
         }
     }
 
-    if args.profile
-        && let Some(col) = shifty_engine::profile::take()
-    {
-        col.print_summary();
-    }
     Ok(())
 }
 

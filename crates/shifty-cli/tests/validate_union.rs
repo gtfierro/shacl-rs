@@ -337,7 +337,15 @@ fn validation_runs_inference_first() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("conforms: false"), "stdout: {stdout}");
-    assert!(stdout.contains("at most 0 value(s)"), "stdout: {stdout}");
+    // The inferred triple is what busts the bound, so the count has to see it.
+    assert!(
+        stdout.contains("found        1 value(s) along the path; at most 0 allowed"),
+        "stdout: {stdout}"
+    );
+    assert!(
+        stdout.contains("requirement  ∄ ex:derived"),
+        "stdout: {stdout}"
+    );
 
     let no_infer = Command::new(env!("CARGO_BIN_EXE_shifty"))
         .args([
@@ -428,6 +436,124 @@ fn validation_runs_inference_first() {
         report_stdout.contains("sh:sourceConstraintComponent sh:MaxCountConstraintComponent"),
         "stdout: {report_stdout}"
     );
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// The two nodes in a reason are the thing a first-time reader confuses: the
+/// focus node was selected for checking, the value node was reached from it
+/// along the path and is what actually failed. Both must be named.
+#[test]
+fn text_report_labels_the_focus_and_value_nodes() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-labels-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ;
+                sh:targetClass ex:T ;
+                sh:property [ sh:path ex:p ; sh:class ex:Wanted ] .
+
+            ex:a a ex:T ; ex:p ex:wrong .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(stdout.contains("Violation 1 of 1"), "stdout: {stdout}");
+    assert!(stdout.contains("focus node   ex:a"), "stdout: {stdout}");
+    assert!(stdout.contains("value node   ex:wrong"), "stdout: {stdout}");
+    assert!(stdout.contains("path         ex:p"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("target       class(ex:T)"),
+        "stdout: {stdout}"
+    );
+    // The notation key explains only the symbols this report actually used.
+    assert!(stdout.contains("∀ p . X"), "stdout: {stdout}");
+    assert!(!stdout.contains("∄ p"), "stdout: {stdout}");
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// JSON keeps the raw algebra, whose child links are arena ids. Those ids have
+/// to resolve inside the document, or a consumer is stuck exactly where `@257`
+/// left a reader of the text report.
+#[test]
+fn json_report_resolves_every_constraint_pointer() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-json-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ;
+                sh:targetClass ex:T ;
+                sh:property [
+                    sh:path ex:p ;
+                    sh:qualifiedValueShape [ sh:class ex:Wanted ] ;
+                    sh:qualifiedMinCount 1 ;
+                ] .
+
+            ex:a a ex:T .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args([
+            "validate",
+            "--shapes",
+            shapes.to_str().unwrap(),
+            "--format",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+
+    let violation = &doc["violations"][0];
+    assert_eq!(violation["target"], "class(ex:T)");
+    assert_eq!(violation["shape_name"], "http://ex/S");
+
+    let reason = &violation["reasons"][0];
+    assert_eq!(reason["observed_count"], 0);
+    // The constraint in words, so a consumer needs no arena at all …
+    assert_eq!(reason["definition"], "∃[1..] ex:p . instance of ex:Wanted");
+
+    // … and for one that walks the algebra, every id it can reach resolves.
+    let shapes_map = doc["shapes"].as_object().expect("shapes map");
+    let mut stack = vec![reason["constraint_id"].as_u64().unwrap()];
+    let mut seen = std::collections::BTreeSet::new();
+    while let Some(id) = stack.pop() {
+        if !seen.insert(id) {
+            continue;
+        }
+        let shape = shapes_map
+            .get(&id.to_string())
+            .unwrap_or_else(|| panic!("slot {id} referenced but not shipped: {shapes_map:?}"));
+        let text = shape.to_string();
+        // Child links appear as bare integers in the serialized algebra.
+        for id in shapes_map.keys() {
+            if text.contains(&format!(":{id}")) || text.contains(&format!("[{id}")) {
+                stack.push(id.parse().unwrap());
+            }
+        }
+    }
+    assert!(seen.len() > 1, "expected a nested constraint: {seen:?}");
+    // Only what the report reaches, not the whole arena.
+    assert!(shapes_map.len() < 40, "shipped {} slots", shapes_map.len());
 
     std::fs::remove_dir_all(dir).unwrap();
 }

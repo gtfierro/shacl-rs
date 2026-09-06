@@ -13,6 +13,19 @@
 
 ### Added
 
+- Added a top-level `shapes` map to `validate --format json`: the transitive
+  closure of every reported constraint, keyed by the same ids the algebra's own
+  `constraint_id` and `qualifier` fields use, so those pointers resolve inside
+  the document. Previously a JSON consumer hit the same dead end a reader of the
+  text report hit with `@257`. It is the closure rather than the whole arena
+  deliberately — for the s223 shapes that is 19 slots against 2412, a 2.2x
+  payload instead of 172x; `inspect --stage plan --format json` still dumps the
+  arena in full. Each reason also gains `definition` and `definition_pretty`,
+  and each violation `target` and `shape_name`.
+- Added `Shape::child_shapes`, the shape's direct references including the
+  `sh:filterShape` ids inside a node expression. `render`'s reachability walk
+  now uses it, so a shape reachable only through an expression no longer drops
+  out of a schema dump.
 - Added `Reason.observed_count`: for a cardinality constraint, how many values
   along the path satisfied the qualifier. The bound is already in the constraint
   algebra, so this is the one number a report needs that the algebra does not
@@ -30,6 +43,13 @@
 
 ### Changed
 
+- `shifty validate --format text` now prints labelled fields — `focus node`,
+  `value node`, `path`, `found`, `requirement` — instead of packing a reason
+  onto one line. The two nodes in a reason are what a first-time reader
+  confuses: the focus node was selected for checking, the value node was reached
+  from it along the path and is what failed. Unlabelled, the value node reads as
+  the subject. A report that uses `∀`/`∃`/`∄` now also ends with a key glossing
+  only the symbols it actually used. Scripts should read `--format json`.
 - `shifty validate` now spells data-graph nodes using the data document's own
   `@prefix` declarations, layered over the shapes document's. A focus node in the
   s223 sample goes from 89 characters to 37, and it appears twice per reason.

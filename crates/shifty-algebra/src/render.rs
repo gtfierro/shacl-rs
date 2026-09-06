@@ -155,20 +155,10 @@ fn reachable_shapes(schema: &Schema) -> BTreeSet<ShapeId> {
     let mut seen = BTreeSet::new();
     while let Some(id) = stack.pop() {
         if seen.insert(id) {
-            stack.extend(shape_children(schema.arena.get(id)));
+            stack.extend(schema.arena.get(id).child_shapes());
         }
     }
     seen
-}
-
-fn shape_children(shape: &Shape) -> Vec<ShapeId> {
-    match shape {
-        Shape::Annotated { shape, .. } => vec![*shape],
-        Shape::Not(c) => vec![*c],
-        Shape::And(cs) | Shape::Or(cs) => cs.clone(),
-        Shape::Count { qualifier, .. } => vec![*qualifier],
-        _ => Vec::new(),
-    }
 }
 
 fn selector_shapes(sel: &Selector) -> Vec<ShapeId> {
