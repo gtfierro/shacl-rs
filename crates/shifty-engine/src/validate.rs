@@ -1352,17 +1352,30 @@ fn explain(
                 // Naming the ones that hold is the whole of the fix: the reader
                 // has to drop all but one of them, and "2 of 3" does not say
                 // which two.
+                let describe_all = |ids: &[ShapeId]| {
+                    ids.iter()
+                        .map(|a| describe_shape_in(evaluator.arena, *a, evaluator.prefixes))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
                 let message = if held.is_empty() {
                     format!("none of the {total} alternatives hold; exactly one must")
                 } else {
-                    format!(
-                        "exactly one alternative may hold; these {} do: {}",
+                    // Both sides: which to drop, and which is left to keep.
+                    let idle: Vec<ShapeId> = alternatives
+                        .iter()
+                        .copied()
+                        .filter(|a| !held.contains(a))
+                        .collect();
+                    let mut message = format!(
+                        "exactly one alternative may hold; {} of {total} do — holds: {}",
                         held.len(),
-                        held.iter()
-                            .map(|a| describe_shape_in(evaluator.arena, *a, evaluator.prefixes))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
+                        describe_all(&held)
+                    );
+                    if !idle.is_empty() {
+                        message.push_str(&format!("; does not hold: {}", describe_all(&idle)));
+                    }
+                    message
                 };
                 // The branch sub-reasons explain the rewrite, not the shape the
                 // author wrote, and "fix any one of these" is the wrong advice

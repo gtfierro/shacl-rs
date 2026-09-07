@@ -552,9 +552,13 @@ fn related_findings(index: usize, findings: &[Finding]) -> String {
 fn render_affected(members: &[(String, Option<String>)]) -> Vec<String> {
     if let [(focus, value)] = members {
         let mut out = field(2, "affects", focus);
-        if let Some(value) = value {
-            out.extend(field(2, "value node", value));
-        }
+        // Said either way. A missing line would leave the reader to infer that
+        // the constraint applied to the focus node itself.
+        out.extend(field(
+            2,
+            "value node",
+            value.as_deref().unwrap_or("(the focus node itself)"),
+        ));
         return out;
     }
     let counted = plural(members.len(), "focus node");
@@ -565,7 +569,7 @@ fn render_affected(members: &[(String, Option<String>)]) -> Vec<String> {
         &if any_values {
             format!("{counted}, each with the value node that failed")
         } else {
-            counted
+            format!("{counted}; the constraint applies to each node itself")
         },
     );
     // Pad the focus column so the values line up, but never so far that one long
@@ -656,11 +660,6 @@ fn render_reason(
     // line — so printing both restates the same sentence twice. Anything else
     // keeps it: the generated message often names specifics the constraint does
     // not, such as which predicates a `closed` shape did not expect.
-    // `must satisfy \`X\`` where the requirement is exactly `X` says it twice.
-    let restated = r.observed_count.is_some()
-        || requirement.as_deref().is_some_and(|requirement| {
-            r.message == requirement || r.message == format!("must satisfy `{requirement}`")
-        });
     let mut lines = Vec::new();
 
     // Severity only when it differs from the violation's, which is the max of
@@ -676,12 +675,11 @@ fn render_reason(
     // restatement it is the only prose the reason has, but for a cardinality
     // failure `found` and `requirement` already say it — and say it better, since
     // the paraphrase inlines the whole description onto one line.
-    if !restated {
-        // `message` is the shape author's sentence about intent; `failure` is
-        // what went wrong here. When the shape carries no `sh:message` the
-        // generated text is all there is, and it is still a failure, not intent.
-        lines.extend(field(indent, "failure", &r.message));
-    }
+    // `message` is the shape author's sentence about intent; `failure` is what
+    // went wrong here. Always both: a field that appears only when some rule
+    // decides it is not redundant makes the reader work out why it is missing,
+    // and an explanation that is complete every time is worth a repeated line.
+    lines.extend(field(indent, "failure", &r.message));
     if let Some(path) = &r.path {
         lines.extend(field(indent, "path", path));
     }
@@ -996,13 +994,15 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                     &parsed.schema.arena,
                     &parsed.schema.prefixes,
                 );
-                // The source shape's IRI, unless the target line already names it
-                // — an implicit class target renders as `class(<that same IRI>)`.
+                // The source shape's IRI. Printed even when the target line
+                // already names it — an implicit class target renders as
+                // `class(<that same IRI>)` — because which shape a finding came
+                // from is the first thing a reader goes to fix, and it should
+                // not be conditional on how the target happened to render.
                 let shape = parsed
                     .schema
                     .name_of(st.shape)
-                    .map(|name| display_prefixes.compact(name))
-                    .filter(|compacted| !target.contains(compacted.as_str()));
+                    .map(|name| display_prefixes.compact(name));
 
                 for r in &v.reasons {
                     let severity = r.severity.to_string();

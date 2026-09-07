@@ -653,7 +653,9 @@ fn xone_reports_how_many_alternatives_actually_hold() {
     // Naming them is the whole of the fix: the reader has to drop all but one,
     // and a bare count does not say which.
     assert!(
-        stdout.contains("exactly one alternative may hold; these 2 do: ∃[1..] ex:r, ∃[1..] ex:s"),
+        stdout.contains(
+            "exactly one alternative may hold; 2 of 2 do — holds: ∃[1..] ex:r, ∃[1..] ex:s"
+        ),
         "stdout: {stdout}"
     );
     assert!(
@@ -748,6 +750,79 @@ fn findings_from_one_shape_cross_reference_each_other() {
     assert!(
         stdout.contains("(1 of 2 nodes)"),
         "partial overlap should be counted: {stdout}"
+    );
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// Every finding carries the whole explanation, whatever the shape looks like.
+///
+/// Earlier revisions dropped the generated message wherever another field was
+/// judged to restate it. That saves a line and costs the reader a rule: a field
+/// that appears only sometimes makes its absence something to interpret. These
+/// four shapes previously each lost a different field.
+#[test]
+fn every_finding_states_the_failure_in_full() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-full-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            # cardinality, where `found` and `requirement` cover the message
+            ex:Card a sh:NodeShape ; sh:targetClass ex:A ;
+                sh:property [ sh:path ex:p ; sh:minCount 1 ] .
+            ex:a1 a ex:A .
+
+            # sh:not, where the message was exactly ``must satisfy `<requirement>` ``
+            ex:Neg a sh:NodeShape ; sh:targetClass ex:B ;
+                sh:not [ sh:property [ sh:path ex:legs ; sh:maxCount 0 ] ] .
+            ex:b1 a ex:B .
+
+            # an implicit class target, where `shape` repeated `target`
+            ex:C a sh:NodeShape ; sh:targetClass ex:C ;
+                sh:property [ sh:path ex:q ; sh:minCount 1 ] .
+            ex:c1 a ex:C .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Three findings, each with every field present.
+    assert_eq!(stdout.matches("Finding ").count(), 3, "stdout: {stdout}");
+    for label in [
+        "target",
+        "severity",
+        "shape",
+        "failure",
+        "requirement",
+        "affects",
+    ] {
+        assert_eq!(
+            stdout.matches(&format!("  {label} ")).count(),
+            3,
+            "`{label}` is missing from some finding: {stdout}"
+        );
+    }
+    // Including the one whose target line already names the shape …
+    assert!(stdout.contains("shape        ex:C"), "stdout: {stdout}");
+    // … and the one whose message restates its requirement.
+    assert!(
+        stdout.contains("failure      must satisfy `∃[1..] ex:legs`"),
+        "stdout: {stdout}"
+    );
+    // A constraint on the focus node says so rather than omitting the field.
+    assert!(
+        stdout.contains("value node   (the focus node itself)"),
+        "stdout: {stdout}"
     );
 
     std::fs::remove_dir_all(dir).unwrap();
