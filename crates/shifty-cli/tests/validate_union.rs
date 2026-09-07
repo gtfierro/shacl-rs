@@ -650,8 +650,10 @@ fn xone_reports_how_many_alternatives_actually_hold() {
         .unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
+    // Naming them is the whole of the fix: the reader has to drop all but one,
+    // and a bare count does not say which.
     assert!(
-        stdout.contains("2 of the 2 alternatives hold; exactly one may"),
+        stdout.contains("exactly one alternative may hold; these 2 do: ∃[1..] ex:r, ∃[1..] ex:s"),
         "stdout: {stdout}"
     );
     assert!(
@@ -702,6 +704,50 @@ fn sh_not_states_the_positive_requirement() {
     assert!(
         !stdout.contains("negated shape unexpectedly held"),
         "engine jargon reached the report: {stdout}"
+    );
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// Grouping by reason splits one authored shape's parts into separate findings,
+/// which is right — they are separate problems — but a reader is left with no
+/// sign that two of them came from one `sh:and` on the same node.
+#[test]
+fn findings_from_one_shape_cross_reference_each_other() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-related-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ; sh:targetClass ex:D ;
+                sh:and (
+                  [ sh:property [ sh:path ex:p ; sh:minCount 1 ] ]
+                  [ sh:property [ sh:path ex:q ; sh:minCount 1 ] ] ) .
+
+            # ex:both fails both parts; ex:one fails only the second.
+            ex:both a ex:D .
+            ex:one a ex:D ; ex:p ex:v .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // The `ex:p` finding has one node, which also fails the `ex:q` finding.
+    assert!(stdout.contains("also fails   Finding"), "stdout: {stdout}");
+    // The `ex:q` finding has two nodes, only one of which fails the other, and
+    // the count has to say so rather than imply the whole group overlaps.
+    assert!(
+        stdout.contains("(1 of 2 nodes)"),
+        "partial overlap should be counted: {stdout}"
     );
 
     std::fs::remove_dir_all(dir).unwrap();

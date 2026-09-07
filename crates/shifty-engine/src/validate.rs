@@ -1343,19 +1343,35 @@ fn explain(
             // the usual way to fail a xone — gets told that none were satisfied,
             // which is the opposite of the finding. Count what actually holds.
             if let Some(alternatives) = xone_alternatives(id, evaluator.arena) {
-                let held = alternatives
+                let held: Vec<ShapeId> = alternatives
                     .iter()
-                    .filter(|a| evaluator.holds(node, **a))
-                    .count();
+                    .copied()
+                    .filter(|a| evaluator.holds(node, *a))
+                    .collect();
                 let total = alternatives.len();
-                let message = if held == 0 {
+                // Naming the ones that hold is the whole of the fix: the reader
+                // has to drop all but one of them, and "2 of 3" does not say
+                // which two.
+                let message = if held.is_empty() {
                     format!("none of the {total} alternatives hold; exactly one must")
                 } else {
-                    format!("{held} of the {total} alternatives hold; exactly one may")
+                    format!(
+                        "exactly one alternative may hold; these {} do: {}",
+                        held.len(),
+                        held.iter()
+                            .map(|a| describe_shape_in(evaluator.arena, *a, evaluator.prefixes))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
                 };
                 // The branch sub-reasons explain the rewrite, not the shape the
-                // author wrote, so they would mislead more than they help here.
-                let sub_reasons = if held == 0 { sub_reasons } else { Vec::new() };
+                // author wrote, and "fix any one of these" is the wrong advice
+                // for a node that already satisfies too many.
+                let sub_reasons = if held.is_empty() {
+                    sub_reasons
+                } else {
+                    Vec::new()
+                };
                 return vec![reason(
                     evaluator.arena,
                     id,

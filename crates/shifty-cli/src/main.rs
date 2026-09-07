@@ -5,7 +5,7 @@
 //! become additional stages here.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -495,6 +495,9 @@ fn plural(n: usize, word: &str) -> String {
 /// the same finding: the constraint, the message and the requirement are
 /// identical, and only the nodes differ.
 struct Finding {
+    /// The `(selector, shape)` statement this came from. Two findings sharing it
+    /// are two parts of one authored shape.
+    statement: usize,
     target: String,
     severity: String,
     shape: Option<String>,
@@ -504,6 +507,40 @@ struct Finding {
     /// reached from the focus along the path, absent when the constraint failed
     /// on the focus node itself.
     members: Vec<(String, Option<String>)>,
+}
+
+/// The other findings from the same authored shape that these same nodes also
+/// fail, as `Finding 5` / `Finding 5 (2 of 53 nodes)`.
+///
+/// Grouping by reason splits one shape's parts into separate findings, which is
+/// right — they are separate problems — but leaves a reader with no sign that
+/// two of them came from one `sh:and`. Only same-statement siblings are
+/// reported: in a large graph nearly every pair of findings shares some node,
+/// and saying so would be noise rather than a relationship.
+fn related_findings(index: usize, findings: &[Finding]) -> String {
+    let current = &findings[index];
+    let mine: BTreeSet<&str> = current.members.iter().map(|(f, _)| f.as_str()).collect();
+    let mut parts = Vec::new();
+    for (other_index, other) in findings.iter().enumerate() {
+        if other_index == index || other.statement != current.statement {
+            continue;
+        }
+        let shared = other
+            .members
+            .iter()
+            .filter(|(focus, _)| mine.contains(focus.as_str()))
+            .count();
+        if shared == 0 {
+            continue;
+        }
+        let label = format!("Finding {}", other_index + 1);
+        parts.push(if shared == mine.len() {
+            label
+        } else {
+            format!("{label} ({shared} of {} nodes)", mine.len())
+        });
+    }
+    parts.join(", ")
 }
 
 /// Who a finding is wrong on.
@@ -990,6 +1027,7 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                         None => {
                             index.insert(key, findings.len());
                             findings.push(Finding {
+                                statement: v.statement,
                                 target: target.clone(),
                                 severity,
                                 shape: shape.clone(),
@@ -1026,6 +1064,10 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                 out.extend(finding.body.iter().cloned());
                 out.push(String::new());
                 out.extend(render_affected(&finding.members));
+                let related = related_findings(i, &findings);
+                if !related.is_empty() {
+                    out.extend(field(2, "also fails", &related));
+                }
             }
             for line in &out {
                 println!("{line}");
