@@ -619,3 +619,90 @@ fn text_report_groups_violations_that_share_a_finding() {
 
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// A node fails `sh:xone` by satisfying *more* than one alternative as often as
+/// by satisfying none. Reported as the disjunction it is lowered to, that node is
+/// told none were satisfied — the opposite of the finding.
+#[test]
+fn xone_reports_how_many_alternatives_actually_hold() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-xone-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ; sh:targetClass ex:C ;
+                sh:xone ( [ sh:property [ sh:path ex:r ; sh:minCount 1 ] ]
+                          [ sh:property [ sh:path ex:s ; sh:minCount 1 ] ] ) .
+
+            ex:both a ex:C ; ex:r ex:x ; ex:s ex:y .
+            ex:neither a ex:C .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(
+        stdout.contains("2 of the 2 alternatives hold; exactly one may"),
+        "stdout: {stdout}"
+    );
+    assert!(
+        stdout.contains("none of the 2 alternatives hold; exactly one must"),
+        "stdout: {stdout}"
+    );
+    // And the requirement names the shape the author wrote, not its rewrite.
+    assert!(
+        stdout.contains("exactly one of (∃[1..] ex:r, ∃[1..] ex:s)"),
+        "stdout: {stdout}"
+    );
+    assert!(!stdout.contains("and not ("), "leaked rewrite: {stdout}");
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// `sh:not` around something that is itself negative reads as a double negative.
+#[test]
+fn sh_not_states_the_positive_requirement() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-not-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ; sh:targetClass ex:D ;
+                sh:not [ sh:property [ sh:path ex:legs ; sh:maxCount 0 ] ] .
+
+            ex:d1 a ex:D .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(
+        stdout.contains("requirement  ∃[1..] ex:legs"),
+        "stdout: {stdout}"
+    );
+    assert!(!stdout.contains("not (∄"), "double negative: {stdout}");
+    assert!(
+        !stdout.contains("negated shape unexpectedly held"),
+        "engine jargon reached the report: {stdout}"
+    );
+
+    std::fs::remove_dir_all(dir).unwrap();
+}

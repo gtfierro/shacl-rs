@@ -4,6 +4,23 @@
 
 ### Fixed
 
+- Fixed `sh:xone` reporting. It lowers to `⋁ᵢ (φᵢ ∧ ⋀_{j≠i} ¬φⱼ)`, and reported
+  as that disjunction a node satisfying *two* alternatives — the usual way to
+  fail a xone — was told that none were satisfied, the opposite of the finding.
+  The rewrite is now recognized (`render::xone_alternatives`), so the message
+  counts what actually holds and the constraint renders as
+  `exactly one of (…)` rather than as its expansion.
+- Fixed `sh:not` rendering a double negative when the negated shape is itself
+  negative: `not (∄ p)` now reads `∃[1..] p`. A boolean combination is left as
+  `not (a and b)`, where De Morgan would trade one clear form for a longer
+  disjunction. The `sh:not` failure message is now the positive requirement
+  instead of "negated shape unexpectedly held".
+- Fixed typed literals rendering their datatype as an absolute IRI
+  (`"10"^^<http://www.w3.org/2001/XMLSchema#integer>` → `"10"^^xsd:integer`),
+  including numeric bounds inside a value type. A plain string keeps its
+  implicit `xsd:string` unspelled.
+- Fixed the notation key listing the inverse-path symbol for a report that used
+  none: it matched the `^^` of a typed literal.
 - Fixed validation messages that leaked internal arena slot labels such as
   `@257`. Constraint descriptions were cut at a fixed recursion depth and fell
   back to the slot id, which is meaningless outside a debugging dump and could
@@ -53,6 +70,13 @@
   (`61 violations in 3 findings`). The unit is one reason rather than one
   violation so that each grouped node carries exactly one value node, which can
   be named in the heading instead of left as a bare parenthesised IRI.
+- The generated message is labelled `failure` rather than `details`, and keeps
+  that label whether or not the shape carried an `sh:message`. It previously
+  appeared as `message` when there was no author text and `details` when there
+  was, so one field had two names and neither said where it came from. It is
+  also suppressed when it is exactly ``must satisfy `<the requirement>` ``.
+- A count over a `⊤` qualifier drops the vacuous `. any node` clause:
+  `∃[1..] ex:p` rather than `∃[1..] ex:p . any node`, matching `∄ p`.
 - `shifty validate --format text` now prints labelled fields — `focus node`,
   `value node`, `path`, `found`, `requirement` — instead of packing a reason
   onto one line. The two nodes in a reason are what a first-time reader

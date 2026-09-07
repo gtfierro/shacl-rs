@@ -540,11 +540,27 @@ impl<'a> Describer<'a> {
                 term_to_string(&class, self.prefixes)
             )));
         }
+        // `sh:xone`, before the disjunction it was rewritten into.
+        if let Some(alternatives) = xone_alternatives(id, self.arena) {
+            return self.within(id, |me| Doc::Bracketed {
+                head: "exactly one of ",
+                body: Box::new(Doc::Join {
+                    sep: ", ",
+                    parts: alternatives.iter().map(|a| me.describe(*a)).collect(),
+                }),
+            });
+        }
         let arena = self.arena;
         match arena.get(id) {
             Shape::Top | Shape::Pending => Doc::Atom(self.emit("any node".to_string())),
             // sh:severity is transparent — describe the wrapped shape.
             Shape::Annotated { shape, .. } => self.within(id, |me| me.describe(*shape)),
+            // `not (…)` around something that itself renders as a negation leaves
+            // the reader unwinding two of them to learn what to do: `not (∄ p)`
+            // is `∃[1..] p`. Invert through `negate` instead — except for a
+            // boolean combination, where De Morgan trades one clear `not (a and
+            // b)` for a longer disjunction.
+            Shape::Not(c) if !is_boolean_shape(arena, *c) => self.within(id, |me| me.negate(*c)),
             Shape::Not(c) => self.within(id, |me| Doc::Bracketed {
                 head: "not ",
                 body: Box::new(me.describe(*c)),
@@ -665,6 +681,11 @@ impl<'a> Describer<'a> {
         }
         let lo = min.map(|n| n.to_string()).unwrap_or_default();
         let hi = max.map(|n| n.to_string()).unwrap_or_default();
+        // A `⊤` qualifier counts everything along the path — `. any node` adds a
+        // clause that says nothing, the same way `∄ p` drops it.
+        if matches!(self.arena.get(qualifier), Shape::Top | Shape::Pending) {
+            return Doc::Atom(self.emit(format!("∃[{lo}..{hi}] {path}")));
+        }
         let head = self.emit(format!("∃[{lo}..{hi}] {path} . "));
         Doc::Prefixed {
             head,
@@ -847,6 +868,74 @@ pub fn negated_class_target_shape(id: ShapeId, arena: &ShapeArena) -> Option<Ter
     }
 }
 
+/// Whether a shape is a boolean combination of more than one member, ignoring
+/// transparent `sh:severity` wrappers.
+fn is_boolean_shape(arena: &ShapeArena, id: ShapeId) -> bool {
+    match arena.get(id) {
+        Shape::Annotated { shape, .. } => is_boolean_shape(arena, *shape),
+        Shape::And(cs) | Shape::Or(cs) => cs.len() > 1,
+        _ => false,
+    }
+}
+
+/// If `id` is the `⋁ᵢ (φᵢ ∧ ⋀_{j≠i} ¬φⱼ)` rewrite of `sh:xone`, the author's
+/// alternatives `φᵢ` in branch order. `None` for any other disjunction.
+///
+/// The rewrite is what the engine evaluates, but it is not what the author
+/// wrote: reported as a plain disjunction it says "none of 2 alternatives
+/// satisfied" about a node that in fact satisfied *both*, which is the opposite
+/// of the finding. Recovering the `φᵢ` lets the report talk about the shape the
+/// author wrote. Interning makes this exact rather than approximate — the `¬φⱼ`
+/// in one branch and the `φⱼ` heading another are the same arena slot.
+pub fn xone_alternatives(id: ShapeId, arena: &ShapeArena) -> Option<Vec<ShapeId>> {
+    let Shape::Or(branches) = arena.get(id) else {
+        return None;
+    };
+    if branches.len() < 2 {
+        return None;
+    }
+    // Each branch asserts one alternative and denies every other, so a branch
+    // has exactly as many members as there are branches.
+    let mut positives = Vec::with_capacity(branches.len());
+    for branch in branches {
+        let Shape::And(members) = arena.get(*branch) else {
+            return None;
+        };
+        if members.len() != branches.len() {
+            return None;
+        }
+        let mut positive = None;
+        for member in members {
+            if !matches!(arena.get(*member), Shape::Not(_)) && positive.replace(*member).is_some() {
+                return None;
+            }
+        }
+        positives.push(positive?);
+    }
+    for (i, branch) in branches.iter().enumerate() {
+        let Shape::And(members) = arena.get(*branch) else {
+            return None;
+        };
+        let denied: BTreeSet<ShapeId> = members
+            .iter()
+            .filter_map(|m| match arena.get(*m) {
+                Shape::Not(inner) => Some(*inner),
+                _ => None,
+            })
+            .collect();
+        let others: BTreeSet<ShapeId> = positives
+            .iter()
+            .enumerate()
+            .filter(|(j, _)| *j != i)
+            .map(|(_, p)| *p)
+            .collect();
+        if denied != others {
+            return None;
+        }
+    }
+    Some(positives)
+}
+
 /// Is `p` the `rdf:type/rdfs:subClassOf*` path used to encode class targeting?
 fn is_class_path(p: &Path) -> bool {
     const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
@@ -933,10 +1022,12 @@ pub fn value_type_to_string_in(vt: &ValueType, px: &Prefixes) -> String {
         ValueType::NumericRange { lo, hi } => {
             let mut parts = Vec::new();
             if let Some(Bound { value, inclusive }) = lo {
-                parts.push(format!("{}{}", if *inclusive { "≥" } else { ">" }, value));
+                let value = literal_to_string(value, px);
+                parts.push(format!("{}{value}", if *inclusive { "≥" } else { ">" }));
             }
             if let Some(Bound { value, inclusive }) = hi {
-                parts.push(format!("{}{}", if *inclusive { "≤" } else { "<" }, value));
+                let value = literal_to_string(value, px);
+                parts.push(format!("{}{value}", if *inclusive { "≤" } else { "<" }));
             }
             format!("range({})", parts.join(", "))
         }
@@ -978,9 +1069,28 @@ pub fn term_to_string_in(t: &Term, px: &Prefixes) -> String {
 fn term_to_string(t: &Term, px: &Prefixes) -> String {
     match t {
         Term::NamedNode(nn) => px.compact(nn.as_str()),
+        Term::Literal(literal) => literal_to_string(literal, px),
         other => other.to_string(),
     }
 }
+
+/// A typed literal's datatype is an IRI like any other, and left absolute it is
+/// most of the length of the term.
+fn literal_to_string(literal: &crate::term::Literal, px: &Prefixes) -> String {
+    match literal.language() {
+        Some(language) => format!("{:?}@{language}", literal.value()),
+        None if literal.datatype().as_str() == XSD_STRING => format!("{:?}", literal.value()),
+        None => format!(
+            "{:?}^^{}",
+            literal.value(),
+            px.compact(literal.datatype().as_str())
+        ),
+    }
+}
+
+/// A plain string literal carries this datatype implicitly, so spelling it out
+/// would add noise to every quoted value in a report.
+const XSD_STRING: &str = "http://www.w3.org/2001/XMLSchema#string";
 
 // ---- IRI compaction ----
 
@@ -1457,6 +1567,98 @@ and not (
         let pretty = describe_shape_pretty(&arena, both, &px, 60);
         let opens = pretty.matches("(\n").count();
         assert_eq!(opens, 2, "both groups should be broken:\n{pretty}");
+    }
+
+    #[test]
+    fn a_negated_negative_is_stated_positively() {
+        // `sh:not [ sh:maxCount 0 ]` — `not (∄ p)` makes a reader unwind two
+        // negations to learn that the path needs a value.
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::default();
+        let top = arena.insert(Shape::Top);
+        let empty = arena.insert(Shape::Count {
+            path: Path::Pred(nn("http://ex/legs")),
+            min: None,
+            max: Some(0),
+            qualifier: top,
+        });
+        let not_empty = arena.insert(Shape::Not(empty));
+        assert_eq!(
+            describe_shape_in(&arena, not_empty, &px),
+            "∃[1..] <http://ex/legs>"
+        );
+
+        // A boolean combination keeps the plain form: De Morgan would trade one
+        // clear `not (a and b)` for a longer disjunction.
+        let a = class_shape(&mut arena, "http://ex/A");
+        let b = class_shape(&mut arena, "http://ex/B");
+        let both = arena.insert(Shape::And(vec![a, b]));
+        let neither = arena.insert(Shape::Not(both));
+        assert_eq!(
+            describe_shape_in(&arena, neither, &px),
+            "not (instance of <http://ex/A> and instance of <http://ex/B>)"
+        );
+    }
+
+    #[test]
+    fn a_xone_is_named_rather_than_shown_as_its_rewrite() {
+        // `sh:xone` lowers to `⋁ᵢ (φᵢ ∧ ⋀_{j≠i} ¬φⱼ)`, which no reader recognizes
+        // as the shape they wrote.
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::default();
+        let a = class_shape(&mut arena, "http://ex/A");
+        let b = class_shape(&mut arena, "http://ex/B");
+        let xone = arena.xone(vec![a, b]);
+
+        assert_eq!(
+            xone_alternatives(xone, &arena),
+            Some(vec![a, b]),
+            "the author's alternatives should be recoverable"
+        );
+        assert_eq!(
+            describe_shape_in(&arena, xone, &px),
+            "exactly one of (instance of <http://ex/A>, instance of <http://ex/B>)"
+        );
+
+        // A plain disjunction must not be mistaken for one.
+        let or = arena.insert(Shape::Or(vec![a, b]));
+        assert_eq!(xone_alternatives(or, &arena), None);
+    }
+
+    #[test]
+    fn a_typed_literal_compacts_its_datatype() {
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::default();
+        let typed = arena.insert(Shape::TestConst(Term::Literal(
+            crate::term::Literal::new_typed_literal(
+                "10",
+                nn("http://www.w3.org/2001/XMLSchema#integer"),
+            ),
+        )));
+        assert_eq!(
+            describe_shape_in(&arena, typed, &px),
+            "test(\"10\"^^xsd:integer)"
+        );
+        // A plain string carries xsd:string implicitly; spelling it out is noise.
+        let plain = arena.insert(Shape::TestConst(Term::Literal(
+            crate::term::Literal::new_simple_literal("hi"),
+        )));
+        assert_eq!(describe_shape_in(&arena, plain, &px), "test(\"hi\")");
+    }
+
+    #[test]
+    fn a_plain_count_drops_the_vacuous_qualifier() {
+        // `∃[1..] p . any node` — the clause says nothing, the way `∄ p` omits it.
+        let mut arena = ShapeArena::new();
+        let px = Prefixes::default();
+        let top = arena.insert(Shape::Top);
+        let some = arena.insert(Shape::Count {
+            path: Path::Pred(nn("http://ex/p")),
+            min: Some(1),
+            max: None,
+            qualifier: top,
+        });
+        assert_eq!(describe_shape_in(&arena, some, &px), "∃[1..] <http://ex/p>");
     }
 
     /// The NNF of `¬(sh:class C)`: `∃≤0 (rdf:type/rdfs:subClassOf*).test(C)`.

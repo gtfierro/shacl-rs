@@ -34,7 +34,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use shifty_algebra::render::{
     describe_negation_in, describe_shape_in, negated_class_target_shape, path_to_string_in,
-    shape_to_string_in,
+    shape_to_string_in, xone_alternatives,
 };
 use shifty_algebra::{
     ConstraintKind, NodeExpr, Path, Prefixes, Schema, Selector, Severity, Shape, ShapeArena,
@@ -1308,7 +1308,10 @@ fn explain(
                     node.clone(),
                     path_ctx.map(str::to_string),
                     severity,
-                    "negated shape unexpectedly held".to_string(),
+                    format!(
+                        "must satisfy `{}`",
+                        describe_negation_in(evaluator.arena, c, evaluator.prefixes)
+                    ),
                     None,
                     Vec::new(),
                     None,
@@ -1333,20 +1336,49 @@ fn explain(
                 sub_reasons.extend(sub);
             }
             if satisfied {
-                Vec::new()
-            } else {
-                vec![reason(
+                return Vec::new();
+            }
+            // `sh:xone` is lowered to `⋁ᵢ (φᵢ ∧ ⋀_{j≠i} ¬φⱼ)`. Reported as the
+            // plain disjunction it is, a node satisfying *two* alternatives —
+            // the usual way to fail a xone — gets told that none were satisfied,
+            // which is the opposite of the finding. Count what actually holds.
+            if let Some(alternatives) = xone_alternatives(id, evaluator.arena) {
+                let held = alternatives
+                    .iter()
+                    .filter(|a| evaluator.holds(node, **a))
+                    .count();
+                let total = alternatives.len();
+                let message = if held == 0 {
+                    format!("none of the {total} alternatives hold; exactly one must")
+                } else {
+                    format!("{held} of the {total} alternatives hold; exactly one may")
+                };
+                // The branch sub-reasons explain the rewrite, not the shape the
+                // author wrote, so they would mislead more than they help here.
+                let sub_reasons = if held == 0 { sub_reasons } else { Vec::new() };
+                return vec![reason(
                     evaluator.arena,
                     id,
                     node.clone(),
                     path_ctx.map(str::to_string),
                     severity,
-                    format!("none of {} alternative(s) satisfied", cs.len()),
+                    message,
                     None,
                     sub_reasons,
                     None,
-                )]
+                )];
             }
+            vec![reason(
+                evaluator.arena,
+                id,
+                node.clone(),
+                path_ctx.map(str::to_string),
+                severity,
+                format!("none of {} alternative(s) satisfied", cs.len()),
+                None,
+                sub_reasons,
+                None,
+            )]
         }
         Shape::Count {
             path,

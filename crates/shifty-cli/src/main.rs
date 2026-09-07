@@ -447,6 +447,8 @@ const NOTATION: &[(&str, &str, &str)] = &[
         "between m and n values along p satisfy X",
     ),
     ("∄", "∄ p", "no values along p at all"),
+    // `^^` is a typed literal's datatype separator, not an inverse path, and
+    // matching it would gloss notation the report never used.
     ("^", "^p", "p followed backwards, from object to subject"),
     ("*", "p*", "p repeated zero or more times"),
 ];
@@ -454,7 +456,11 @@ const NOTATION: &[(&str, &str, &str)] = &[
 fn notation_key(lines: &[String]) -> Vec<String> {
     let used: Vec<(&str, &str)> = NOTATION
         .iter()
-        .filter(|(symbol, ..)| lines.iter().any(|line| line.contains(symbol)))
+        .filter(|(symbol, ..)| {
+            lines
+                .iter()
+                .any(|line| line.replace("^^", "").contains(symbol))
+        })
         .map(|(_, form, gloss)| (*form, *gloss))
         .collect();
     if used.is_empty() {
@@ -613,7 +619,11 @@ fn render_reason(
     // line — so printing both restates the same sentence twice. Anything else
     // keeps it: the generated message often names specifics the constraint does
     // not, such as which predicates a `closed` shape did not expect.
-    let restated = r.observed_count.is_some() || Some(r.message.as_str()) == requirement.as_deref();
+    // `must satisfy \`X\`` where the requirement is exactly `X` says it twice.
+    let restated = r.observed_count.is_some()
+        || requirement.as_deref().is_some_and(|requirement| {
+            r.message == requirement || r.message == format!("must satisfy `{requirement}`")
+        });
     let mut lines = Vec::new();
 
     // Severity only when it differs from the violation's, which is the max of
@@ -630,12 +640,10 @@ fn render_reason(
     // failure `found` and `requirement` already say it — and say it better, since
     // the paraphrase inlines the whole description onto one line.
     if !restated {
-        let label = if r.author_message.is_some() {
-            "details"
-        } else {
-            "message"
-        };
-        lines.extend(field(indent, label, &r.message));
+        // `message` is the shape author's sentence about intent; `failure` is
+        // what went wrong here. When the shape carries no `sh:message` the
+        // generated text is all there is, and it is still a failure, not intent.
+        lines.extend(field(indent, "failure", &r.message));
     }
     if let Some(path) = &r.path {
         lines.extend(field(indent, "path", path));
