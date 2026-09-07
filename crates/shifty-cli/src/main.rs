@@ -485,37 +485,61 @@ fn plural(n: usize, word: &str) -> String {
 
 /// One thing wrong with the graph, and every node it is wrong on.
 ///
-/// Violations that fail the same statement with the same rendered explanation
-/// are the same finding: the constraint, the message and the requirement are
+/// Reasons that fail the same statement with the same rendered explanation are
+/// the same finding: the constraint, the message and the requirement are
 /// identical, and only the nodes differ.
 struct Finding {
     target: String,
     severity: String,
     shape: Option<String>,
-    /// The shared explanation — the reason blocks, already rendered.
+    /// The shared explanation — the reason block, already rendered.
     body: Vec<String>,
-    /// `(focus node, value nodes)`, one per grouped violation. The value nodes
-    /// are in the same order as the reason blocks that produced them.
-    members: Vec<(String, Vec<String>)>,
+    /// `(focus node, value node)`, one per grouped reason. The value is the node
+    /// reached from the focus along the path, absent when the constraint failed
+    /// on the focus node itself.
+    members: Vec<(String, Option<String>)>,
 }
 
-/// Who a finding is wrong on. One node reads inline; several get a counted list,
-/// each with the value nodes that failed on it.
-fn render_affected(members: &[(String, Vec<String>)]) -> Vec<String> {
-    if let [(focus, values)] = members {
+/// Who a finding is wrong on.
+///
+/// A single node reads inline as labelled fields. Several get a counted list;
+/// when the constraint failed on a value reached from the node rather than on
+/// the node itself, the heading says so and each line carries that value — a
+/// bare parenthesised IRI leaves the reader guessing what it is.
+fn render_affected(members: &[(String, Option<String>)]) -> Vec<String> {
+    if let [(focus, value)] = members {
         let mut out = field(2, "affects", focus);
-        if !values.is_empty() {
-            out.extend(field(2, "value nodes", &values.join(", ")));
+        if let Some(value) = value {
+            out.extend(field(2, "value node", value));
         }
         return out;
     }
-    let mut out = field(2, "affects", &plural(members.len(), "focus node"));
-    out.extend(members.iter().map(|(focus, values)| {
-        if values.is_empty() {
-            format!("    {focus}")
+    let counted = plural(members.len(), "focus node");
+    let any_values = members.iter().any(|(_, value)| value.is_some());
+    let mut out = field(
+        2,
+        "affects",
+        &if any_values {
+            format!("{counted}, each with the value node that failed")
         } else {
-            format!("    {focus}  ({})", values.join(", "))
+            counted
+        },
+    );
+    // Pad the focus column so the values line up, but never so far that one long
+    // IRI pushes every value off the edge.
+    let column = members
+        .iter()
+        .filter(|(_, value)| value.is_some())
+        .map(|(focus, _)| focus.chars().count())
+        .filter(|width| *width <= 56)
+        .max()
+        .unwrap_or(0);
+    out.extend(members.iter().map(|(focus, value)| match value {
+        Some(value) => {
+            let padding = " ".repeat(column.saturating_sub(focus.chars().count()));
+            format!("    {focus}{padding}   {value}")
         }
+        None => format!("    {focus}"),
     }));
     out
 }
@@ -577,7 +601,11 @@ fn render_reason(
     focus: &str,
     violation_severity: &str,
     indent: usize,
-    values: &mut Vec<String>,
+    // When set, the reason's own value node is captured here instead of printed:
+    // the caller is grouping by explanation and lists the nodes together.
+    // Sub-reasons always print theirs, since which value took which `sh:or`
+    // branch is part of that branch's explanation.
+    hoist_value: Option<&mut Option<String>>,
 ) -> Vec<String> {
     let requirement = describe_requirement(r, arena, px, indent + LABEL_WIDTH);
     // A cardinality reason's requirement already says everything its generated
@@ -612,12 +640,12 @@ fn render_reason(
     if let Some(path) = &r.path {
         lines.extend(field(indent, "path", path));
     }
-    // The value node is collected rather than printed here: findings that differ
-    // only in which nodes failed are grouped, and the nodes are listed together
-    // under the shared explanation.
     let value = shifty_algebra::render::term_to_string_in(&r.value, px);
-    if value != focus {
-        values.push(value);
+    match hoist_value {
+        Some(slot) if value != focus => *slot = Some(value),
+        Some(_) => {}
+        None if value != focus => lines.extend(field(indent, "value node", &value)),
+        None => {}
     }
     if let Some(found) = found_line(r, arena) {
         lines.extend(field(indent, "found", &found));
@@ -643,7 +671,7 @@ fn render_reason(
             focus,
             violation_severity,
             indent + 4,
-            values,
+            None,
         ));
     }
     lines
@@ -905,45 +933,24 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
             println!("{}", serde_json::to_string_pretty(&doc)?);
         }
         Format::Text => {
-            // Findings, not violations. The same constraint failing on 55 nodes is
-            // one thing wrong with the graph, and printing its explanation 55
+            // Findings, not violations. The same constraint failing on 53 nodes
+            // is one thing wrong with the graph, and printing its explanation 53
             // times buries the two other things that are also wrong.
+            //
+            // The unit is one *reason*, not one violation: a focus node that
+            // fails two constraints has two things wrong with it, and grouping
+            // them together would force a member to carry several unrelated
+            // value nodes with nothing to say which belonged to which.
             let mut findings: Vec<Finding> = Vec::new();
             let mut index: HashMap<(usize, String, String, String), usize> = HashMap::new();
             for v in &outcome.violations {
                 let st = &parsed.schema.statements[v.statement];
                 let focus = shifty_algebra::render::term_to_string_in(&v.focus, &display_prefixes);
-                let severity = v.severity.to_string();
                 let target = shifty_algebra::render::selector_to_string_in_px(
                     &st.selector,
                     &parsed.schema.arena,
                     &parsed.schema.prefixes,
                 );
-                let mut values = Vec::new();
-                let mut blocks: Vec<Vec<String>> = v
-                    .reasons
-                    .iter()
-                    .map(|r| {
-                        render_reason(
-                            r,
-                            &physical.arena,
-                            &display_prefixes,
-                            &focus,
-                            &severity,
-                            2,
-                            &mut values,
-                        )
-                    })
-                    .collect();
-                blocks.sort();
-                let mut body = Vec::new();
-                for (n, block) in blocks.iter().enumerate() {
-                    body.push(String::new());
-                    if blocks.len() > 1 {
-                        body.push(format!("  reason {} of {}", n + 1, blocks.len()));
-                    }
-                    body.extend(block.iter().cloned());
-                }
                 // The source shape's IRI, unless the target line already names it
                 // — an implicit class target renders as `class(<that same IRI>)`.
                 let shape = parsed
@@ -952,23 +959,36 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
                     .map(|name| display_prefixes.compact(name))
                     .filter(|compacted| !target.contains(compacted.as_str()));
 
-                let key = (
-                    v.statement,
-                    severity.clone(),
-                    target.clone(),
-                    body.join("\n"),
-                );
-                match index.get(&key) {
-                    Some(at) => findings[*at].members.push((focus, values)),
-                    None => {
-                        index.insert(key, findings.len());
-                        findings.push(Finding {
-                            target,
-                            severity,
-                            shape,
-                            body,
-                            members: vec![(focus, values)],
-                        });
+                for r in &v.reasons {
+                    let severity = r.severity.to_string();
+                    let mut value = None;
+                    let body = render_reason(
+                        r,
+                        &physical.arena,
+                        &display_prefixes,
+                        &focus,
+                        &severity,
+                        2,
+                        Some(&mut value),
+                    );
+                    let key = (
+                        v.statement,
+                        severity.clone(),
+                        target.clone(),
+                        body.join("\n"),
+                    );
+                    match index.get(&key) {
+                        Some(at) => findings[*at].members.push((focus.clone(), value)),
+                        None => {
+                            index.insert(key, findings.len());
+                            findings.push(Finding {
+                                target: target.clone(),
+                                severity,
+                                shape: shape.clone(),
+                                body,
+                                members: vec![(focus.clone(), value)],
+                            });
+                        }
                     }
                 }
             }

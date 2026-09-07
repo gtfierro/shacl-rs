@@ -471,7 +471,7 @@ fn text_report_labels_the_focus_and_value_nodes() {
 
     assert!(stdout.contains("Finding 1 of 1"), "stdout: {stdout}");
     assert!(stdout.contains("affects      ex:a"), "stdout: {stdout}");
-    assert!(stdout.contains("value nodes  ex:wrong"), "stdout: {stdout}");
+    assert!(stdout.contains("value node   ex:wrong"), "stdout: {stdout}");
     assert!(stdout.contains("path         ex:p"), "stdout: {stdout}");
     assert!(
         stdout.contains("target       class(ex:T)"),
@@ -607,6 +607,15 @@ fn text_report_groups_violations_that_share_a_finding() {
     for node in ["ex:a", "ex:b", "ex:c"] {
         assert!(stdout.contains(node), "missing {node}: {stdout}");
     }
+    // A grouped value node has to say what it is. Grouping by reason rather than
+    // by violation is what makes that possible: one value per node per finding,
+    // so the heading can name the column instead of leaving bare parentheses for
+    // the reader to decode.
+    assert!(
+        stdout.contains("focus nodes, each with the value node that failed"),
+        "stdout: {stdout}"
+    );
+    assert!(!stdout.contains("(\"literal\","), "bare values: {stdout}");
 
     std::fs::remove_dir_all(dir).unwrap();
 }
