@@ -43,6 +43,14 @@
 
 ### Changed
 
+- `shifty validate --format text` now reports *findings* rather than violations:
+  violations that fail the same statement with the same rendered explanation are
+  grouped, the explanation printed once, and the focus nodes listed under it with
+  the value nodes that failed on each. On a sample s223 run this took a report
+  from 1230 lines to 119 — the same constraint failing on 53 nodes is one thing
+  wrong with the graph, and repeating its explanation 53 times buried the two
+  other things that were also wrong. The summary line counts both
+  (`61 violations in 3 findings`).
 - `shifty validate --format text` now prints labelled fields — `focus node`,
   `value node`, `path`, `found`, `requirement` — instead of packing a reason
   onto one line. The two nodes in a reason are what a first-time reader

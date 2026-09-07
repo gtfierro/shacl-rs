@@ -469,9 +469,9 @@ fn text_report_labels_the_focus_and_value_nodes() {
         .unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    assert!(stdout.contains("Violation 1 of 1"), "stdout: {stdout}");
-    assert!(stdout.contains("focus node   ex:a"), "stdout: {stdout}");
-    assert!(stdout.contains("value node   ex:wrong"), "stdout: {stdout}");
+    assert!(stdout.contains("Finding 1 of 1"), "stdout: {stdout}");
+    assert!(stdout.contains("affects      ex:a"), "stdout: {stdout}");
+    assert!(stdout.contains("value nodes  ex:wrong"), "stdout: {stdout}");
     assert!(stdout.contains("path         ex:p"), "stdout: {stdout}");
     assert!(
         stdout.contains("target       class(ex:T)"),
@@ -554,6 +554,59 @@ fn json_report_resolves_every_constraint_pointer() {
     assert!(seen.len() > 1, "expected a nested constraint: {seen:?}");
     // Only what the report reaches, not the whole arena.
     assert!(shapes_map.len() < 40, "shipped {} slots", shapes_map.len());
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// The same constraint failing on many nodes is one thing wrong with the graph.
+/// Printing its explanation once per node buries whatever else is wrong, so
+/// violations that render identically are grouped and the nodes listed together.
+#[test]
+fn text_report_groups_violations_that_share_a_finding() {
+    let dir = std::env::temp_dir().join(format!("shifty-cli-group-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shapes = dir.join("shapes.ttl");
+    std::fs::write(
+        &shapes,
+        r#"
+            @prefix ex: <http://ex/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+
+            ex:S a sh:NodeShape ;
+                sh:targetClass ex:T ;
+                sh:property [ sh:path ex:p ; sh:minCount 1 ] .
+
+            ex:Other a sh:NodeShape ;
+                sh:targetClass ex:T ;
+                sh:property [ sh:path ex:q ; sh:nodeKind sh:IRI ] .
+
+            ex:a a ex:T ; ex:q "literal" .
+            ex:b a ex:T ; ex:q "literal" .
+            ex:c a ex:T ; ex:q "literal" .
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", shapes.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Three nodes, each failing the same two shapes: six violations, two findings.
+    assert!(
+        stdout.contains("conforms: false — 6 violations in 2 findings"),
+        "stdout: {stdout}"
+    );
+    // Each explanation appears once, not once per node.
+    assert_eq!(stdout.matches("requirement").count(), 2, "stdout: {stdout}");
+    assert!(
+        stdout.contains("affects      3 focus nodes"),
+        "stdout: {stdout}"
+    );
+    for node in ["ex:a", "ex:b", "ex:c"] {
+        assert!(stdout.contains(node), "missing {node}: {stdout}");
+    }
 
     std::fs::remove_dir_all(dir).unwrap();
 }

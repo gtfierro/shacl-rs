@@ -5,6 +5,7 @@
 //! become additional stages here.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -472,6 +473,53 @@ fn notation_key(lines: &[String]) -> Vec<String> {
     out
 }
 
+/// `1 violation` / `2 violations`. A counted noun in a summary line is read, not
+/// parsed, so `violation(s)` is a small tax on every reader.
+fn plural(n: usize, word: &str) -> String {
+    if n == 1 {
+        format!("{n} {word}")
+    } else {
+        format!("{n} {word}s")
+    }
+}
+
+/// One thing wrong with the graph, and every node it is wrong on.
+///
+/// Violations that fail the same statement with the same rendered explanation
+/// are the same finding: the constraint, the message and the requirement are
+/// identical, and only the nodes differ.
+struct Finding {
+    target: String,
+    severity: String,
+    shape: Option<String>,
+    /// The shared explanation — the reason blocks, already rendered.
+    body: Vec<String>,
+    /// `(focus node, value nodes)`, one per grouped violation. The value nodes
+    /// are in the same order as the reason blocks that produced them.
+    members: Vec<(String, Vec<String>)>,
+}
+
+/// Who a finding is wrong on. One node reads inline; several get a counted list,
+/// each with the value nodes that failed on it.
+fn render_affected(members: &[(String, Vec<String>)]) -> Vec<String> {
+    if let [(focus, values)] = members {
+        let mut out = field(2, "affects", focus);
+        if !values.is_empty() {
+            out.extend(field(2, "value nodes", &values.join(", ")));
+        }
+        return out;
+    }
+    let mut out = field(2, "affects", &plural(members.len(), "focus node"));
+    out.extend(members.iter().map(|(focus, values)| {
+        if values.is_empty() {
+            format!("    {focus}")
+        } else {
+            format!("    {focus}  ({})", values.join(", "))
+        }
+    }));
+    out
+}
+
 /// Column the labelled values start at. Wide enough for the longest label, so
 /// values line up into a column a reader can scan without reading the labels.
 const LABEL_WIDTH: usize = 13;
@@ -529,6 +577,7 @@ fn render_reason(
     focus: &str,
     violation_severity: &str,
     indent: usize,
+    values: &mut Vec<String>,
 ) -> Vec<String> {
     let requirement = describe_requirement(r, arena, px, indent + LABEL_WIDTH);
     // A cardinality reason's requirement already says everything its generated
@@ -563,9 +612,12 @@ fn render_reason(
     if let Some(path) = &r.path {
         lines.extend(field(indent, "path", path));
     }
+    // The value node is collected rather than printed here: findings that differ
+    // only in which nodes failed are grouped, and the nodes are listed together
+    // under the shared explanation.
     let value = shifty_algebra::render::term_to_string_in(&r.value, px);
     if value != focus {
-        lines.extend(field(indent, "value node", &value));
+        values.push(value);
     }
     if let Some(found) = found_line(r, arena) {
         lines.extend(field(indent, "found", &found));
@@ -591,6 +643,7 @@ fn render_reason(
             focus,
             violation_severity,
             indent + 4,
+            values,
         ));
     }
     lines
@@ -852,50 +905,99 @@ fn validate(args: ValidateArgs) -> Result<(), Box<dyn Error>> {
             println!("{}", serde_json::to_string_pretty(&doc)?);
         }
         Format::Text => {
-            let total = outcome.violations.len();
-            if outcome.conforms {
-                println!("conforms: true");
-            } else {
-                println!("conforms: false — {total} violation(s)");
-            }
-            let mut out: Vec<String> = Vec::new();
-            for (i, v) in outcome.violations.iter().enumerate() {
+            // Findings, not violations. The same constraint failing on 55 nodes is
+            // one thing wrong with the graph, and printing its explanation 55
+            // times buries the two other things that are also wrong.
+            let mut findings: Vec<Finding> = Vec::new();
+            let mut index: HashMap<(usize, String, String, String), usize> = HashMap::new();
+            for v in &outcome.violations {
                 let st = &parsed.schema.statements[v.statement];
                 let focus = shifty_algebra::render::term_to_string_in(&v.focus, &display_prefixes);
                 let severity = v.severity.to_string();
-                out.push(String::new());
-                out.push(format!("Violation {} of {total}", i + 1));
-                out.extend(field(2, "focus node", &focus));
                 let target = shifty_algebra::render::selector_to_string_in_px(
                     &st.selector,
                     &parsed.schema.arena,
                     &parsed.schema.prefixes,
                 );
-                out.extend(field(2, "target", &target));
-                out.extend(field(2, "severity", &severity));
-                // The source shape's IRI, unless the target line already names it
-                // — an implicit class target renders as `class(<that same IRI>)`.
-                if let Some(name) = parsed.schema.name_of(st.shape) {
-                    let compacted = display_prefixes.compact(name);
-                    if !target.contains(&compacted) {
-                        out.extend(field(2, "shape", &compacted));
-                    }
-                }
-                let mut groups: Vec<Vec<String>> = v
+                let mut values = Vec::new();
+                let mut blocks: Vec<Vec<String>> = v
                     .reasons
                     .iter()
                     .map(|r| {
-                        render_reason(r, &physical.arena, &display_prefixes, &focus, &severity, 2)
+                        render_reason(
+                            r,
+                            &physical.arena,
+                            &display_prefixes,
+                            &focus,
+                            &severity,
+                            2,
+                            &mut values,
+                        )
                     })
                     .collect();
-                groups.sort();
-                for (n, group) in groups.iter().enumerate() {
-                    out.push(String::new());
-                    if v.reasons.len() > 1 {
-                        out.push(format!("  reason {} of {}", n + 1, v.reasons.len()));
+                blocks.sort();
+                let mut body = Vec::new();
+                for (n, block) in blocks.iter().enumerate() {
+                    body.push(String::new());
+                    if blocks.len() > 1 {
+                        body.push(format!("  reason {} of {}", n + 1, blocks.len()));
                     }
-                    out.extend(group.iter().cloned());
+                    body.extend(block.iter().cloned());
                 }
+                // The source shape's IRI, unless the target line already names it
+                // — an implicit class target renders as `class(<that same IRI>)`.
+                let shape = parsed
+                    .schema
+                    .name_of(st.shape)
+                    .map(|name| display_prefixes.compact(name))
+                    .filter(|compacted| !target.contains(compacted.as_str()));
+
+                let key = (
+                    v.statement,
+                    severity.clone(),
+                    target.clone(),
+                    body.join("\n"),
+                );
+                match index.get(&key) {
+                    Some(at) => findings[*at].members.push((focus, values)),
+                    None => {
+                        index.insert(key, findings.len());
+                        findings.push(Finding {
+                            target,
+                            severity,
+                            shape,
+                            body,
+                            members: vec![(focus, values)],
+                        });
+                    }
+                }
+            }
+
+            let total = outcome.violations.len();
+            if outcome.conforms {
+                println!("conforms: true");
+            } else if findings.len() == total {
+                println!("conforms: false — {}", plural(total, "violation"));
+            } else {
+                println!(
+                    "conforms: false — {} in {}",
+                    plural(total, "violation"),
+                    plural(findings.len(), "finding")
+                );
+            }
+
+            let mut out: Vec<String> = Vec::new();
+            for (i, finding) in findings.iter().enumerate() {
+                out.push(String::new());
+                out.push(format!("Finding {} of {}", i + 1, findings.len()));
+                out.extend(field(2, "target", &finding.target));
+                out.extend(field(2, "severity", &finding.severity));
+                if let Some(shape) = &finding.shape {
+                    out.extend(field(2, "shape", shape));
+                }
+                out.extend(finding.body.iter().cloned());
+                out.push(String::new());
+                out.extend(render_affected(&finding.members));
             }
             for line in &out {
                 println!("{line}");
