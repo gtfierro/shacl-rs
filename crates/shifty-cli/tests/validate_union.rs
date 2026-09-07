@@ -827,3 +827,71 @@ fn every_finding_states_the_failure_in_full() {
 
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// `examples/report-tour.ttl` exists to show every part of the text report in one
+/// run. It is only worth keeping if it still does, so this asserts each feature
+/// it advertises actually appears — the example rots silently otherwise.
+#[test]
+fn the_report_tour_example_exercises_every_feature() {
+    let example = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/report-tour.ttl"
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_shifty"))
+        .args(["validate", "--shapes", example])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    for feature in [
+        // grouping, and the link between findings of one shape
+        "violations in ",
+        "affects      3 focus nodes, each with the value node that failed",
+        "the constraint applies to each node itself",
+        "also fails   Finding",
+        " nodes)", // a partial overlap, counted
+        // every labelled field
+        "target       class(",
+        "target       node(",
+        "severity     Violation",
+        "severity     Warning",
+        "shape        ex:",
+        "message      ",
+        "failure      ",
+        "path         ",
+        "value node   (the focus node itself)",
+        "found        ",
+        "requirement  ",
+        // both count phrasings
+        "value(s) along the path;",
+        "value(s) matching the requirement;",
+        // combinators
+        "exactly one of (",
+        "exactly one alternative may hold;",
+        "none of the 3 alternatives hold",
+        "or-branch 1 of 3",
+        "not (instance of ex:Electric or instance of ex:Gas)",
+        // other constraint kinds
+        "closed: unexpected predicate(s) ex:vendor",
+        "SPARQL:",
+        // rendering details
+        "\"3\"^^xsd:integer",                  // a compacted datatype
+        "requirement  ∃[1..] ex:contains . (", // an indented block
+        // every notation entry
+        "∀ p . X",
+        "∃[m..n] p . X",
+        "∄ p ",
+        "^p ",
+        "p* ",
+    ] {
+        assert!(
+            stdout.contains(feature),
+            "the example no longer shows {feature:?}:\n{stdout}"
+        );
+    }
+}

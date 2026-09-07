@@ -1286,7 +1286,12 @@ fn explain(
             if bad.is_empty() {
                 Vec::new()
             } else {
-                let preds: Vec<String> = bad.iter().map(|p| p.to_string()).collect();
+                // The offending predicates are IRIs like any others in a
+                // message, so they compact against the document's vocabulary.
+                let preds: Vec<String> = bad
+                    .iter()
+                    .map(|p| evaluator.prefixes.compact(p.as_str()))
+                    .collect();
                 vec![reason(
                     evaluator.arena,
                     id,
